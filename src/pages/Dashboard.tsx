@@ -3,29 +3,40 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, MessageSquare, Settings, BarChart3, Code } from "lucide-react";
+import { Plus, MessageSquare, Settings, BarChart3, Code, Users, Bot, Palette, Webhook } from "lucide-react";
 import { AgentList } from "@/components/AgentList";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
-import { ChatWidgetPreview } from "@/components/ChatWidgetPreview";
+import { AdvancedChatPreview } from "@/components/AdvancedChatPreview";
+import { AgentBuilder } from "@/components/AgentBuilder";
+import { UserManagement } from "@/components/UserManagement";
 
 const Dashboard = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
+      <header className="bg-white/80 backdrop-blur-lg border-b border-white/20 sticky top-0 z-40 shadow-sm">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <MessageSquare className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">AgentConnect Dashboard</h1>
-                <p className="text-sm text-gray-600">Manage your chat agents and deployments</p>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl">
+                  <MessageSquare className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                    AgentConnect
+                  </h1>
+                  <p className="text-sm text-gray-600">Next-generation chat platform</p>
+                </div>
               </div>
             </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
+            <Button 
+              onClick={() => setIsCreateDialogOpen(true)} 
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <Plus className="h-4 w-4 mr-2" />
               Create Agent
             </Button>
           </div>
@@ -35,117 +46,145 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
-                <MessageSquare className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-gray-600">+2 from last week</p>
+          {/* Enhanced Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm">Active Agents</p>
+                    <p className="text-3xl font-bold">12</p>
+                    <p className="text-blue-200 text-xs mt-1">+2 this week</p>
+                  </div>
+                  <Bot className="h-8 w-8 text-blue-200" />
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Deployments</CardTitle>
-                <Code className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">8</div>
-                <p className="text-xs text-gray-600">Across 5 websites</p>
+            <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm">Live Conversations</p>
+                    <p className="text-3xl font-bold">247</p>
+                    <p className="text-green-200 text-xs mt-1">Across 8 websites</p>
+                  </div>
+                  <MessageSquare className="h-8 w-8 text-green-200" />
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Conversations</CardTitle>
-                <BarChart3 className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">1,247</div>
-                <p className="text-xs text-gray-600">+12% from last month</p>
+            <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-sm">Response Rate</p>
+                    <p className="text-3xl font-bold">98.5%</p>
+                    <p className="text-purple-200 text-xs mt-1">+5% improvement</p>
+                  </div>
+                  <BarChart3 className="h-8 w-8 text-purple-200" />
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Response Rate</CardTitle>
-                <Settings className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">94%</div>
-                <p className="text-xs text-gray-600">Average across all agents</p>
+            <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm">Satisfaction</p>
+                    <p className="text-3xl font-bold">4.9★</p>
+                    <p className="text-orange-200 text-xs mt-1">Average rating</p>
+                  </div>
+                  <Settings className="h-8 w-8 text-orange-200" />
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Main Tabs */}
+          {/* Enhanced Tabs */}
           <Tabs defaultValue="agents" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="agents">Agents</TabsTrigger>
-              <TabsTrigger value="deployments">Deployments</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsList className="bg-white/50 backdrop-blur-sm border border-white/20 shadow-sm p-1">
+              <TabsTrigger value="agents" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Bot className="h-4 w-4" />
+                Agents
+              </TabsTrigger>
+              <TabsTrigger value="builder" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Settings className="h-4 w-4" />
+                Agent Builder
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Palette className="h-4 w-4" />
+                Widget Designer
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Users className="h-4 w-4" />
+                Team
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="agents" className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Your Chat Agents</h2>
-                  <p className="text-gray-600">Create and manage AI-powered chat agents for your clients</p>
+                  <h2 className="text-2xl font-bold text-gray-900">Your AI Agents</h2>
+                  <p className="text-gray-600">Create and manage intelligent chat agents for your clients</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <AgentList />
-                </div>
-                <div className="lg:col-span-1">
-                  <ChatWidgetPreview />
-                </div>
-              </div>
+              <AgentList />
             </TabsContent>
 
-            <TabsContent value="deployments" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Deployment Management</CardTitle>
-                  <CardDescription>
-                    Manage where your agents are deployed and monitor their performance
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">Deployment management features coming soon...</p>
-                </CardContent>
-              </Card>
+            <TabsContent value="builder" className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Agent Builder</h2>
+                  <p className="text-gray-600">Design conversation flows and configure agent behavior</p>
+                </div>
+              </div>
+              <AgentBuilder />
+            </TabsContent>
+
+            <TabsContent value="preview" className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Widget Designer</h2>
+                  <p className="text-gray-600">Customize the appearance and generate embed codes</p>
+                </div>
+              </div>
+              <AdvancedChatPreview />
+            </TabsContent>
+
+            <TabsContent value="users" className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Team Management</h2>
+                  <p className="text-gray-600">Manage users, teams, and permissions</p>
+                </div>
+              </div>
+              <UserManagement />
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
-              <Card>
+              <Card className="bg-white/50 backdrop-blur-sm border border-white/20">
                 <CardHeader>
-                  <CardTitle>Analytics & Insights</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-6 w-6 text-purple-600" />
+                    Analytics & Performance
+                  </CardTitle>
                   <CardDescription>
-                    Track conversation metrics and agent performance
+                    Comprehensive insights into your agent performance and user engagement
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600">Analytics dashboard coming soon...</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="settings" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Global Settings</CardTitle>
-                  <CardDescription>
-                    Configure default settings and preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">Settings panel coming soon...</p>
+                  <div className="text-center py-12">
+                    <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Advanced Analytics Coming Soon</h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      Get detailed insights into conversation metrics, user satisfaction, agent performance, and more.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
