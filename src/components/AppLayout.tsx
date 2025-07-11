@@ -17,7 +17,8 @@ import {
   TrendingUp,
   Palette,
   Menu,
-  X
+  X,
+  Key
 } from "lucide-react";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
 
@@ -29,6 +30,7 @@ const sidebarItems = [
   { title: "Team Management", url: "/dashboard/team", icon: Users },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
   { title: "Settings", url: "/dashboard/settings", icon: FileText },
+  { title: "API Vault", url: "/dashboard/vault", icon: Key },
 ];
 
 const AppLayout = () => {

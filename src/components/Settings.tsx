@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,26 +19,148 @@ import {
   Database
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
 
 export const Settings = () => {
+  const { toast } = useToast();
   const [settings, setSettings] = useState({
-    companyName: "AgentConnect",
-    companyLogo: "",
-    supportEmail: "support@agentconnect.com",
-    timezone: "UTC",
-    language: "en",
-    emailNotifications: true,
+    companyName: "",
+    supportEmail: "",
+    timezone: "",
+    language: "",
+    businessHours: false,
+    businessHoursStartTime: "09:00",
+    businessHoursEndTime: "17:00",
+    businessHoursDays: "Monday - Friday",
+    darkMode: false,
+    emailNotifications: false,
     slackNotifications: false,
-    autoAssignment: true,
-    businessHours: true,
-    requireAuth: true,
-    allowFileUploads: true,
-    maxFileSize: "10",
-    sessionTimeout: "30"
+    autoAssignment: false,
   });
+
+  const userId = 1; // Hardcoded user ID for now
+  const companyId = 1; // Hardcoded company ID for now
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const [userResponse, companyResponse, notificationResponse] = await Promise.all([
+          fetch(`http://localhost:8000/api/v1/settings/${userId}`, {
+            headers: {
+              "X-Company-ID": companyId.toString(),
+            },
+          }),
+          fetch(`http://localhost:8000/api/v1/company-settings/`, {
+            headers: {
+              "X-Company-ID": companyId.toString(),
+            },
+          }),
+          fetch(`http://localhost:8000/api/v1/notification-settings/`, {
+            headers: {
+              "X-Company-ID": companyId.toString(),
+            },
+          }),
+        ]);
+
+        if (userResponse.ok && companyResponse.ok && notificationResponse.ok) {
+          const userData = await userResponse.json();
+          const companyData = await companyResponse.json();
+          const notificationData = await notificationResponse.json();
+          setSettings(prev => ({
+            ...prev,
+            darkMode: userData.dark_mode,
+            companyName: companyData.company_name,
+            supportEmail: companyData.support_email,
+            timezone: companyData.timezone,
+            language: companyData.language,
+            businessHours: companyData.business_hours,
+            emailNotifications: notificationData.email_notifications_enabled,
+            slackNotifications: notificationData.slack_notifications_enabled,
+            autoAssignment: notificationData.auto_assignment_enabled,
+          }));
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to fetch settings.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch settings", error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchSettings();
+  }, [userId, companyId, toast]);
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      const [userResponse, companyResponse, notificationResponse] = await Promise.all([
+        fetch(`http://localhost:8000/api/v1/settings/${userId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Company-ID": companyId.toString(),
+          },
+          body: JSON.stringify({ dark_mode: settings.darkMode }),
+        }),
+        fetch(`http://localhost:8000/api/v1/company-settings/`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Company-ID": companyId.toString(),
+          },
+          body: JSON.stringify({
+            company_name: settings.companyName,
+            support_email: settings.supportEmail,
+            timezone: settings.timezone,
+            language: settings.language,
+            business_hours: settings.businessHours,
+          }),
+        }),
+        fetch(`http://localhost:8000/api/v1/notification-settings/`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Company-ID": companyId.toString(),
+          },
+          body: JSON.stringify({
+            email_notifications_enabled: settings.emailNotifications,
+            slack_notifications_enabled: settings.slackNotifications,
+            auto_assignment_enabled: settings.autoAssignment,
+          }),
+        }),
+      ]);
+
+      if (userResponse.ok && companyResponse.ok && notificationResponse.ok) {
+        toast({
+          title: "Success",
+          description: "Settings saved successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save settings.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save settings", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -140,16 +262,31 @@ export const Settings = () => {
                 {settings.businessHours && (
                   <div className="grid grid-cols-3 gap-4 mt-4">
                     <div>
-                      <Label>Start Time</Label>
-                      <Input type="time" defaultValue="09:00" />
+                      <Label htmlFor="businessHoursStartTime">Start Time</Label>
+                      <Input
+                        id="businessHoursStartTime"
+                        type="time"
+                        value={settings.businessHoursStartTime}
+                        onChange={(e) => handleSettingChange("businessHoursStartTime", e.target.value)}
+                      />
                     </div>
                     <div>
-                      <Label>End Time</Label>
-                      <Input type="time" defaultValue="17:00" />
+                      <Label htmlFor="businessHoursEndTime">End Time</Label>
+                      <Input
+                        id="businessHoursEndTime"
+                        type="time"
+                        value={settings.businessHoursEndTime}
+                        onChange={(e) => handleSettingChange("businessHoursEndTime", e.target.value)}
+                      />
                     </div>
                     <div>
-                      <Label>Days</Label>
-                      <select className="w-full p-2 border rounded-md">
+                      <Label htmlFor="businessHoursDays">Days</Label>
+                      <select
+                        id="businessHoursDays"
+                        value={settings.businessHoursDays}
+                        onChange={(e) => handleSettingChange("businessHoursDays", e.target.value)}
+                        className="w-full p-2 border rounded-md"
+                      >
                         <option>Monday - Friday</option>
                         <option>Monday - Saturday</option>
                         <option>Every Day</option>
@@ -227,8 +364,7 @@ export const Settings = () => {
                     <p className="text-sm text-gray-600">Require users to authenticate before chatting</p>
                   </div>
                   <Switch
-                    checked={settings.requireAuth}
-                    onCheckedChange={(checked) => handleSettingChange("requireAuth", checked)}
+                    checked={true}
                   />
                 </div>
 
@@ -238,8 +374,7 @@ export const Settings = () => {
                     <p className="text-sm text-gray-600">Allow customers to upload files in chat</p>
                   </div>
                   <Switch
-                    checked={settings.allowFileUploads}
-                    onCheckedChange={(checked) => handleSettingChange("allowFileUploads", checked)}
+                    checked={true}
                   />
                 </div>
 
@@ -248,8 +383,7 @@ export const Settings = () => {
                   <Input
                     id="maxFileSize"
                     type="number"
-                    value={settings.maxFileSize}
-                    onChange={(e) => handleSettingChange("maxFileSize", e.target.value)}
+                    value="10"
                     className="w-32"
                   />
                 </div>
@@ -259,8 +393,7 @@ export const Settings = () => {
                   <Input
                     id="sessionTimeout"
                     type="number"
-                    value={settings.sessionTimeout}
-                    onChange={(e) => handleSettingChange("sessionTimeout", e.target.value)}
+                    value="30"
                     className="w-32"
                   />
                 </div>
@@ -286,7 +419,7 @@ export const Settings = () => {
                   { name: "HubSpot", description: "CRM integration", connected: false },
                   { name: "Salesforce", description: "Sales management", connected: false },
                   { name: "Stripe", description: "Payment processing", connected: true },
-                  { name: "Intercom", description: "Customer messaging", connected: false }
+                  { name: "Intercom", description: "Customer messaging", connected: false },
                 ].map((integration) => (
                   <div key={integration.name} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
@@ -319,17 +452,18 @@ export const Settings = () => {
               <div>
                 <Label>Theme</Label>
                 <div className="grid grid-cols-3 gap-4 mt-2">
-                  {["Light", "Dark", "Auto"].map((theme) => (
-                    <div key={theme} className="p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <div className="text-center">
-                        <div className={`w-full h-12 rounded mb-2 ${
-                          theme === "Light" ? "bg-white border" :
-                          theme === "Dark" ? "bg-gray-900" : "bg-gradient-to-r from-white to-gray-900"
-                        }`}></div>
-                        <span className="text-sm">{theme}</span>
-                      </div>
+                  <div onClick={() => handleSettingChange("darkMode", false)} className={`p-4 border rounded-lg cursor-pointer ${!settings.darkMode ? 'bg-gray-50' : ''}`}>
+                    <div className="text-center">
+                      <div className="w-full h-12 rounded mb-2 bg-white border"></div>
+                      <span className="text-sm">Light</span>
                     </div>
-                  ))}
+                  </div>
+                  <div onClick={() => handleSettingChange("darkMode", true)} className={`p-4 border rounded-lg cursor-pointer ${settings.darkMode ? 'bg-gray-900 text-white' : ''}`}>
+                    <div className="text-center">
+                      <div className="w-full h-12 rounded mb-2 bg-gray-900"></div>
+                      <span className="text-sm">Dark</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -382,7 +516,7 @@ export const Settings = () => {
       </Tabs>
 
       <div className="flex justify-end">
-        <Button>Save Changes</Button>
+        <Button onClick={handleSaveChanges}>Save Changes</Button>
       </div>
     </div>
   );

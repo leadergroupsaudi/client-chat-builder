@@ -1,5 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Agent, Credential, Webhook } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Bot, 
   MessageSquare, 
-  Webhook, 
   Zap, 
   Plus, 
   Trash2, 
@@ -18,7 +19,8 @@ import {
   Settings,
   Brain,
   Globe,
-  Database
+  Database,
+  Webhook as WebhookIcon
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -30,77 +32,162 @@ interface FlowNode {
   position: { x: number; y: number };
 }
 
-export const AgentBuilder = () => {
+interface AgentBuilderProps {
+  agent: Agent;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => {
+  const queryClient = useQueryClient();
+  const companyId = 1; // Hardcoded company ID for now
+
   const [agentConfig, setAgentConfig] = useState({
-    name: "New Agent",
-    description: "Intelligent customer support agent",
-    avatar: "",
-    personality: "helpful",
-    language: "en",
-    timezone: "UTC"
+    name: agent.name,
+    welcome_message: agent.welcome_message,
+    prompt: agent.prompt,
+    personality: agent.personality || "helpful",
+    language: agent.language || "en",
+    timezone: agent.timezone || "UTC",
+    credential_id: agent.credential_id,
   });
 
-  const [webhooks, setWebhooks] = useState([
-    {
-      id: "1",
-      name: "Slack Notification",
-      url: "https://hooks.slack.com/services/...",
-      trigger: "new_message",
-      active: true
-    },
-    {
-      id: "2",
-      name: "CRM Integration",
-      url: "https://api.hubspot.com/webhook",
-      trigger: "conversation_end",
-      active: false
+  const { data: credentials, isLoading: isLoadingCredentials } = useQuery<Credential[]>({ queryKey: ['credentials', companyId], queryFn: async () => {
+    const response = await fetch(`http://localhost:8000/api/v1/credentials/`, {
+      headers: {
+        "X-Company-ID": companyId.toString(),
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch credentials");
     }
-  ]);
+    return response.json();
+  }});
 
-  const [flowNodes, setFlowNodes] = useState<FlowNode[]>([
-    {
-      id: "1",
-      type: "trigger",
-      title: "User Says Hello",
-      content: "greeting, hi, hello, hey",
-      position: { x: 100, y: 100 }
-    },
-    {
-      id: "2",
-      type: "response",
-      title: "Welcome Response",
-      content: "Hi there! How can I help you today?",
-      position: { x: 400, y: 100 }
+  const { data: webhooksData, isLoading: isLoadingWebhooks } = useQuery<Webhook[]>({ queryKey: ['webhooks', agent.id, companyId], queryFn: async () => {
+    const response = await fetch(`http://localhost:8000/api/v1/webhooks/by_agent/${agent.id}`, {
+      headers: {
+        "X-Company-ID": companyId.toString(),
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch webhooks");
     }
-  ]);
+    return response.json();
+  }});
 
-  const nodeTypes = [
-    { type: 'trigger', icon: Zap, label: 'Trigger', color: 'bg-yellow-500' },
-    { type: 'condition', icon: Brain, label: 'Condition', color: 'bg-purple-500' },
-    { type: 'action', icon: Settings, label: 'Action', color: 'bg-blue-500' },
-    { type: 'response', icon: MessageSquare, label: 'Response', color: 'bg-green-500' }
-  ];
+  const updateAgentMutation = useMutation({
+    mutationFn: async (updatedAgent: Agent) => {
+      const response = await fetch(`http://localhost:8000/api/v1/agents/${updatedAgent.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Company-ID": companyId.toString(),
+        },
+        body: JSON.stringify(updatedAgent),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update agent");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      onSave();
+    },
+    onError: (error) => {
+      console.error("Failed to update agent:", error);
+      // Optionally show a toast or other error feedback
+    },
+  });
 
-  const addWebhook = () => {
-    const newWebhook = {
-      id: Date.now().toString(),
-      name: "New Webhook",
-      url: "",
-      trigger: "new_message",
-      active: false
-    };
-    setWebhooks([...webhooks, newWebhook]);
+  const createWebhookMutation = useMutation({
+    mutationFn: async (newWebhook: Omit<Webhook, "id">) => {
+      const response = await fetch(`http://localhost:8000/api/v1/webhooks/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Company-ID": companyId.toString(),
+        },
+        body: JSON.stringify(newWebhook),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create webhook");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', agent.id] });
+    },
+    onError: (error) => {
+      console.error("Failed to create webhook:", error);
+    },
+  });
+
+  const updateWebhookMutation = useMutation({
+    mutationFn: async (updatedWebhook: Webhook) => {
+      const response = await fetch(`http://localhost:8000/api/v1/webhooks/${updatedWebhook.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Company-ID": companyId.toString(),
+        },
+        body: JSON.stringify(updatedWebhook),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update webhook");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', agent.id] });
+    },
+    onError: (error) => {
+      console.error("Failed to update webhook:", error);
+    },
+  });
+
+  const deleteWebhookMutation = useMutation({
+    mutationFn: async (webhookId: number) => {
+      const response = await fetch(`http://localhost:8000/api/v1/webhooks/${webhookId}`, {
+        method: "DELETE",
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete webhook");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['webhooks', agent.id] });
+    },
+    onError: (error) => {
+      console.error("Failed to delete webhook:", error);
+    },
+  });
+
+  const handleSave = () => {
+    updateAgentMutation.mutate({
+      id: agent.id,
+      ...agentConfig,
+      credential_id: agentConfig.credential_id === 0 ? undefined : agentConfig.credential_id,
+    } as Agent);
   };
 
-  const updateWebhook = (id: string, field: string, value: string | boolean) => {
-    setWebhooks(webhooks.map(webhook => 
-      webhook.id === id ? { ...webhook, [field]: value } : webhook
-    ));
-  };
+  useEffect(() => {
+    setAgentConfig({
+      name: agent.name,
+      welcome_message: agent.welcome_message,
+      prompt: agent.prompt,
+      personality: agent.personality || "helpful",
+      language: agent.language || "en",
+      timezone: agent.timezone || "UTC",
+      credential_id: agent.credential_id,
+    });
+  }, [agent]);
 
-  const removeWebhook = (id: string) => {
-    setWebhooks(webhooks.filter(webhook => webhook.id !== id));
-  };
+  
 
   return (
     <div className="space-y-6">
@@ -202,6 +289,14 @@ export const AgentBuilder = () => {
                   </div>
                 </div>
               </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={updateAgentMutation.isPending}>
+                  {updateAgentMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="flow" className="space-y-6">
@@ -272,7 +367,7 @@ export const AgentBuilder = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-3">
-                            <Webhook className="h-5 w-5 text-orange-600" />
+                            <WebhookIcon className="h-5 w-5 text-orange-600" />
                             <Input
                               value={webhook.name}
                               onChange={(e) => updateWebhook(webhook.id, 'name', e.target.value)}
