@@ -4,11 +4,12 @@ export interface Agent {
   welcome_message: string;
   prompt: string;
   credential_id?: number;
+  is_active?: boolean;
+  knowledge_base_id?: number;
 }
 
 export interface ChatMessage {
   id: number;
-  agent_id: number;
   session_id: string;
   message: string;
   timestamp: string;
@@ -20,4 +21,11 @@ export interface Credential {
   platform: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface KnowledgeBase {
+  id: number;
+  name: string;
+  description?: string;
+  content: string;
 }

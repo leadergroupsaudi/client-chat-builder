@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Agent, Credential, Webhook } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,13 +25,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface FlowNode {
-  id: string;
-  type: 'trigger' | 'condition' | 'action' | 'response';
-  title: string;
-  content: string;
-  position: { x: number; y: number };
-}
+
 
 interface AgentBuilderProps {
   agent: Agent;
@@ -39,17 +34,36 @@ interface AgentBuilderProps {
 }
 
 export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => {
+  console.log("AgentBuilder - agent prop:", agent);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const companyId = 1; // Hardcoded company ID for now
 
-  const [agentConfig, setAgentConfig] = useState({
-    name: agent.name,
-    welcome_message: agent.welcome_message,
-    prompt: agent.prompt,
-    personality: agent.personality || "helpful",
-    language: agent.language || "en",
-    timezone: agent.timezone || "UTC",
-    credential_id: agent.credential_id,
+  const [agentConfig, setAgentConfig] = useState(() => {
+    if (!agent) {
+      return {
+        name: "",
+        welcome_message: "",
+        prompt: "",
+        personality: "helpful",
+        language: "en",
+        timezone: "UTC",
+        credential_id: undefined,
+        is_active: true,
+        knowledge_base_id: undefined,
+      };
+    }
+    return {
+      name: agent.name,
+      welcome_message: agent.welcome_message,
+      prompt: agent.prompt,
+      personality: agent.personality || "helpful",
+      language: agent.language || "en",
+      timezone: agent.timezone || "UTC",
+      credential_id: agent.credential_id,
+      is_active: agent.is_active !== undefined ? agent.is_active : true,
+      knowledge_base_id: agent.knowledge_base_id,
+    };
   });
 
   const { data: credentials, isLoading: isLoadingCredentials } = useQuery<Credential[]>({ queryKey: ['credentials', companyId], queryFn: async () => {
@@ -64,17 +78,42 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
     return response.json();
   }});
 
-  const { data: webhooksData, isLoading: isLoadingWebhooks } = useQuery<Webhook[]>({ queryKey: ['webhooks', agent.id, companyId], queryFn: async () => {
-    const response = await fetch(`http://localhost:8000/api/v1/webhooks/by_agent/${agent.id}`, {
+  const { data: webhooksData, isLoading: isLoadingWebhooks } = useQuery<Webhook[]>({ 
+    queryKey: ['webhooks', agent?.id, companyId], 
+    queryFn: async () => {
+      if (!agent?.id) return [];
+      const response = await fetch(`http://localhost:8000/api/v1/webhooks/by_agent/${agent.id}`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch webhooks");
+      }
+      return response.json();
+    },
+    enabled: !!agent?.id,
+  });
+
+  const { data: knowledgeBases, isLoading: isLoadingKnowledgeBases } = useQuery<KnowledgeBase[]>({ queryKey: ['knowledgeBases', companyId], queryFn: async () => {
+    const response = await fetch(`http://localhost:8000/api/v1/knowledge-bases/`, {
       headers: {
         "X-Company-ID": companyId.toString(),
       },
     });
     if (!response.ok) {
-      throw new Error("Failed to fetch webhooks");
+      throw new Error("Failed to fetch knowledge bases");
     }
     return response.json();
   }});
+
+  const [localWebhooks, setLocalWebhooks] = useState<Webhook[]>([]);
+
+  useEffect(() => {
+    if (webhooksData) {
+      setLocalWebhooks(webhooksData);
+    }
+  }, [webhooksData]);
 
   const updateAgentMutation = useMutation({
     mutationFn: async (updatedAgent: Agent) => {
@@ -172,6 +211,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
       id: agent.id,
       ...agentConfig,
       credential_id: agentConfig.credential_id === 0 ? undefined : agentConfig.credential_id,
+      knowledge_base_id: agentConfig.knowledge_base_id === 0 ? undefined : agentConfig.knowledge_base_id,
     } as Agent);
   };
 
@@ -184,8 +224,33 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
       language: agent.language || "en",
       timezone: agent.timezone || "UTC",
       credential_id: agent.credential_id,
+      is_active: agent.is_active !== undefined ? agent.is_active : true,
+      knowledge_base_id: agent.knowledge_base_id,
     });
   }, [agent]);
+
+  const addWebhook = () => {
+    createWebhookMutation.mutate({
+      agent_id: agent.id,
+      name: "New Webhook",
+      url: "",
+      trigger_event: "new_message",
+      is_active: false,
+    });
+  };
+
+  const updateWebhook = (id: number, field: keyof Webhook, value: any) => {
+    const webhookToUpdate = webhooksData?.find((w) => w.id === id);
+    if (webhookToUpdate) {
+      // Map frontend field names to backend field names
+      const backendField = field === 'trigger' ? 'trigger_event' : field === 'active' ? 'is_active' : field;
+      updateWebhookMutation.mutate({ ...webhookToUpdate, [backendField]: value });
+    }
+  };
+
+  const removeWebhook = (id: number) => {
+    deleteWebhookMutation.mutate(id);
+  };
 
   
 
@@ -205,9 +270,10 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
           <Tabs defaultValue="basic" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="flow">Conversation Flow</TabsTrigger>
               <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>
+              <TabsTrigger value="credentials">Credentials</TabsTrigger>
+              <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-6">
@@ -230,16 +296,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={agentConfig.description}
-                      onChange={(e) => setAgentConfig({...agentConfig, description: e.target.value})}
-                      className="mt-1"
-                      rows={3}
-                    />
-                  </div>
+                  
                 </div>
 
                 <div className="space-y-4">
@@ -287,6 +344,39 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
                       <option value="America/Los_Angeles">Pacific Time</option>
                     </select>
                   </div>
+
+                  <div>
+                    <Label htmlFor="isActive">Active</Label>
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={agentConfig.is_active}
+                      onChange={(e) => setAgentConfig({...agentConfig, is_active: e.target.checked})}
+                      className="mt-1 ml-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="welcomeMessage">Welcome Message</Label>
+                    <Textarea
+                      id="welcomeMessage"
+                      value={agentConfig.welcome_message}
+                      onChange={(e) => setAgentConfig({...agentConfig, welcome_message: e.target.value})}
+                      className="mt-1"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="prompt">Prompt</Label>
+                    <Textarea
+                      id="prompt"
+                      value={agentConfig.prompt}
+                      onChange={(e) => setAgentConfig({...agentConfig, prompt: e.target.value})}
+                      className="mt-1"
+                      rows={5}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-6">
@@ -299,57 +389,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
               </div>
             </TabsContent>
 
-            <TabsContent value="flow" className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Conversation Flow Builder</h3>
-                <div className="flex gap-2">
-                  {nodeTypes.map((nodeType) => {
-                    const IconComponent = nodeType.icon;
-                    return (
-                      <Button
-                        key={nodeType.type}
-                        size="sm"
-                        variant="outline"
-                        className="flex items-center gap-2"
-                      >
-                        <div className={`w-3 h-3 rounded-full ${nodeType.color}`}></div>
-                        <IconComponent className="h-4 w-4" />
-                        {nodeType.label}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 min-h-[400px] bg-gray-50 relative">
-                <div className="text-center text-gray-500">
-                  <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Drag & Drop Flow Builder</p>
-                  <p className="text-sm">Create your conversation logic by connecting nodes</p>
-                </div>
-
-                {/* Sample Flow Nodes */}
-                <div className="absolute top-4 left-4 space-y-4">
-                  {flowNodes.map((node) => {
-                    const nodeType = nodeTypes.find(t => t.type === node.type);
-                    const IconComponent = nodeType?.icon || MessageSquare;
-                    return (
-                      <div
-                        key={node.id}
-                        className="bg-white p-3 rounded-lg shadow-md border-l-4 border-blue-500 min-w-[200px] cursor-move hover:shadow-lg transition-shadow"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <IconComponent className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium text-sm">{node.title}</span>
-                          <GripVertical className="h-4 w-4 text-gray-400 ml-auto" />
-                        </div>
-                        <p className="text-xs text-gray-600 truncate">{node.content}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </TabsContent>
+            
 
             <TabsContent value="webhooks" className="space-y-6">
               <div className="flex items-center justify-between">
@@ -361,30 +401,46 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
               </div>
 
               <div className="space-y-4">
-                {webhooks.map((webhook) => (
-                  <Card key={webhook.id} className="border-l-4 border-l-orange-500">
+                {isLoadingWebhooks ? (
+                  <div>Loading webhooks...</div>
+                ) : webhooksData && webhooksData.length > 0 ? (
+                  <>
+                    {webhooksData.map((webhook) => (
+                      <Card key={webhook.id} className="border-l-4 border-l-orange-500">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center gap-3">
                             <WebhookIcon className="h-5 w-5 text-orange-600" />
                             <Input
-                              value={webhook.name}
-                              onChange={(e) => updateWebhook(webhook.id, 'name', e.target.value)}
+                              value={localWebhooks.find(w => w.id === webhook.id)?.name || ''}
+                              onChange={(e) => {
+                                const updatedWebhooks = localWebhooks.map(w =>
+                                  w.id === webhook.id ? { ...w, name: e.target.value } : w
+                                );
+                                setLocalWebhooks(updatedWebhooks);
+                              }}
+                              onBlur={(e) => updateWebhook(webhook.id, 'name', e.target.value)}
                               className="font-medium"
                               placeholder="Webhook name"
-                            />
-                            <Badge variant={webhook.active ? "default" : "secondary"}>
-                              {webhook.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <Label className="text-xs">Webhook URL</Label>
+                              />
+                                <Badge variant={webhook.is_active ? "default" : "secondary"}>
+                                  {webhook.is_active ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs">Webhook URL</Label>
                               <Input
-                                value={webhook.url}
-                                onChange={(e) => updateWebhook(webhook.id, 'url', e.target.value)}
+                                value={localWebhooks.find(w => w.id === webhook.id)?.url || ''}
+                                onChange={(e) => {
+                                  const updatedWebhooks = localWebhooks.map(w =>
+                                    w.id === webhook.id ? { ...w, url: e.target.value } : w
+                                  );
+                                  setLocalWebhooks(updatedWebhooks);
+                                }}
+                                onBlur={(e) => updateWebhook(webhook.id, 'url', e.target.value)}
                                 placeholder="https://api.example.com/webhook"
                                 className="text-sm"
                               />
@@ -392,39 +448,55 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
                             <div>
                               <Label className="text-xs">Trigger Event</Label>
                               <select
-                                value={webhook.trigger}
-                                onChange={(e) => updateWebhook(webhook.id, 'trigger', e.target.value)}
-                                className="w-full p-2 border rounded-md text-sm"
-                              >
-                                <option value="new_message">New Message</option>
-                                <option value="conversation_start">Conversation Start</option>
-                                <option value="conversation_end">Conversation End</option>
-                                <option value="agent_handoff">Agent Handoff</option>
-                              </select>
+                                value={localWebhooks.find(w => w.id === webhook.id)?.trigger_event || ''}
+                                onChange={(e) => {
+                                  const updatedWebhooks = localWebhooks.map(w =>
+                                    w.id === webhook.id ? { ...w, trigger_event: e.target.value } : w
+                                  );
+                                  setLocalWebhooks(updatedWebhooks);
+                                }}
+                                onBlur={(e) => updateWebhook(webhook.id, 'trigger_event', e.target.value)}
+                                    className="w-full p-2 border rounded-md text-sm"
+                                  >
+                                    <option value="new_message">New Message</option>
+                                    <option value="conversation_start">Conversation Start</option>
+                                    <option value="conversation_end">Conversation End</option>
+                                    <option value="agent_handoff">Agent Handoff</option>
+                                  </select>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 ml-4">
-                          <Button
+                            
+                            <div className="flex items-center gap-2 ml-4">
+                              <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateWebhook(webhook.id, 'active', !webhook.active)}
+                            onClick={() => {
+                              const updatedWebhooks = localWebhooks.map(w =>
+                                w.id === webhook.id ? { ...w, is_active: !w.is_active } : w
+                              );
+                              setLocalWebhooks(updatedWebhooks);
+                              updateWebhook(webhook.id, 'is_active', !webhook.is_active);
+                            }}
                           >
-                            {webhook.active ? "Disable" : "Enable"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => removeWebhook(webhook.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                            {webhook.is_active ? "Disable" : "Enable"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => removeWebhook(webhook.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </>
+                ) : (
+                  <div>No webhooks configured.</div>
+                )}
               </div>
             </TabsContent>
 
@@ -464,6 +536,68 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
                     </Card>
                   );
                 })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="credentials" className="space-y-6">
+              <h3 className="text-lg font-semibold">Credential Management</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="credential">Select Credential</Label>
+                  <select
+                    id="credential"
+                    value={agentConfig.credential_id || ""}
+                    onChange={(e) => setAgentConfig({ ...agentConfig, credential_id: parseInt(e.target.value) || undefined })}
+                    className="w-full mt-1 p-2 border rounded-md"
+                  >
+                    <option value="">No Credential</option>
+                    {isLoadingCredentials ? (
+                      <option disabled>Loading credentials...</option>
+                    ) : credentials && credentials.length > 0 ? (
+                      credentials.map((cred) => (
+                        <option key={cred.id} value={cred.id}>
+                          {cred.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No credentials available</option>
+                    )}
+                  </select>
+                </div>
+                <Button variant="outline" onClick={() => navigate("/dashboard/vault")}>
+                  Manage Credentials
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="knowledge-base" className="space-y-6">
+              <h3 className="text-lg font-semibold">Knowledge Base Integration</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="knowledgeBase">Select Knowledge Base</Label>
+                  <select
+                    id="knowledgeBase"
+                    value={agentConfig.knowledge_base_id || ""}
+                    onChange={(e) => setAgentConfig({ ...agentConfig, knowledge_base_id: parseInt(e.target.value) || undefined })}
+                    className="w-full mt-1 p-2 border rounded-md"
+                  >
+                    <option value="">No Knowledge Base</option>
+                    {isLoadingKnowledgeBases ? (
+                      <option disabled>Loading knowledge bases...</option>
+                    ) : knowledgeBases && knowledgeBases.length > 0 ? (
+                      knowledgeBases.map((kb) => (
+                        <option key={kb.id} value={kb.id}>
+                          {kb.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No knowledge bases available</option>
+                    )}
+                  </select>
+                </div>
+                <Button variant="outline" onClick={() => alert("Navigate to Knowledge Base Management Page")}>
+                  Manage Knowledge Bases
+                </Button>
               </div>
             </TabsContent>
           </Tabs>

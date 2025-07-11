@@ -21,6 +21,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AgentBuilder } from "./AgentBuilder";
+import { ConversationDetail } from "./ConversationDetail";
+
+interface ChatMessage {
+  id: number;
+  message: string;
+  sender: string;
+  timestamp: string;
+}
 
 interface Agent {
   id: number;
@@ -31,12 +39,16 @@ interface Agent {
   language?: string;
   timezone?: string;
   credential_id?: number;
+  is_active?: boolean;
 }
 
 export const AgentList = () => {
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentAgent, setCurrentAgent] = useState<Agent | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  console.log("AgentList Render - selectedAgent:", selectedAgent, "selectedSessionId:", selectedSessionId);
   const companyId = 1; // Hardcoded company ID for now
 
   const { data: agents, isLoading, isError } = useQuery<Agent[]>({ queryKey: ['agents', companyId], queryFn: async () => {
@@ -50,6 +62,40 @@ export const AgentList = () => {
     }
     return response.json();
   }});
+
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery<string[]>({ 
+    queryKey: ['sessions', selectedAgent?.id, companyId], 
+    queryFn: async () => {
+      if (!selectedAgent) return [];
+      const response = await fetch(`http://localhost:8000/api/v1/conversations/${selectedAgent.id}/sessions`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions");
+      }
+      return response.json();
+    },
+    enabled: !!selectedAgent, // Only run this query if an agent is selected
+  });
+
+  const { data: messages, isLoading: isLoadingMessages } = useQuery<ChatMessage[]>({ 
+    queryKey: ['messages', selectedAgent?.id, selectedSessionId, companyId], 
+    queryFn: async () => {
+      if (!selectedAgent || !selectedSessionId) return [];
+      const response = await fetch(`http://localhost:8000/api/v1/conversations/${selectedAgent.id}/sessions/${selectedSessionId}/messages`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch messages");
+      }
+      return response.json();
+    },
+    enabled: !!selectedAgent && !!selectedSessionId, // Only run this query if both agent and session are selected
+  });
 
   const { data: credentials, isLoading: isLoadingCredentials } = useQuery<Credential[]>({ queryKey: ['credentials', companyId], queryFn: async () => {
     const response = await fetch(`http://localhost:8000/api/v1/credentials/`, {
@@ -167,77 +213,109 @@ export const AgentList = () => {
 
   return (
     <div className="space-y-4">
-      {agents?.map((agent) => (
-        <Card key={agent.id} className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarFallback className="bg-blue-100 text-blue-600">
-                    {agent.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle className="text-lg">{agent.name}</CardTitle>
-                  <CardDescription>{agent.welcome_message}</CardDescription>
+      {selectedAgent && selectedSessionId ? (
+        <ConversationDetail
+          agentId={selectedAgent.id}
+          sessionId={selectedSessionId}
+          companyId={companyId}
+          onBack={() => setSelectedSessionId(null)}
+        />
+      ) : selectedAgent ? (
+        <div className="space-y-4">
+          <Button onClick={() => setSelectedAgent(null)} className="mb-4">
+            Back to Agents
+          </Button>
+          <h3 className="text-2xl font-bold">Conversations for {selectedAgent.name}</h3>
+          {isLoadingSessions ? (
+            <div>Loading conversations...</div>
+          ) : sessions && sessions.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {sessions.map((sessionId) => (
+                <Card key={sessionId} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedSessionId(sessionId)}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Session: {sessionId.substring(0, 8)}...</CardTitle>
+                    <CardDescription>Click to view messages</CardDescription>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div>No conversations found for this agent.</div>
+          )}
+        </div>
+      ) : (
+        agents?.map((agent) => (
+          <Card key={agent.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedAgent(agent)}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3">
+                  <Avatar>
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                      {agent.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <CardTitle className="text-lg">{agent.name}</CardTitle>
+                    <CardDescription>{agent.welcome_message}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="secondary">
+                    {agent.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditClick(agent)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Agent
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleCopyEmbedCode(agent.id, agent.name)}>
+                        <Code className="h-4 w-4 mr-2" />
+                        Copy Embed Code
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete your agent
+                              and remove its data from our servers.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteAgentMutation.mutate(agent.id)}>
+                              Continue
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Badge variant="secondary">
-                  Active
-                </Badge>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEditClick(agent)}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Agent
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleCopyEmbedCode(agent.id, agent.name)}>
-                      <Code className="h-4 w-4 mr-2" />
-                      Copy Embed Code
-                    </DropdownMenuItem>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete your agent
-                            and remove its data from our servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteAgentMutation.mutate(agent.id)}>
-                            Continue
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <div className="flex items-center space-x-4">
+                  <span>Prompt: {agent.prompt}</span>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center space-x-4">
-                <span>Prompt: {agent.prompt}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        ))
+      )}
 
       {/* Edit Agent Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
