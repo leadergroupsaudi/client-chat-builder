@@ -1,46 +1,116 @@
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageSquare, Send, Minimize2, X } from "lucide-react";
 
+interface ChatMessage {
+  id: number;
+  text: string;
+  sender: "user" | "bot" | "tool";
+  timestamp: Date;
+}
+
 export const ChatWidgetPreview = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Hi! How can I help you today?",
-      sender: "bot",
-      timestamp: new Date()
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const ws = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Dummy IDs for preview purposes - replace with actual agent/company/session IDs
+  const companyId = 1; 
+  const agentId = 1;   
+  const sessionId = "preview-session-123"; 
+
+  useEffect(() => {
+    if (isExpanded) {
+      // Establish WebSocket connection
+      ws.current = new WebSocket(`ws://localhost:8000/api/v1/chat/ws/${companyId}/${agentId}/${sessionId}`);
+
+      ws.current.onopen = () => {
+        console.log("WebSocket connected");
+        setMessages([{ id: 1, text: "Hi! How can I help you today?", sender: "bot", timestamp: new Date() }]);
+      };
+
+      ws.current.onmessage = (event) => {
+        const receivedMessage = JSON.parse(event.data);
+        console.log("Received message:", receivedMessage);
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: prevMessages.length + 1,
+            text: receivedMessage.message,
+            sender: receivedMessage.sender,
+            timestamp: new Date(),
+          },
+        ]);
+      };
+
+      ws.current.onclose = () => {
+        console.log("WebSocket disconnected");
+      };
+
+      ws.current.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: prevMessages.length + 1,
+            text: "Error: Could not connect to the chat service.",
+            sender: "bot",
+            timestamp: new Date(),
+          },
+        ]);
+      };
+    } else {
+      // Close WebSocket connection when chat is collapsed
+      if (ws.current) {
+        ws.current.close();
+      }
+      setMessages([]); // Clear messages when chat is collapsed
     }
-  ]);
+
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, [isExpanded, companyId, agentId, sessionId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
-    const newMessage = {
+    const newMessage: ChatMessage = {
       id: messages.length + 1,
       text: message,
-      sender: "user" as const,
-      timestamp: new Date()
+      sender: "user",
+      timestamp: new Date(),
     };
 
-    setMessages([...messages, newMessage]);
-    setMessage("");
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse = {
-        id: messages.length + 2,
-        text: "Thanks for your message! This is a preview of how your chat agent will respond.",
-        sender: "bot" as const,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, botResponse]);
-    }, 1000);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(message);
+    } else {
+      console.error("WebSocket is not open.");
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          id: prevMessages.length + 1,
+          text: "Error: Chat service not available. Please try again later.",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+    setMessage("");
   };
 
   return (
@@ -108,6 +178,8 @@ export const ChatWidgetPreview = () => {
                         className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
                           msg.sender === "user"
                             ? "bg-blue-600 text-white"
+                            : msg.sender === "tool"
+                            ? "bg-yellow-200 text-gray-900"
                             : "bg-gray-100 text-gray-900"
                         }`}
                       >
@@ -115,6 +187,7 @@ export const ChatWidgetPreview = () => {
                       </div>
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input */}

@@ -13,6 +13,7 @@ import {
   Inbox, 
   FileText, 
   Sparkles, 
+  Sparkles as WorkflowIcon, 
   Zap, 
   TrendingUp,
   Palette,
@@ -34,6 +35,7 @@ const sidebarItems = [
   { title: "API Vault", url: "/dashboard/vault", icon: Key },
   { title: "Knowledge Bases", url: "/dashboard/knowledge-base/manage", icon: BookOpen },
   { title: "Tools", url: "/dashboard/tools", icon: Zap },
+  { title: "Workflows", url: "/dashboard/workflows", icon: WorkflowIcon },
 ];
 
 const AppLayout = () => {

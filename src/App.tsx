@@ -17,6 +17,7 @@ import VaultPage from "./pages/VaultPage";
 import KnowledgeBaseListPage from "./pages/KnowledgeBaseListPage";
 import ToolManagementPage from "./pages/ToolManagementPage";
 import KnowledgeBaseManagementPage from "./pages/KnowledgeBaseManagementPage";
+import WorkflowManagementPage from "./pages/WorkflowManagementPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="knowledge-base" element={<KnowledgeBaseListPage />} />
             <Route path="tools" element={<ToolManagementPage />} />
             <Route path="knowledge-base/manage" element={<KnowledgeBaseManagementPage />} />
+            <Route path="workflows" element={<WorkflowManagementPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
