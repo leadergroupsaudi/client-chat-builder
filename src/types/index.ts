@@ -49,4 +49,11 @@ export interface Tool {
   description?: string;
   parameters: any; // JSON schema
   code: string;
+  configuration?: any;
+}
+
+export interface PreBuiltConnector {
+  name: string;
+  description: string;
+  parameters: any; // JSON schema
 }
