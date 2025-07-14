@@ -153,7 +153,7 @@ export const ConversationManager = () => {
   return (
     <div className="h-[800px] flex bg-white rounded-lg border overflow-hidden shadow-xl">
       {/* Conversations List (Agents List) */}
-      <div className="w-1/3 border-r bg-gradient-to-b from-gray-50 to-white">
+      <div className="w-1/3 border-r bg-gradient-to-b from-gray-50 to-white" style={{overflow: "auto"}}>
         <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
