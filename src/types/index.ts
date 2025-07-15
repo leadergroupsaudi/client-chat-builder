@@ -24,8 +24,13 @@ export interface ChatMessage {
   session_id: string;
   message: string;
   timestamp: string;
-  sender: string; // 'user' or 'agent' or 'tool'
+  sender: 'user' | 'agent' | 'tool';
   message_type: 'message' | 'note';
+  agent_id: number;
+  company_id: number;
+  contact_id: number;
+  status?: string;
+  assignee_id?: number;
 }
 
 export interface Credential {

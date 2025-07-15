@@ -21,11 +21,14 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const [message, setMessage] = useState('');
   const [note, setNote] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const ws = useRef<WebSocket | null>(null);
 
   const { data: messages, isLoading } = useQuery<ChatMessage[]>({
     queryKey: ['messages', agentId, sessionId, companyId],
     queryFn: async () => {
-      const response = await fetch(`http://localhost:8000/api/v1/conversations/${agentId}/${sessionId}`, {
+      // Limit messages to 10
+      const response = await fetch(`http://localhost:8000/api/v1/conversations/${agentId}/${sessionId}`,
+       {
         headers: { 'X-Company-ID': companyId.toString() },
       });
       if (!response.ok) throw new Error('Failed to fetch messages');
@@ -33,6 +36,31 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
     },
     enabled: !!sessionId && !!agentId,
   });
+
+  useEffect(() => {
+    if (sessionId && agentId) {
+      // Pass user_type as a query parameter
+      ws.current = new WebSocket(`ws://localhost:8000/ws/${companyId}/${agentId}/${sessionId}?user_type=agent`);
+
+      ws.current.onmessage = (event) => {
+        const newMessage = JSON.parse(event.data);
+        queryClient.setQueryData<ChatMessage[]>(['messages', agentId, sessionId, companyId], (oldMessages) => {
+          if (oldMessages) {
+            // Avoid adding duplicates
+            if (oldMessages.find(msg => msg.id === newMessage.id)) {
+              return oldMessages;
+            }
+            return [...oldMessages, newMessage];
+          }
+          return [newMessage];
+        });
+      };
+
+      return () => {
+        ws.current?.close();
+      };
+    }
+  }, [sessionId, agentId, companyId, queryClient]);
 
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
@@ -51,16 +79,18 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
 
   useEffect(scrollToBottom, [messages]);
 
-  const postNoteMutation = useMutation({
-    mutationFn: (newNote: string) => fetch(`http://localhost:8000/api/v1/conversations/${agentId}/${sessionId}/notes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Company-ID': companyId.toString() },
-      body: JSON.stringify({ message: newNote }),
-    }).then(res => { if (!res.ok) throw new Error('Failed to post note'); return res.json() }),
+  const sendMessageMutation = useMutation({
+    mutationFn: (newMessage: { message: string, message_type: string, sender: string }) => {
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify(newMessage));
+            return Promise.resolve();
+        } else {
+            return Promise.reject(new Error("WebSocket is not connected."));
+        }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', agentId, sessionId, companyId] });
-      setNote('');
-      toast({ title: 'Success', description: 'Private note added.' });
+        setMessage('');
+        setNote('');
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -93,18 +123,20 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
 
 
   const handlePostNote = () => {
-    if (note.trim()) postNoteMutation.mutate(note.trim());
+    if (note.trim()) {
+        sendMessageMutation.mutate({ message: note.trim(), message_type: 'note', sender: 'agent' });
+    }
   };
 
   const handleSendMessage = () => {
-    // This functionality is not fully implemented yet, as it requires a websocket connection
-    // to the agent execution service. For now, we'll just show a toast.
-    toast({ title: 'Not Implemented', description: 'Sending messages to the user is not yet connected.' });
+    if (message.trim()) {
+        sendMessageMutation.mutate({ message: message.trim(), message_type: 'message', sender: 'agent' });
+    }
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="border-b">
+    <Card className="h-full flex flex-col max-h-screen">
+      <CardHeader className="border-b flex-shrink-0">
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Conversation</CardTitle>
@@ -165,7 +197,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
         )}
         <div ref={messagesEndRef} />
       </CardContent>
-      <div className="border-t p-4">
+      <div className="border-t p-4 flex-shrink-0">
         <Tabs defaultValue="reply" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="reply"><CornerDownRight className="h-4 w-4 mr-2"/>Reply to Customer</TabsTrigger>
@@ -181,7 +213,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
               />
               <div className="absolute top-2 right-2 flex items-center gap-2">
                 <Button variant="ghost" size="sm"><Paperclip className="h-4 w-4" /></Button>
-                <Button size="sm" onClick={handleSendMessage}><Send className="h-4 w-4" /></Button>
+                <Button size="sm" onClick={handleSendMessage} disabled={sendMessageMutation.isPending}><Send className="h-4 w-4" /></Button>
               </div>
             </div>
           </TabsContent>
@@ -194,8 +226,8 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
                 className="bg-yellow-50 pr-20"
               />
               <div className="absolute top-2 right-2">
-                <Button size="sm" onClick={handlePostNote} disabled={postNoteMutation.isPending}>
-                  {postNoteMutation.isPending ? "Saving..." : "Save Note"}
+                <Button size="sm" onClick={handlePostNote} disabled={sendMessageMutation.isPending}>
+                  {sendMessageMutation.isPending ? "Saving..." : "Save Note"}
                 </Button>
               </div>
             </div>

@@ -119,7 +119,7 @@ const ConversationsPage: React.FC = () => {
           <CardContent>
             {isLoadingSessions ? <p>Loading...</p> : (
               <div className="flex flex-col space-y-2 overflow-y-auto">
-                {sessions && sessions.length > 0 ? sessions.map((session) => (
+                {sessions && sessions.length > 0 ? sessions.slice(0,10).map((session) => (
                   <Button
                     key={session.session_id}
                     variant={selectedSessionId === session.session_id ? 'secondary' : 'ghost'}

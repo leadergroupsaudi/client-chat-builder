@@ -1,4 +1,3 @@
-
 (function() {
     const SCRIPT_ID = 'agent-connect-widget-script';
     const scriptTag = document.getElementById(SCRIPT_ID);
@@ -109,17 +108,19 @@
             return;
         }
         sessionId = generateSessionId();
-        // Corrected WebSocket URL
-        ws = new WebSocket(`${backendUrl}/ws/${companyId}/${agentId}/${sessionId}`);
+        // Corrected WebSocket URL with user_type
+        ws = new WebSocket(`${backendUrl}/ws/${companyId}/${agentId}/${sessionId}?user_type=user`);
 
         ws.onopen = () => {
             console.log('WebSocket connected');
         };
 
         ws.onmessage = (event) => {
-            // The agent's response is now a direct string
-            const messageText = event.data;
-            addMessage('Agent', messageText, 'agent');
+            const messageData = JSON.parse(event.data);
+            // We only want to display messages, not notes
+            if (messageData.message_type === 'message') {
+                addMessage(messageData.sender, messageData.message, messageData.sender);
+            }
         };
 
         ws.onclose = () => {
@@ -162,8 +163,13 @@
     function sendMessage() {
         const message = chatInput.value.trim();
         if (message && ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(message);
-            addMessage('You', message, 'user');
+            const messageData = {
+                message: message,
+                message_type: 'message',
+                sender: 'user'
+            };
+            ws.send(JSON.stringify(messageData));
+            // Remove the optimistic update
             chatInput.value = '';
         }
     }

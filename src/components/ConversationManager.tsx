@@ -1,402 +1,169 @@
 
-import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Agent, Session } from "@/types";
+import { ConversationDetail } from "./ConversationDetail";
+import { 
+  MessageSquare, 
+  Search,
+  Inbox,
+  User,
+  Clock
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  MessageSquare, 
-  Search, 
-  Filter, 
-  Archive, 
-  Star, 
-  Clock, 
-  User, 
-  Send,
-  Paperclip,
-  MoreHorizontal,
-  Tag,
-  Phone,
-  Video,
-  UserPlus,
-  Mail
-} from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Agent, ChatMessage } from "@/types";
+import { cn } from "@/lib/utils";
 
-interface Conversation {
-  id: number;
-  customer: {
-    name: string;
-    email: string;
-    avatar?: string;
-  };
-  status: 'open' | 'pending' | 'resolved' | 'snoozed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  lastMessage: string;
-  timestamp: string;
-  assignedAgent?: string;
-  tags: string[];
-  unreadCount: number;
+// Mock function to get sessions - replace with your actual API call
+async function getSessions(agentId: number, companyId: number): Promise<Session[]> {
+  const response = await fetch(`http://localhost:8000/api/v1/conversations/${agentId}/sessions`, {
+    headers: {
+      "X-Company-ID": companyId.toString(),
+    },
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch sessions");
+  }
+  return response.json();
 }
 
 export const ConversationManager = () => {
-  const queryClient = useQueryClient();
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
-  const [message, setMessage] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const ws = useRef<WebSocket | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const companyId = 1; // Hardcoded company ID
 
-  const companyId = 1; // Hardcoded company ID for now
-
-  const { data: agents, isLoading: isLoadingAgents, isError: isErrorAgents } = useQuery<Agent[]>({ queryKey: ['agents', companyId], queryFn: async () => {
-    const response = await fetch(`http://localhost:8000/api/v1/agents/`, {
-      headers: {
-        "X-Company-ID": companyId.toString(),
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch agents");
-    }
-    return response.json();
-  }});
-
-  const { data: chatMessages, isLoading: isLoadingMessages, isError: isErrorMessages } = useQuery<ChatMessage[]>({ queryKey: ['chatMessages', selectedAgentId, sessionId, companyId], queryFn: async () => {
-    if (!selectedAgentId || !sessionId) return [];
-    const response = await fetch(`http://localhost:8000/api/v1/conversations/${selectedAgentId}/sessions/${sessionId}/messages`, {
-      headers: {
-        "X-Company-ID": companyId.toString(),
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch chat messages");
-    }
-    return response.json();
-  }, enabled: !!selectedAgentId});
-
-  useEffect(() => {
-    if (selectedAgentId && sessionId) {
-      if (ws.current) {
-        ws.current.close();
+  const { data: agents, isLoading: isLoadingAgents } = useQuery<Agent[]>({ 
+    queryKey: ['agents', companyId], 
+    queryFn: async () => {
+      const response = await fetch(`http://localhost:8000/api/v1/agents/`, {
+        headers: { "X-Company-ID": companyId.toString() },
+      });
+      if (!response.ok) throw new Error("Failed to fetch agents");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data && data.length > 0 && !selectedAgentId) {
+        setSelectedAgentId(data[0].id);
       }
-      ws.current = new WebSocket(`ws://localhost:8000/ws/conversations/ws/${companyId}/${selectedAgentId}/${sessionId}`);
-
-      ws.current.onopen = () => {
-        console.log("WebSocket connected");
-      };
-
-      ws.current.onmessage = (event) => {
-        // Invalidate the chatMessages query to refetch the latest messages
-        queryClient.invalidateQueries(['chatMessages', selectedAgentId, sessionId]);
-      };
-
-      ws.current.onclose = () => {
-        console.log("WebSocket disconnected");
-      };
-
-      ws.current.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
     }
+  });
 
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, [selectedAgentId, sessionId, queryClient]);
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery<Session[]>({ 
+    queryKey: ['sessions', selectedAgentId, companyId], 
+    queryFn: () => getSessions(selectedAgentId!, companyId),
+    enabled: !!selectedAgentId,
+  });
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+  const filteredSessions = useMemo(() => {
+    if (!sessions) return [];
+    return sessions.filter(session => 
+        session.session_id.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+  }, [sessions, searchQuery]);
 
-  const sendMessage = () => {
-    if (ws.current && message.trim() && selectedAgentId && sessionId) {
-      ws.current.send(message);
-      // Invalidate the chatMessages query to refetch the latest messages
-      queryClient.invalidateQueries(['chatMessages', selectedAgentId, sessionId]);
-      setMessage("");
-    }
+  const handleSessionSelect = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
   };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "open": return "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "resolved": return "bg-gray-100 text-gray-800";
-      case "snoozed": return "bg-blue-100 text-blue-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent": return "bg-red-500";
-      case "high": return "bg-orange-500";
-      case "medium": return "bg-yellow-500";
-      case "low": return "bg-green-500";
-      default: return "bg-gray-500";
-    }
-  };
-
-  if (isLoadingAgents) return <div>Loading agents...</div>;
-  if (isErrorAgents) return <div>Error loading agents.</div>;
-
-  const selectedAgent = agents?.find(agent => agent.id === selectedAgentId);
 
   return (
-    <div className="h-[800px] flex bg-white rounded-lg border overflow-hidden shadow-xl">
-      {/* Conversations List (Agents List) */}
-      <div className="w-1/3 border-r bg-gradient-to-b from-gray-50 to-white" style={{overflow: "auto"}}>
-        <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-              <MessageSquare className="h-5 w-5 text-white" />
-            </div>
-            <h3 className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Available Agents</h3>
-          </div>
-          
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+    <div className="h-full w-full flex flex-row bg-white rounded-lg border overflow-hidden shadow-sm">
+      {/* Left Column: Session List */}
+      <div className="w-1/4 border-r flex flex-col bg-gray-50 min-h-0">
+        <div className="p-4 border-b flex-shrink-0">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Conversations</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search agents..."
+              placeholder="Search sessions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 border-blue-200 focus:border-blue-400 transition-colors"
+              className="pl-10"
             />
           </div>
-
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 text-xs bg-white/70 backdrop-blur-sm">
-              <TabsTrigger value="all" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">All</TabsTrigger>
-              <TabsTrigger value="active" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white">Active</TabsTrigger>
-              <TabsTrigger value="inactive" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-500 data-[state=active]:text-white">Inactive</TabsTrigger>
-              <TabsTrigger value="draft" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-500 data-[state=active]:to-slate-500 data-[state=active]:text-white">Draft</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
-
-        <div className="overflow-y-auto h-full">
-          {agents?.filter(agent => agent.name.toLowerCase().includes(searchQuery.toLowerCase())).map((agent) => (
-            <div
-              key={agent.id}
-              className={`p-4 border-b cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200 ${
-                selectedAgentId === agent.id ? 'bg-gradient-to-r from-blue-100 to-purple-100 border-l-4 border-l-blue-500 shadow-md' : ''
-              }`}
-              onClick={() => {
-                setSelectedAgentId(agent.id);
-                setSessionId(crypto.randomUUID());
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <div className="relative">
-                  <Avatar className="h-10 w-10 ring-2 ring-white shadow-md">
-                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold">
-                      {agent.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
+        <div className="flex-grow overflow-y-auto">
+          {isLoadingSessions ? (
+            <p className="p-4 text-gray-500">Loading sessions...</p>
+          ) : filteredSessions.length > 0 ? (
+            filteredSessions.map((session) => (
+              <div
+                key={session.session_id}
+                className={cn(
+                  "p-4 border-b cursor-pointer transition-colors",
+                  selectedSessionId === session.session_id 
+                    ? "bg-blue-100 border-l-4 border-l-blue-600"
+                    : "hover:bg-gray-100"
+                )}
+                onClick={() => handleSessionSelect(session.session_id)}
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-blue-500 text-white"><User className="h-5 w-5" /></AvatarFallback>
                   </Avatar>
-                  <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${getPriorityColor("medium")} shadow-lg`}></div> {/* Placeholder for priority */}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-medium text-sm truncate">{agent.name}</h4>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">{new Date(agent.id).toLocaleTimeString()}</span> {/* Using agent.id as a mock timestamp */}
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 truncate mb-2">{agent.welcome_message}</p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge className={`text-xs shadow-sm ${getStatusColor("open")}`}> {/* Placeholder for status */}
-                        Active
-                      </Badge>
-                      {/* {conv.tags.map((tag) => (
-                        <span key={tag} className="text-xs bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 px-2 py-1 rounded-full shadow-sm">
-                          {tag}
-                        </span>
-                      ))} */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center">
+                      <p className="font-semibold text-sm truncate text-gray-800">{session.session_id}</p>
+                      <span className="text-xs text-gray-500">{new Date(session.last_message_timestamp).toLocaleTimeString()}</span>
                     </div>
-                    {/* {conv.unreadCount > 0 && (
-                      <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs animate-pulse shadow-lg">
-                        {conv.unreadCount}
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={session.status === 'resolved' ? 'secondary' : 'default'} className="capitalize">
+                        {session.status}
                       </Badge>
-                    )} */}
+                    </div>
                   </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-gray-500">
+              <Inbox className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2">No sessions found.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-gradient-to-b from-white to-gray-50">
-        {selectedAgent ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-4 border-b bg-gradient-to-r from-white to-gray-50 shadow-sm flex-shrink-0 sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 ring-2 ring-blue-200 shadow-md">
-                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold">
-                      {selectedAgent.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-medium">{selectedAgent.name}</h3>
-                    <p className="text-sm text-gray-600">{selectedAgent.welcome_message}</p>
-                  </div>
-                  <Badge className={`${getStatusColor("open")} shadow-sm`}> {/* Placeholder for status */}
-                    Active
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" className="hover:bg-green-50 hover:border-green-300 transition-colors">
-                    <Phone className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="hover:bg-blue-50 hover:border-blue-300 transition-colors">
-                    <Video className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="hover:bg-purple-50 hover:border-purple-300 transition-colors">
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="hover:bg-gray-50 transition-colors">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-blue-50 min-h-0">
-              {chatMessages?.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.sender === "user" ? 'justify-end' : 'justify-start'} animate-fade-in`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-md ${
-                      msg.sender === "user"
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                        : msg.sender === "tool"
-                        ? 'bg-purple-100 border border-purple-300 text-purple-800'
-                        : 'bg-white border border-gray-200'
-                    }`}
-                  >
-                    {msg.sender === "tool" && <p className="text-xs font-semibold mb-1">Tool Output:</p>}
-                    <p className="text-sm">{msg.message}</p>
-                    <p className={`text-xs mt-1 ${
-                      msg.sender === "user" ? 'text-blue-100' : 'text-gray-500'
-                    }`}>
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t bg-white shadow-inner flex-shrink-0">
-              <div className="flex items-end gap-2">
-                <Button size="sm" variant="outline" className="hover:bg-gray-50 transition-colors">
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                <div className="flex-1">
-                  <Textarea
-                    placeholder="Type your message..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                    className="min-h-[60px] resize-none border-gray-200 focus:border-blue-400 transition-colors"
-                  />
-                </div>
-                <Button onClick={sendMessage} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </>
+      {/* Middle Column: Conversation Detail */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {selectedAgentId && selectedSessionId ? (
+          <ConversationDetail agentId={selectedAgentId} sessionId={selectedSessionId} />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-500">
             <div className="text-center">
-              <div className="p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-                <MessageSquare className="h-12 w-12 text-blue-600" />
-              </div>
-              <p className="text-lg font-medium text-gray-700">Select an agent to start chatting</p>
-              <p className="text-sm text-gray-500 mt-2">Choose from your available agents to begin messaging</p>
+              <MessageSquare className="mx-auto h-16 w-16 text-gray-300" />
+              <h3 className="mt-4 text-lg font-medium text-gray-700">Select a conversation</h3>
+              <p className="mt-1 text-sm text-gray-500">Choose a conversation from the list to see the messages.</p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Customer Details Sidebar (Agent Details) */}
-      <div className="w-80 border-l bg-gradient-to-b from-gray-50 to-white p-4">
-        {selectedAgent && (
-          <div className="space-y-6">
+      {/* Right Column: Contact/Agent Details */}
+      <div className="w-1/4 border-l flex flex-col bg-gray-50 p-4 space-y-6 min-h-0 overflow-y-auto">
+        <h3 className="text-lg font-semibold text-gray-800">Details</h3>
+        {selectedAgentId && (
             <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <h4 className="font-medium mb-3 text-gray-800">Agent Details</h4>
+              <h4 className="font-medium mb-3 text-gray-800">Agent Info</h4>
               <div className="space-y-3">
-                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                 <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
                   <User className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{selectedAgent.name}</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                  <Mail className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{selectedAgent.welcome_message}</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                  <Tag className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm">{selectedAgent.prompt}</span>
+                  <span className="text-sm">{agents?.find(a => a.id === selectedAgentId)?.name}</span>
                 </div>
               </div>
             </div>
-
+        )}
+        {selectedSessionId && (
             <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <h4 className="font-medium mb-3 text-gray-800">Quick Actions</h4>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start hover:bg-blue-50 hover:border-blue-300 transition-colors">
-                  <Tag className="h-4 w-4 mr-2" />
-                  Edit Agent
-                </Button>
-                <Button variant="outline" className="w-full justify-start hover:bg-green-50 hover:border-green-300 transition-colors">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  View Reports
-                </Button>
-                <Button variant="outline" className="w-full justify-start hover:bg-yellow-50 hover:border-yellow-300 transition-colors">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Deactivate
-                </Button>
-                <Button variant="outline" className="w-full justify-start hover:bg-gray-50 transition-colors">
-                  <Archive className="h-4 w-4 mr-2" />
-                  Delete Agent
-                </Button>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <h4 className="font-medium mb-3 text-gray-800">Related Conversations</h4>
-              <div className="space-y-2">
-                <div className="p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border text-sm">
-                  <p className="text-gray-600">No related conversations found</p>
-                  <p className="text-xs text-gray-500 mt-1">This agent has no past conversations</p>
+              <h4 className="font-medium mb-3 text-gray-800">Session Info</h4>
+              <div className="space-y-3">
+                 <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">{selectedSessionId}</span>
                 </div>
               </div>
             </div>
-          </div>
         )}
       </div>
     </div>
