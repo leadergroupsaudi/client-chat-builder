@@ -19,6 +19,7 @@ import ToolManagementPage from "./pages/ToolManagementPage";
 import KnowledgeBaseManagementPage from "./pages/KnowledgeBaseManagementPage";
 import WorkflowManagementPage from "./pages/WorkflowManagementPage";
 import NotFound from "./pages/NotFound";
+import UserVideoCallPage from "./pages/UserVideoCallPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="workflows" element={<WorkflowManagementPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/video-call" element={<UserVideoCallPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
