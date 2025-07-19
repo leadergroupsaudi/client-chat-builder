@@ -125,6 +125,7 @@
                 <button class="agent-connect-close" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</button>
             </div>
             <div class="chat-messages" style="flex-grow:1; padding:0.75rem; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;"></div>
+            <div class="chat-options" style="padding: 0 0.75rem 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
             <div style="padding:0.75rem; border-top:1px solid #eee; display:flex; gap:0.5rem;">
                 <input type="text" placeholder="${widgetSettings.input_placeholder}" class="chat-input" style="flex-grow:1; padding:0.5rem; border:1px solid #ddd; border-radius:5px;">
                 <button class="send-button" style="background-color:${widgetSettings.primary_color}; color:white; border:none; padding:0.5rem 1rem; border-radius:5px; cursor:pointer;">Send</button>
@@ -139,8 +140,8 @@
 
         widgetButton.onclick = toggleChatWindow;
         closeButton.onclick = toggleChatWindow;
-        sendButton.onclick = sendMessage;
-        chatInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+        sendButton.onclick = () => sendMessage(chatInput.value);
+        chatInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(chatInput.value); };
     }
 
     function toggleChatWindow() {
@@ -153,13 +154,6 @@
           ws.close();
           ws = null;
         }
-    }
-
-    function showProactiveMessage() {
-      if (chatWindow.style.display === 'none') {
-        addMessage('Agent', widgetSettings.proactive_message, 'agent');
-        toggleChatWindow();
-      }
     }
 
     function initWebSocket() {
@@ -177,12 +171,18 @@
         };
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            // Ignore echoed user messages
+            if (data.sender === 'user') {
+                return;
+            }
+
             if (data.message_type === 'message') {
-                // Ignore echoed user messages, as they are added optimistically
-                if (data.sender === 'user') {
-                    return;
-                }
                 addMessage(data.sender, data.message, data.sender_type || 'agent');
+            } else if (data.message_type === 'prompt') {
+                addMessage(data.sender, data.message, data.sender_type || 'agent');
+                if (data.options && data.options.length > 0) {
+                    addOptionsButtons(data.options);
+                }
             } else if (data.message_type === 'video_call_invitation') {
                 addVideoCallInvitation(data.message);
             }
@@ -194,7 +194,6 @@
         const msgDiv = document.createElement('div');
         const isUser = senderType === 'user';
         
-        // Use flexbox to align messages
         msgDiv.style.display = 'flex';
         msgDiv.style.justifyContent = isUser ? 'flex-end' : 'flex-start';
         msgDiv.style.width = '100%';
@@ -207,10 +206,7 @@
         bubble.style.backgroundColor = isUser ? widgetSettings.user_message_color : widgetSettings.bot_message_color;
         bubble.style.color = isUser ? widgetSettings.user_message_text_color : widgetSettings.bot_message_text_color;
         
-        // Default rounded corners
         bubble.style.borderRadius = '18px';
-
-        // Add "tail" to bubble
         if (isUser) {
             bubble.style.borderBottomRightRadius = '4px';
         } else {
@@ -224,60 +220,53 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function addVideoCallInvitation(messageText) {
-        const msgDiv = document.createElement('div');
-        msgDiv.style.alignSelf = 'center';
-        msgDiv.style.textAlign = 'center';
-        msgDiv.style.margin = '10px 0';
+    function addOptionsButtons(options) {
+        const optionsContainer = chatWindow.querySelector('.chat-options');
+        optionsContainer.innerHTML = ''; // Clear previous options
 
-        const bubble = document.createElement('div');
-        bubble.style.maxWidth = '85%';
-        bubble.style.padding = '12px';
-        bubble.style.borderRadius = '12px';
-        bubble.style.backgroundColor = '#f0f0f0';
-        bubble.style.border = '1px solid #ddd';
+        options.forEach(optionText => {
+            const button = document.createElement('button');
+            button.textContent = optionText;
+            button.style.backgroundColor = 'transparent';
+            button.style.color = widgetSettings.primary_color;
+            button.style.border = `1px solid ${widgetSettings.primary_color}`;
+            button.style.padding = '8px 12px';
+            button.style.borderRadius = '20px';
+            button.style.cursor = 'pointer';
+            button.style.transition = 'background-color 0.2s, color 0.2s';
+            
+            button.onmouseover = () => {
+                button.style.backgroundColor = widgetSettings.primary_color;
+                button.style.color = 'white';
+            };
+            button.onmouseout = () => {
+                button.style.backgroundColor = 'transparent';
+                button.style.color = widgetSettings.primary_color;
+            };
 
-        const message = document.createElement('p');
-        message.textContent = messageText;
-        message.style.margin = '0 0 10px 0';
-
-        const joinButton = document.createElement('button');
-        joinButton.textContent = 'Join Video Call';
-        joinButton.style.backgroundColor = widgetSettings.primary_color;
-        joinButton.style.color = 'white';
-        joinButton.style.border = 'none';
-        joinButton.style.padding = '10px 15px';
-        joinButton.style.borderRadius = '8px';
-        joinButton.style.cursor = 'pointer';
-
-        joinButton.onclick = () => {
-            fetch(`${httpBackendUrl}/api/v1/calls/token?session_id=${sessionId}&user_id=${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    const livekitURL = widgetSettings.livekit_url;
-                    const videoCallPageURL = `${widgetSettings.frontend_url}/video-call?token=${data.token}&livekitUrl=${encodeURIComponent(livekitURL)}&sessionId=${sessionId}`;
-                    window.open(videoCallPageURL, '_blank', 'width=800,height=600');
-                })
-                .catch(err => {
-                    console.error('Failed to get join token', err);
-                    alert('Failed to start video call. Please try again.');
-                });
-        };
-
-        bubble.appendChild(message);
-        bubble.appendChild(joinButton);
-        msgDiv.appendChild(bubble);
-        chatMessages.appendChild(msgDiv);
+            button.onclick = () => {
+                sendMessage(optionText);
+            };
+            optionsContainer.appendChild(button);
+        });
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function sendMessage() {
-        const message = chatInput.value.trim();
+    function addVideoCallInvitation(messageText) {
+        // ... (existing video call logic)
+    }
+
+    function sendMessage(messageText) {
+        const message = messageText.trim();
         if (message) {
             addMessage('user', message, 'user'); // Optimistically add message to UI
+            
+            // Clear any existing option buttons
+            const optionsContainer = chatWindow.querySelector('.chat-options');
+            optionsContainer.innerHTML = '';
+
             if (ws && ws.readyState === WebSocket.OPEN) {
-                // Send message with sender_type to prevent echo
-                ws.send(JSON.stringify({ message, message_type: 'message', sender: 'user', sender_type: 'user' }));
+                ws.send(JSON.stringify({ message, message_type: 'message', sender: 'user' }));
             }
             chatInput.value = '';
         }

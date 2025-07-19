@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
 import CreateWorkflowDialog from './CreateWorkflowDialog';
-import { LlmNode, ToolNode, ConditionNode, OutputNode, StartNode } from './CustomNodes'; // Import custom nodes
+import { LlmNode, ToolNode, ConditionNode, OutputNode, StartNode, ListenNode, PromptNode } from './CustomNodes'; // Import custom nodes
 
 const initialNodes = [
   {
@@ -42,7 +42,9 @@ const VisualWorkflowBuilder = () => {
     tool: ToolNode, 
     condition: ConditionNode, 
     output: OutputNode, 
-    start: StartNode
+    start: StartNode,
+    listen: ListenNode,
+    prompt: PromptNode
   }), []);
 
   const fetchWorkflows = async () => {
@@ -151,10 +153,22 @@ const VisualWorkflowBuilder = () => {
       const type = event.dataTransfer.getData('application/reactflow');
       if (typeof type === 'undefined' || !type) return;
       const position = reactFlowInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const newNode = { id: `${type}-${+new Date()}`, type, position, data: { label: `${type} node` } };
+      
+      let newNodeData = { label: `${type} node` };
+      if (type === 'listen') {
+        newNodeData.params = { save_to_variable: 'user_input' };
+      } else if (type === 'prompt') {
+        newNodeData.params = { 
+          prompt_text: 'What would you like to do?',
+          options: 'Option 1, Option 2',
+          save_to_variable: 'user_choice' 
+        };
+      }
+
+      const newNode = { id: `${type}-${+new Date()}`, type, position, data: newNodeData };
       setNodes((nds) => nds.concat(newNode));
     },
-    [reactFlowInstance]
+    [reactFlowInstance, setNodes]
   );
 
   const onNodeClick = useCallback((_, node) => setSelectedNode(node), []);
@@ -221,6 +235,16 @@ const VisualWorkflowBuilder = () => {
       } else if (node.type === 'tool') {
         stepConfig.tool = node.data.tool;
         stepConfig.params = node.data.params || {};
+      } else if (node.type === 'listen') {
+        stepConfig.tool = 'listen_for_input';
+        stepConfig.params = node.data.params || {};
+      } else if (node.type === 'prompt') {
+        stepConfig.tool = 'prompt_for_input';
+        // Convert comma-separated string of options to an array
+        const options = typeof node.data.params.options === 'string' 
+          ? node.data.params.options.split(',').map(s => s.trim()) 
+          : [];
+        stepConfig.params = { ...node.data.params, options };
       } else if (node.type === 'condition') {
         stepConfig.tool = 'condition_tool';
         stepConfig.params = {}; // Future-proofing
@@ -248,7 +272,7 @@ const VisualWorkflowBuilder = () => {
     if (startNode) {
       const firstEdge = edges.find(edge => edge.source === startNode.id);
       if (firstEdge) {
-        backendSteps.first_step = first_step.target; // The ID of the node connected to the start node
+        backendSteps.first_step = firstEdge.target; // The ID of the node connected to the start node
       }
     }
 
@@ -371,7 +395,7 @@ const VisualWorkflowBuilder = () => {
               </ReactFlow>
             </div>
             <div style={{ width: '300px', borderLeft: '1px solid #eee', background: '#fcfcfc' }}>
-              <PropertiesPanel selectedNode={selectedNode} setNodes={setNodes} deleteNode={deleteNode} />
+              <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} />
             </div>
           </ReactFlowProvider>
         </div>
