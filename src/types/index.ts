@@ -17,6 +17,11 @@ export interface Agent {
   credential_id?: number;
   knowledge_base_id?: number;
   tool_ids?: number[];
+  version_number: number;
+  parent_version_id?: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ChatMessage {
@@ -76,6 +81,17 @@ export interface User {
   email: string;
   is_active: boolean;
   company_id: number;
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  job_title?: string;
+  profile_picture_url?: string;
+  is_admin: boolean;
+  last_login_at?: string;
+  subscription_plan_id?: number;
+  subscription_status?: string;
+  subscription_start_date?: string;
+  subscription_end_date?: string;
 }
 
 export interface Team {
@@ -116,4 +132,14 @@ export interface SubscriptionPlan {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface OptimizationSuggestion {
+  id: number;
+  suggestion_type: string;
+  description: string;
+  agent_id?: number;
+  company_id: number;
+  details?: Record<string, any>;
+  created_at: string;
 }

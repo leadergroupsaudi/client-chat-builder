@@ -2,7 +2,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CircleUser } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -24,6 +24,7 @@ import {
   BookOpen
 } from "lucide-react";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
+import { useQuery } from "@tanstack/react-query";
 
 const sidebarItems = [
   { title: "Conversations", url: "/dashboard/conversations", icon: Inbox },
@@ -38,12 +39,42 @@ const sidebarItems = [
   { title: "Tools", url: "/dashboard/tools", icon: Zap },
   { title: "Workflows", url: "/dashboard/workflows", icon: WorkflowIcon },
   { title: "Subscription", url: "/dashboard/subscription", icon: Sparkles },
+  { title: "User Management", url: "/dashboard/users", icon: Users },
 ];
 
 const AppLayout = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { logout } = useAuth();
+  const { logout, isAuthenticated, companyId ,authFetch} = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+
+  // Fetch user details to determine admin status
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser', isAuthenticated, companyId],
+    queryFn: async () => {
+      if (!isAuthenticated || !companyId) return null;
+      const response = await authFetch("http://localhost:8000/api/v1/users/me");
+      if (!response.ok) {
+        throw new Error("Failed to fetch current user");
+      }
+      return response.json();
+    },
+    enabled: isAuthenticated && !!companyId,
+  });
+
+  useEffect(() => {
+    if (currentUser) {
+      setIsAdmin(currentUser.is_admin);
+    }
+  }, [currentUser]);
+
+  const filteredSidebarItems = sidebarItems.filter(item => {
+    if (item.title === "Subscription" || item.title === "User Management") {
+      return isAdmin;
+    }
+    return true;
+  });
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -101,7 +132,7 @@ const AppLayout = () => {
         <aside className={`w-64 flex-shrink-0 bg-white border-r transition-all duration-300 ${sidebarOpen ? '' : '-ml-64'}`}>
           <nav className="p-4 space-y-1 h-full flex flex-col">
             <div className="flex-1">
-              {sidebarItems.map((item) => (
+              {filteredSidebarItems.map((item) => (
                 <NavLink
                   key={item.url}
                   to={item.url}

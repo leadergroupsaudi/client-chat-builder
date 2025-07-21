@@ -25,6 +25,8 @@ import KnowledgeBaseManagementPage from "./pages/KnowledgeBaseManagementPage";
 import WorkflowManagementPage from "./pages/WorkflowManagementPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SubscriptionManagementPage } from "./pages/SubscriptionManagementPage";
+import { UserManagementPage } from "./pages/UserManagementPage";
+import ClientPortalPage from "./pages/ClientPortalPage";
 import NotFound from "./pages/NotFound";
 import UserVideoCallPage from "./pages/UserVideoCallPage";
 
@@ -59,7 +61,11 @@ const App = () => (
                 <Route path="workflows" element={<WorkflowManagementPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="subscription" element={<SubscriptionManagementPage />} />
+                <Route path="users" element={<UserManagementPage />} />
               </Route>
+            </Route>
+            <Route path="/client-portal" element={<ProtectedRoute />}>
+              <Route index element={<ClientPortalPage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="/video-call" element={<UserVideoCallPage />} />

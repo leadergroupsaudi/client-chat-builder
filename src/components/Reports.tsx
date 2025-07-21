@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Reports = () => {
@@ -89,6 +89,57 @@ export const Reports = () => {
     enabled: !!companyId,
   });
 
+  const { data: errorRatesData, isLoading: isLoadingErrorRates, isError: isErrorErrorRates } = useQuery({
+    queryKey: ['errorRates', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const response = await authFetch(`http://localhost:8000/api/v1/reports/error-rates?start_date=2024-01-01&end_date=2024-12-31`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch error rates data");
+      }
+      return response.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: latencyData, isLoading: isLoadingLatency, isError: isErrorLatency } = useQuery({
+    queryKey: ['latency', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const response = await authFetch(`http://localhost:8000/api/v1/reports/latency?start_date=2024-01-01&end_date=2024-12-31`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch latency data");
+      }
+      return response.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: alertsData, isLoading: isLoadingAlerts, isError: isErrorAlerts } = useQuery({
+    queryKey: ['alerts', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const response = await authFetch(`http://localhost:8000/api/v1/reports/alerts`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch alerts data");
+      }
+      return response.json();
+    },
+    enabled: !!companyId,
+  });
+
   const metrics = [
     {
       title: "Total Conversations",
@@ -100,7 +151,7 @@ export const Reports = () => {
     },
     {
       title: "Avg Response Time",
-      value: metricsData?.avg_response_time || "N/A",
+      value: latencyData?.avg_response_time || "N/A",
       change: "-15%", // Placeholder
       trend: "down",
       icon: Clock,
@@ -121,15 +172,67 @@ export const Reports = () => {
       trend: "up",
       icon: Users,
       color: "text-purple-600"
+    },
+    {
+      title: "Overall Error Rate",
+      value: errorRatesData?.overall_error_rate || "N/A",
+      change: "",
+      trend: "up",
+      icon: TrendingUp,
+      color: "text-red-600"
     }
   ];
 
   const agentPerformance = agentPerformanceData || [];
   const customerSatisfaction = customerSatisfactionData || [];
   const topIssues = topIssuesData || [];
+  const alerts = alertsData || [];
 
-  if (isLoadingMetrics || isLoadingAgentPerformance || isLoadingCustomerSatisfaction || isLoadingTopIssues) return <div>Loading reports...</div>;
-  if (isErrorMetrics || isErrorAgentPerformance || isErrorCustomerSatisfaction || isErrorTopIssues) return <div>Error loading reports.</div>;
+  const { data: optimizationSuggestionsData, isLoading: isLoadingOptimizationSuggestions, isError: isErrorOptimizationSuggestions } = useQuery({
+    queryKey: ['optimizationSuggestions', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const response = await authFetch(`http://localhost:8000/api/v1/optimization/suggestions`, {
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch optimization suggestions");
+      }
+      return response.json();
+    },
+    enabled: !!companyId,
+  });
+
+  const generateSuggestionsMutation = useMutation({
+    mutationFn: async () => {
+      if (!companyId) throw new Error("Company ID not available");
+      const response = await authFetch(`http://localhost:8000/api/v1/optimization/generate-suggestions`, {
+        method: "POST",
+        headers: {
+          "X-Company-ID": companyId.toString(),
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to generate suggestions");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['optimizationSuggestions'] });
+      toast({ title: "Optimization suggestions generated!" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to generate suggestions", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const optimizationSuggestions = optimizationSuggestionsData || [];
+
+  if (isLoadingMetrics || isLoadingAgentPerformance || isLoadingCustomerSatisfaction || isLoadingTopIssues || isLoadingErrorRates || isLoadingLatency || isLoadingAlerts || isLoadingOptimizationSuggestions) return <div>Loading reports...</div>;
+  if (isErrorMetrics || isErrorAgentPerformance || isErrorCustomerSatisfaction || isErrorTopIssues || isErrorErrorRates || isErrorLatency || isErrorAlerts || isErrorOptimizationSuggestions) return <div>Error loading reports.</div>;
 
   return (
     <div className="space-y-6">
@@ -190,6 +293,8 @@ export const Reports = () => {
           <TabsTrigger value="agents">Agent Performance</TabsTrigger>
           <TabsTrigger value="customers">Customer Insights</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="optimization">Optimization</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -342,6 +447,64 @@ export const Reports = () => {
                   <p className="text-gray-500">Advanced trend analysis charts would be displayed here</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="alerts" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Alerts</CardTitle>
+              <CardDescription>Critical notifications and warnings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {alerts.length > 0 ? (
+                <div className="space-y-4">
+                  {alerts.map((alert) => (
+                    <div key={alert.id} className={`p-4 rounded-md ${
+                      alert.type === "critical" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"
+                    }`}>
+                      <p className="font-medium">{alert.message}</p>
+                      <p className="text-sm">{new Date(alert.timestamp).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No active alerts.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="optimization" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Optimization Suggestions</CardTitle>
+              <CardDescription>AI-powered recommendations for improving agent performance.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {optimizationSuggestions.length > 0 ? (
+                <div className="space-y-4">
+                  {optimizationSuggestions.map((suggestion) => (
+                    <div key={suggestion.id} className="p-4 border rounded-md bg-blue-50">
+                      <p className="font-medium">{suggestion.description}</p>
+                      <p className="text-sm text-gray-600">Type: {suggestion.suggestion_type}</p>
+                      {suggestion.agent_id && <p className="text-sm text-gray-600">Agent ID: {suggestion.agent_id}</p>}
+                      {suggestion.details && <p className="text-sm text-gray-600">Details: {JSON.stringify(suggestion.details)}</p>}
+                      <p className="text-sm text-gray-600">Generated: {new Date(suggestion.created_at).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No optimization suggestions available.</p>
+              )}
+              <Button 
+                onClick={() => generateSuggestionsMutation.mutate()} 
+                className="mt-4"
+                disabled={generateSuggestionsMutation.isPending}
+              >
+                {generateSuggestionsMutation.isPending ? "Generating..." : "Generate New Suggestions"}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
