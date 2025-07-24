@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChatMessage, User } from '@/types';
-import { Paperclip, Send, CornerDownRight, Book, UserCheck, CheckCircle, Users, Video } from 'lucide-react';
+import { Paperclip, Send, CornerDownRight, Book, UserCheck, CheckCircle, Users, Video, Bot } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from "@/components/ui/switch";
 
 import { VideoCallModal } from './VideoCallModal';
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const [message, setMessage] = useState('');
   const [note, setNote] = useState('');
   const [isCallModalOpen, setCallModalOpen] = useState(false);
+  const [isAiEnabled, setIsAiEnabled] = useState(true); // Add state for the toggle
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [widgetSettings, setWidgetSettings] = useState<any>(null); // State to store widget settings
   const [feedbackRating, setFeedbackRating] = useState<number>(0);
@@ -32,6 +34,34 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const ws = useRef<WebSocket | null>(null);
   const { authFetch, token } = useAuth();
+
+  const { data: sessionDetails, isLoading: isLoadingSession } = useQuery({
+    queryKey: ['sessionDetails', sessionId],
+    queryFn: async () => {
+      // This is a placeholder for an endpoint that gets session details
+      // In a real app, you would fetch the session and get is_ai_enabled from it
+      // For now, we'll just use the local state
+      return { is_ai_enabled: true }; 
+    },
+    onSuccess: (data) => {
+      setIsAiEnabled(data.is_ai_enabled);
+    },
+    enabled: !!sessionId,
+  });
+
+  const toggleAiMutation = useMutation({
+    mutationFn: (enabled: boolean) => authFetch(`/api/v1/conversations/${sessionId}/toggle-ai`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_ai_enabled: enabled }),
+    }).then(res => { if (!res.ok) throw new Error('Failed to update AI status'); return res.json() }),
+    onSuccess: (data) => {
+      setIsAiEnabled(data.is_ai_enabled);
+      queryClient.invalidateQueries({ queryKey: ['sessionDetails', sessionId] });
+      toast({ title: 'Success', description: `AI has been ${data.is_ai_enabled ? 'enabled' : 'disabled'}.` });
+    },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
 
   const { data: messages, isLoading } = useQuery<ChatMessage[]>({
     queryKey: ['messages', agentId, sessionId, companyId],
@@ -252,6 +282,16 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
             <p className="text-sm text-gray-500">{sessionId}</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
+                <Bot className={`h-5 w-5 ${isAiEnabled ? 'text-green-500' : 'text-gray-400'}`} />
+                <Label htmlFor="ai-toggle" className="text-sm font-medium">Automated Replies</Label>
+                <Switch
+                  id="ai-toggle"
+                  checked={isAiEnabled}
+                  onCheckedChange={(checked) => toggleAiMutation.mutate(checked)}
+                  aria-readonly
+                />
+              </div>
             <Select onValueChange={(value) => assigneeMutation.mutate(parseInt(value))}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Assign to..." />
