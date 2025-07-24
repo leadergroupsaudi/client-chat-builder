@@ -24,7 +24,7 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
   const { data: contact, isLoading } = useQuery<Contact>({
     queryKey: ['contact', sessionId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/contacts/by_session/${sessionId}`);
+      const response = await authFetch(`/api/v1/contacts/by_session/${sessionId}`);
       if (!response.ok) throw new Error('Failed to fetch contact');
       return response.json();
     },
@@ -41,7 +41,7 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
   }, [contact]);
 
   const updateContactMutation = useMutation({
-    mutationFn: (updatedContact: Partial<Contact>) => authFetch(`http://localhost:8000/api/v1/contacts/${contact!.id}`, {
+    mutationFn: (updatedContact: Partial<Contact>) => authFetch(`/api/v1/contacts/${contact!.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedContact),

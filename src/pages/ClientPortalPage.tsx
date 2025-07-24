@@ -12,7 +12,7 @@ const ClientPortalPage = () => {
     queryKey: ['clientAgents', companyId], 
     queryFn: async () => {
       if (!companyId) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/?company_id=${companyId}`);
+      const response = await authFetch(`/api/v1/agents/?company_id=${companyId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch agents");
       }
@@ -26,7 +26,7 @@ const ClientPortalPage = () => {
     queryKey: ['clientConversations', companyId], 
     queryFn: async () => {
       if (!companyId) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/conversations/?company_id=${companyId}&limit=10`);
+      const response = await authFetch(`/api/v1/conversations/?company_id=${companyId}&limit=10`);
       if (!response.ok) {
         throw new Error("Failed to fetch conversations");
       }

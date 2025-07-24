@@ -21,6 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { IntegrationsList } from "./IntegrationsList";
 
 export const Settings = () => {
   const { toast } = useToast();
@@ -48,9 +49,9 @@ export const Settings = () => {
     const fetchSettings = async () => {
       try {
         const [userResponse, companyResponse, notificationResponse] = await Promise.all([
-          authFetch(`http://localhost:8000/api/v1/settings/`),
-          authFetch(`http://localhost:8000/api/v1/company-settings/`),
-          authFetch(`http://localhost:8000/api/v1/notification-settings/`),
+          authFetch(`/api/v1/settings/`),
+          authFetch(`/api/v1/company-settings/`),
+          authFetch(`/api/v1/notification-settings/`),
         ]);
 
         if (userResponse.ok && companyResponse.ok && notificationResponse.ok) {
@@ -96,14 +97,14 @@ export const Settings = () => {
   const handleSaveChanges = async () => {
     try {
       const [userResponse, companyResponse, notificationResponse] = await Promise.all([
-        authFetch(`http://localhost:8000/api/v1/settings/`, {
+        authFetch(`/api/v1/settings/`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({ dark_mode: settings.darkMode }),
         }),
-        authFetch(`http://localhost:8000/api/v1/company-settings/`, {
+        authFetch(`/api/v1/company-settings/`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json"
@@ -116,7 +117,7 @@ export const Settings = () => {
             business_hours: settings.businessHours,
           }),
         }),
-        authFetch(`http://localhost:8000/api/v1/notification-settings/`, {
+        authFetch(`/api/v1/notification-settings/`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json"
@@ -391,40 +392,7 @@ export const Settings = () => {
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Third-party Integrations
-              </CardTitle>
-              <CardDescription>Connect with external services</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { name: "Slack", description: "Team communication", connected: true },
-                  { name: "Zapier", description: "Automation workflows", connected: false },
-                  { name: "HubSpot", description: "CRM integration", connected: false },
-                  { name: "Salesforce", description: "Sales management", connected: false },
-                  { name: "Stripe", description: "Payment processing", connected: true },
-                  { name: "Intercom", description: "Customer messaging", connected: false },
-                ].map((integration) => (
-                  <div key={integration.name} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{integration.name}</h4>
-                      <p className="text-sm text-gray-600">{integration.description}</p>
-                    </div>
-                    <Button 
-                      variant={integration.connected ? "destructive" : "default"}
-                      size="sm"
-                    >
-                      {integration.connected ? "Disconnect" : "Connect"}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <IntegrationsList />
         </TabsContent>
 
         <TabsContent value="appearance" className="space-y-6">

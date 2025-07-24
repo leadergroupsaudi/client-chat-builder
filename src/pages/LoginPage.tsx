@@ -23,7 +23,7 @@ export const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const response = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -34,7 +34,7 @@ export const LoginPage = () => {
 
       if (response.ok) {
         const data = await response.json();
-        login(data.access_token, data.company_id);
+        login(data.access_token);
         toast({ title: "Login successful!" });
         navigate("/dashboard");
       } else {

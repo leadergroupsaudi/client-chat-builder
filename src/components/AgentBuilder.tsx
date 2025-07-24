@@ -74,7 +74,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
   });
 
   const { data: credentials, isLoading: isLoadingCredentials } = useQuery<Credential[]>({ queryKey: ['credentials', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/credentials/`);
+    const response = await authFetch(`/api/v1/credentials/`);
     if (!response.ok) {
       throw new Error("Failed to fetch credentials");
     }
@@ -85,7 +85,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
     queryKey: ['webhooks', agent?.id, companyId], 
     queryFn: async () => {
       if (!agent?.id) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/webhooks/by_agent/${agent.id}`);
+      const response = await authFetch(`/api/v1/webhooks/by_agent/${agent.id}`);
       if (!response.ok) {
         throw new Error("Failed to fetch webhooks");
       }
@@ -95,7 +95,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
   });
 
   const { data: knowledgeBases, isLoading: isLoadingKnowledgeBases } = useQuery<KnowledgeBase[]>({ queryKey: ['knowledgeBases', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/`);
+    const response = await authFetch(`/api/v1/knowledge-bases/`);
     if (!response.ok) {
       throw new Error("Failed to fetch knowledge bases");
     }
@@ -103,7 +103,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
   }});
 
   const { data: tools, isLoading: isLoadingTools } = useQuery<Tool[]>({ queryKey: ['tools', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/tools/`);
+    const response = await authFetch(`/api/v1/tools/`);
     if (!response.ok) {
       throw new Error("Failed to fetch tools");
     }
@@ -120,7 +120,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
 
   const updateAgentMutation = useMutation({
     mutationFn: async (updatedAgent: Agent) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/${updatedAgent.id}`, {
+      const response = await authFetch(`/api/v1/agents/${updatedAgent.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -143,7 +143,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
 
   const createWebhookMutation = useMutation({
     mutationFn: async (newWebhook: Omit<Webhook, "id">) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/webhooks/`, {
+      const response = await authFetch(`/api/v1/webhooks/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -165,7 +165,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
 
   const updateWebhookMutation = useMutation({
     mutationFn: async (updatedWebhook: Webhook) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/webhooks/${updatedWebhook.id}`, {
+      const response = await authFetch(`/api/v1/webhooks/${updatedWebhook.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +187,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
 
   const deleteWebhookMutation = useMutation({
     mutationFn: async (webhookId: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/webhooks/${webhookId}`, {
+      const response = await authFetch(`/api/v1/webhooks/${webhookId}`, {
         method: "DELETE",
       });
       if (!response.ok) {

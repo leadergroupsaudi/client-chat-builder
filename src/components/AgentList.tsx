@@ -41,7 +41,7 @@ export const AgentList = () => {
   const { authFetch } = useAuth(); 
 
   const { data: agents, isLoading, isError } = useQuery<Agent[]>({ queryKey: ['agents', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/agents/`);
+    const response = await authFetch(`/api/v1/agents/`);
     if (!response.ok) {
       throw new Error("Failed to fetch agents");
     }
@@ -52,7 +52,7 @@ export const AgentList = () => {
     queryKey: ['sessions', selectedAgent?.id, companyId], 
     queryFn: async () => {
       if (!selectedAgent) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/conversations/${selectedAgent.id}/sessions`);
+      const response = await authFetch(`/api/v1/conversations/${selectedAgent.id}/sessions`);
       if (!response.ok) {
         throw new Error("Failed to fetch sessions");
       }
@@ -65,7 +65,7 @@ export const AgentList = () => {
     queryKey: ['messages', selectedAgent?.id, selectedSessionId, companyId], 
     queryFn: async () => {
       if (!selectedAgent || !selectedSessionId) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/conversations/${selectedAgent.id}/sessions/${selectedSessionId}/messages`);
+      const response = await authFetch(`/api/v1/conversations/${selectedAgent.id}/sessions/${selectedSessionId}/messages`);
       if (!response.ok) {
         throw new Error("Failed to fetch messages");
       }
@@ -76,7 +76,7 @@ export const AgentList = () => {
 
   const deleteAgentMutation = useMutation({
     mutationFn: async (agentId: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/${agentId}`, {
+      const response = await authFetch(`/api/v1/agents/${agentId}`, {
         method: "DELETE",
       });
       if (!response.ok) {

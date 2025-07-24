@@ -21,7 +21,7 @@ export const ProfilePage = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await authFetch("http://localhost:8000/api/v1/profile/me");
+        const response = await authFetch("/api/v1/profile/me");
         const data = await response.json();
         setUser(data);
         setEmail(data.email);
@@ -40,7 +40,7 @@ export const ProfilePage = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      const response = await authFetch("http://localhost:8000/api/v1/profile/me", {
+      const response = await authFetch("/api/v1/profile/me", {
         method: "PUT",
         body: JSON.stringify({
           email,

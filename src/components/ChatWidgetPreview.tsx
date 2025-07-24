@@ -123,7 +123,7 @@ export const ChatWidgetPreview = () => {
 
   const handleHandoff = async () => {
     try {
-      const response = await authFetch(`http://localhost:8000/api/v1/conversations/${sessionId}/handoff`, {
+      const response = await authFetch(`/api/v1/conversations/${sessionId}/handoff`, {
         method: 'POST',
       });
       if (!response.ok) {

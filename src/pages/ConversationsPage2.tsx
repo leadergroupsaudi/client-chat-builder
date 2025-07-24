@@ -19,7 +19,7 @@ const ConversationsPage: React.FC = () => {
   const { data: agents, isLoading: isLoadingAgents } = useQuery<Agent[]>({
     queryKey: ['agents', companyId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/`);
+      const response = await authFetch(`/api/v1/agents/`);
       if (!response.ok) throw new Error('Failed to fetch agents');
       return response.json();
     },
@@ -33,7 +33,7 @@ const ConversationsPage: React.FC = () => {
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/users/`);
+      const response = await authFetch(`/api/v1/users/`);
       if (!response.ok) throw new Error('Failed to fetch users');
       return response.json();
     },
@@ -43,7 +43,7 @@ const ConversationsPage: React.FC = () => {
     queryKey: ['sessions', selectedAgentId],
     queryFn: async () => {
       if (!selectedAgentId) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/conversations/${selectedAgentId}/sessions`);
+      const response = await authFetch(`/api/v1/conversations/${selectedAgentId}/sessions`);
       if (!response.ok) throw new Error('Failed to fetch sessions');
       return response.json();
     },

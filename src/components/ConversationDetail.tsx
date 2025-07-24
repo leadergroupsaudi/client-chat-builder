@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import { VideoCallModal } from './VideoCallModal';
 import { useAuth } from "@/hooks/useAuth";
+import { Label } from './ui/label';
 
 interface ConversationDetailProps {
   sessionId: string;
@@ -30,13 +31,13 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const [feedbackNotes, setFeedbackNotes] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const ws = useRef<WebSocket | null>(null);
-  const { authFetch } = useAuth();
+  const { authFetch, token } = useAuth();
 
   const { data: messages, isLoading } = useQuery<ChatMessage[]>({
     queryKey: ['messages', agentId, sessionId, companyId],
     queryFn: async () => {
       // Limit messages to 10
-      const response = await authFetch(`http://localhost:8000/api/v1/conversations/${agentId}/${sessionId}`);
+      const response = await authFetch(`/api/v1/conversations/${agentId}/${sessionId}`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       return response.json();
     },
@@ -46,7 +47,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   useEffect(() => {
     if (sessionId && agentId) {
       // Pass user_type as a query parameter
-      ws.current = new WebSocket(`ws://localhost:8000/ws/${companyId}/${agentId}/${sessionId}?user_type=agent`);
+            ws.current = new WebSocket(`ws://${window.location.host}/api/v1/ws/${agentId}/${sessionId}?user_type=agent&token=${token}`);
 
       ws.current.onopen = () => {
         console.log('WebSocket: Connected');
@@ -54,16 +55,24 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
 
       ws.current.onmessage = (event) => {
         const newMessage = JSON.parse(event.data);
-        console.log('WebSocket: Received message:', newMessage);
+        console.log('WebSocket: Received message type:', newMessage.type);
+        console.log('WebSocket: Raw newMessage:', newMessage);
         queryClient.setQueryData<ChatMessage[]>(['messages', agentId, sessionId, companyId], (oldMessages) => {
+          console.log('WebSocket: oldMessages before update:', oldMessages);
           if (oldMessages) {
-            // Avoid adding duplicates
-            if (oldMessages.find(msg => msg.id === newMessage.id)) {
+            const found = oldMessages.find(msg => msg.id === newMessage.id);
+            console.log('WebSocket: Found duplicate:', found);
+            if (found) {
+              console.log('WebSocket: Duplicate message, returning oldMessages.');
               return oldMessages;
             }
-            return [...oldMessages, newMessage];
+            const updatedMessages = [...oldMessages, newMessage];
+            console.log('WebSocket: updatedMessages:', updatedMessages);
+            return updatedMessages;
           }
-          return [newMessage];
+          const initialMessages = [newMessage];
+          console.log('WebSocket: initialMessages:', initialMessages);
+          return initialMessages;
         });
       };
 
@@ -84,7 +93,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/users/`);
+      const response = await authFetch(`/api/v1/users/`);
       if (!response.ok) throw new Error('Failed to fetch users');
       return response.json();
     },
@@ -101,7 +110,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
 
     const fetchWidgetSettings = async () => {
       try {
-        const response = await authFetch(`http://localhost:8000/api/v1/agents/${agentId}/widget-settings`);
+        const response = await authFetch(`/api/v1/agents/${agentId}/widget-settings`);
         if (response.ok) {
           const data = await response.json();
           setWidgetSettings(data);
@@ -117,7 +126,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
     if (messages && messages.length > 0 && widgetSettings?.suggestions_enabled) {
       const fetchSuggestions = async () => {
         try {
-          const response = await authFetch(`http://localhost:8000/api/v1/suggestions/suggest-replies`, {
+          const response = await authFetch(`/api/v1/suggestions/suggest-replies`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ conversation_history: messages.map(m => m.message) })
@@ -153,7 +162,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   });
 
   const statusMutation = useMutation({
-    mutationFn: (newStatus: string) => authFetch(`http://localhost:8000/api/v1/conversations/${sessionId}/status`, {
+    mutationFn: (newStatus: string) => authFetch(`/api/v1/conversations/${sessionId}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
@@ -169,7 +178,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   });
 
   const feedbackMutation = useMutation({
-    mutationFn: ({ rating, notes }: { rating: number, notes: string }) => authFetch(`http://localhost:8000/api/v1/conversations/${sessionId}/feedback`, {
+    mutationFn: ({ rating, notes }: { rating: number, notes: string }) => authFetch(`/api/v1/conversations/${sessionId}/feedback`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ feedback_rating: rating, feedback_notes: notes }),
@@ -182,7 +191,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   });
 
   const startCallMutation = useMutation({
-    mutationFn: () => authFetch(`http://localhost:8000/api/v1/calls/start`, {
+    mutationFn: () => authFetch(`/api/v1/calls/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId }),
@@ -199,7 +208,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   });
 
   const assigneeMutation = useMutation({
-    mutationFn: (newAssigneeId: number) => authFetch(`http://localhost:8000/api/v1/conversations/${sessionId}/assignee`, {
+    mutationFn: (newAssigneeId: number) => authFetch(`/api/v1/conversations/${sessionId}/assignee`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json'},
       body: JSON.stringify({ user_id: newAssigneeId }),

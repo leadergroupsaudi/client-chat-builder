@@ -13,7 +13,7 @@ const Index = () => {
   const { data: plans, isLoading, isError } = useQuery<SubscriptionPlan[]>({ 
     queryKey: ['subscriptionPlans'], 
     queryFn: async () => {
-      const response = await authFetch("http://localhost:8000/api/v1/subscription/plans/");
+      const response = await authFetch("/api/v1/subscription/plans/");
       if (!response.ok) {
         throw new Error("Failed to fetch subscription plans");
       }

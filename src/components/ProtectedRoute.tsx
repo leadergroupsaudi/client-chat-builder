@@ -1,35 +1,24 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
 
 export const ProtectedRoute = () => {
-  const { isAuthenticated, authFetch } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  const { data: currentUser, isLoading: isLoadingUser } = useQuery({
-    queryKey: ['currentUser', isAuthenticated],
-    queryFn: async () => {
-      if (!isAuthenticated) return null;
-      const response = await authFetch("http://localhost:8000/api/v1/users/me");
-      if (!response.ok) {
-        throw new Error("Failed to fetch current user");
-      }
-      return response.json();
-    },
-    enabled: isAuthenticated,
-  });
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a more sophisticated loading spinner
+  }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
-  if (isLoadingUser) {
-    return <div>Loading user data...</div>; // Or a spinner
+  // This logic assumes that you want to redirect non-admins away from the main dashboard routes.
+  // Adjust the condition based on your application's specific routing rules.
+  // For example, if you are on a route that is NOT the client portal, and you are not an admin, redirect.
+  if (window.location.pathname.startsWith('/dashboard') && user && !user.is_admin) {
+    return <Navigate to="/client-portal" replace />;
   }
 
-  // If authenticated but not an admin, redirect to client portal
-  if (isAuthenticated && currentUser && !currentUser.is_admin) {
-    return <Navigate to="/client-portal" />;
-  }
 
   return <Outlet />;
 };

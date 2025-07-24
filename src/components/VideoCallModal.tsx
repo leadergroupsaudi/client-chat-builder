@@ -18,7 +18,7 @@ export const VideoCallModal: React.FC<VideoCallModalProps> = ({ sessionId, userI
     (async () => {
       try {
         const resp = await authFetch(
-          `http://localhost:8000/api/v1/calls/token?session_id=${sessionId}&user_id=${userId}`
+          `/api/v1/calls/token?session_id=${sessionId}&user_id=${userId}`
         );
         const data = await resp.json();
         setToken(data.token);

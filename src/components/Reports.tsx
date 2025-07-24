@@ -25,7 +25,7 @@ export const Reports = () => {
     queryKey: ['overallMetrics', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/metrics?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(`/api/v1/reports/metrics?start_date=2024-01-01&end_date=2024-12-31`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -42,7 +42,7 @@ export const Reports = () => {
     queryKey: ['agentPerformance', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/agent-performance?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(`/api/v1/reports/agent-performance?start_date=2024-01-01&end_date=2024-12-31`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -59,7 +59,7 @@ export const Reports = () => {
     queryKey: ['customerSatisfaction', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/customer-satisfaction?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(`/api/v1/reports/customer-satisfaction?start_date=2024-01-01&end_date=2024-12-31`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -76,7 +76,7 @@ export const Reports = () => {
     queryKey: ['topIssues', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/top-issues?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(`/api/v1/reports/top-issues?start_date=2024-01-01&end_date=2024-12-31`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -93,7 +93,7 @@ export const Reports = () => {
     queryKey: ['errorRates', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/error-rates?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(`/api/v1/reports/error-rates?start_date=2024-01-01&end_date=2024-12-31`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -110,7 +110,7 @@ export const Reports = () => {
     queryKey: ['latency', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/latency?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(`/api/v1/reports/latency?start_date=2024-01-01&end_date=2024-12-31`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -127,7 +127,7 @@ export const Reports = () => {
     queryKey: ['alerts', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/reports/alerts`, {
+      const response = await authFetch(`/api/v1/reports/alerts`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -192,7 +192,7 @@ export const Reports = () => {
     queryKey: ['optimizationSuggestions', companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/optimization/suggestions`, {
+      const response = await authFetch(`/api/v1/optimization/suggestions`, {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -208,7 +208,7 @@ export const Reports = () => {
   const generateSuggestionsMutation = useMutation({
     mutationFn: async () => {
       if (!companyId) throw new Error("Company ID not available");
-      const response = await authFetch(`http://localhost:8000/api/v1/optimization/generate-suggestions`, {
+      const response = await authFetch(`/api/v1/optimization/generate-suggestions`, {
         method: "POST",
         headers: {
           "X-Company-ID": companyId.toString(),

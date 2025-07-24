@@ -20,7 +20,7 @@ export const UserManagementPage = () => {
     queryKey: ['users', companyId], 
     queryFn: async () => {
       if (!companyId) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/users/`);
+      const response = await authFetch(`/api/v1/users/`);
       if (!response.ok) {
         throw new Error("Failed to fetch users");
       }
@@ -32,7 +32,7 @@ export const UserManagementPage = () => {
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, updateData }: { userId: number; updateData: Partial<User> }) => {
       if (!companyId) throw new Error("Company ID not available");
-      const response = await authFetch(`http://localhost:8000/api/v1/users/${userId}/set-admin?is_admin=${updateData.is_admin}`, {
+      const response = await authFetch(`/api/v1/users/${userId}/set-admin?is_admin=${updateData.is_admin}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

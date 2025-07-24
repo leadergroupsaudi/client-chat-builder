@@ -125,7 +125,7 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        const response = await authFetch('http://localhost:8000/api/v1/tools/?company_id=1');
+        const response = await authFetch('/api/v1/tools/?company_id=1');
         if (!response.ok) throw new Error('Failed to fetch tools');
         const data = await response.json();
         setTools(data);
@@ -136,7 +136,7 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
     };
     const fetchKnowledgeBases = async () => {
       try {
-        const response = await authFetch('http://localhost:8000/api/v1/knowledge-bases/?company_id=1');
+        const response = await authFetch('/api/v1/knowledge-bases/?company_id=1');
         if (!response.ok) throw new Error('Failed to fetch knowledge bases');
         const data = await response.json();
         setKnowledgeBases(data);

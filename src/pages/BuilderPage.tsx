@@ -24,7 +24,7 @@ const BuilderPage = () => {
     queryKey: ['agent', agentId, companyId],
     queryFn: async () => {
       if (!agentId) return null;
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/${agentId}`);
+      const response = await authFetch(`/api/v1/agents/${agentId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch agent");
       }
@@ -37,7 +37,7 @@ const BuilderPage = () => {
     queryKey: ['agentHistory', agent?.name, companyId],
     queryFn: async () => {
       if (!agent?.name || !companyId) return [];
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/?name=${agent.name}&company_id=${companyId}`);
+      const response = await authFetch(`/api/v1/agents/?name=${agent.name}&company_id=${companyId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch agent history");
       }
@@ -48,7 +48,7 @@ const BuilderPage = () => {
 
   const createNewVersionMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/${id}/new-version`, {
+      const response = await authFetch(`/api/v1/agents/${id}/new-version`, {
         method: "POST",
       });
       if (!response.ok) {
@@ -68,7 +68,7 @@ const BuilderPage = () => {
 
   const activateVersionMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/${id}/activate-version`, {
+      const response = await authFetch(`/api/v1/agents/${id}/activate-version`, {
         method: "PUT",
       });
       if (!response.ok) {

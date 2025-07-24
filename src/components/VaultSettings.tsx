@@ -26,7 +26,7 @@ export const VaultSettings = () => {
   const { data: credentials, isLoading, isError } = useQuery<Credential[]>({ queryKey: ['credentials', companyId], queryFn: async () => {
     if (!companyId) return [];
     console.log(`Fetching credentials for companyId: ${companyId}`);
-    const response = await authFetch(`http://localhost:8000/api/v1/credentials/`, {
+    const response = await authFetch(`/api/v1/credentials/`, {
       headers: {
         "X-Company-ID": companyId.toString(),
       },
@@ -42,7 +42,7 @@ export const VaultSettings = () => {
       if (!companyId) {
         throw new Error("Company ID is not available.");
       }
-      const response = await authFetch(`http://localhost:8000/api/v1/credentials/`, {
+      const response = await authFetch(`/api/v1/credentials/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,7 +79,7 @@ export const VaultSettings = () => {
       if (!companyId) {
         throw new Error("Company ID is not available.");
       }
-      const response = await authFetch(`http://localhost:8000/api/v1/credentials/${updatedCredential.id}`, {
+      const response = await authFetch(`/api/v1/credentials/${updatedCredential.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -113,7 +113,7 @@ export const VaultSettings = () => {
 
   const deleteCredentialMutation = useMutation({
     mutationFn: async (credentialId: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/credentials/${credentialId}`, {
+      const response = await authFetch(`/api/v1/credentials/${credentialId}`, {
         method: "DELETE",
         headers: {
           "X-Company-ID": companyId.toString(),

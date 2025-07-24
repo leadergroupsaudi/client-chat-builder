@@ -18,7 +18,7 @@ const KnowledgeBaseManagementPage = () => {
   const { authFetch } = useAuth();
 
   const { data: knowledgeBases, isLoading } = useQuery<KnowledgeBase[]>({ queryKey: ['knowledgeBases', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/`);
+    const response = await authFetch(`/api/v1/knowledge-bases/`);
     if (!response.ok) {
       throw new Error("Failed to fetch knowledge bases");
     }
@@ -27,7 +27,7 @@ const KnowledgeBaseManagementPage = () => {
 
   const createKnowledgeBaseMutation = useMutation({
     mutationFn: async (newKnowledgeBase: Omit<KnowledgeBase, 'id'>) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/`, {
+      const response = await authFetch(`/api/v1/knowledge-bases/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -50,7 +50,7 @@ const KnowledgeBaseManagementPage = () => {
 
   const createKnowledgeBaseFromUrlMutation = useMutation({
     mutationFn: async (data: { url: string; name: string; description?: string; knowledge_base_id?: number }) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/from-url`, {
+      const response = await authFetch(`/api/v1/knowledge-bases/from-url`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -73,7 +73,7 @@ const KnowledgeBaseManagementPage = () => {
 
   const generateQnAMutation = useMutation({
     mutationFn: async (data: { knowledge_base_id: number; prompt: string }) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/${data.knowledge_base_id}/generate-qna`, {
+      const response = await authFetch(`/api/v1/knowledge-bases/${data.knowledge_base_id}/generate-qna`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -96,7 +96,7 @@ const KnowledgeBaseManagementPage = () => {
 
   const updateKnowledgeBaseMutation = useMutation({
     mutationFn: async (updatedKnowledgeBase: KnowledgeBase) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/${updatedKnowledgeBase.id}`, {
+      const response = await authFetch(`/api/v1/knowledge-bases/${updatedKnowledgeBase.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
@@ -119,7 +119,7 @@ const KnowledgeBaseManagementPage = () => {
 
   const deleteKnowledgeBaseMutation = useMutation({
     mutationFn: async (knowledgeBaseId: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/knowledge-bases/${knowledgeBaseId}`, {
+      const response = await authFetch(`/api/v1/knowledge-bases/${knowledgeBaseId}`, {
         method: "DELETE",
       });
       if (!response.ok) {

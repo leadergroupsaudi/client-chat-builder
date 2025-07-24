@@ -54,7 +54,7 @@ const AppLayout = () => {
     queryKey: ['currentUser', isAuthenticated, companyId],
     queryFn: async () => {
       if (!isAuthenticated || !companyId) return null;
-      const response = await authFetch("http://localhost:8000/api/v1/users/me");
+      const response = await authFetch("/api/v1/users/me");
       if (!response.ok) {
         throw new Error("Failed to fetch current user");
       }

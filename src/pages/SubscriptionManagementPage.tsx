@@ -32,7 +32,7 @@ export const SubscriptionManagementPage = () => {
   const { data: plans, isLoading, isError } = useQuery<SubscriptionPlan[]>({ 
     queryKey: ['subscriptionPlans'], 
     queryFn: async () => {
-      const response = await authFetch("http://localhost:8000/api/v1/subscription/plans/");
+      const response = await authFetch("/api/v1/subscription/plans/");
       if (!response.ok) {
         throw new Error("Failed to fetch subscription plans");
       }
@@ -42,7 +42,7 @@ export const SubscriptionManagementPage = () => {
 
   const createPlanMutation = useMutation({
     mutationFn: async (newPlan: Omit<SubscriptionPlan, 'id' | 'created_at' | 'updated_at'>) => {
-      const response = await authFetch("http://localhost:8000/api/v1/subscription/plans/", {
+      const response = await authFetch("/api/v1/subscription/plans/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPlan),
@@ -66,7 +66,7 @@ export const SubscriptionManagementPage = () => {
 
   const updatePlanMutation = useMutation({
     mutationFn: async (updatedPlan: SubscriptionPlan) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/subscription/plans/${updatedPlan.id}`, {
+      const response = await authFetch(`/api/v1/subscription/plans/${updatedPlan.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedPlan),
@@ -90,7 +90,7 @@ export const SubscriptionManagementPage = () => {
 
   const deletePlanMutation = useMutation({
     mutationFn: async (planId: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/subscription/plans/${planId}`, {
+      const response = await authFetch(`/api/v1/subscription/plans/${planId}`, {
         method: "DELETE",
       });
       if (!response.ok) {

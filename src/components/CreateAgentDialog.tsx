@@ -42,7 +42,7 @@ export const CreateAgentDialog = ({ open, onOpenChange }: CreateAgentDialogProps
   
 
   const { data: credentials, isLoading: isLoadingCredentials } = useQuery<Credential[]>({ queryKey: ['credentials', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/credentials/`);
+    const response = await authFetch(`/api/v1/credentials/`);
     if (!response.ok) {
       throw new Error("Failed to fetch credentials");
     }
@@ -51,7 +51,7 @@ export const CreateAgentDialog = ({ open, onOpenChange }: CreateAgentDialogProps
 
   const createAgentMutation = useMutation({
     mutationFn: async (newAgent: { name: string; welcome_message: string; prompt: string; credential_id?: number }) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/`, {
+      const response = await authFetch(`/api/v1/agents/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

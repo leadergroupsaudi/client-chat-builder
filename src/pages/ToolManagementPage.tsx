@@ -17,7 +17,7 @@ const ToolManagementPage = () => {
   
 
   const { data: tools, isLoading: isLoadingTools } = useQuery<Tool[]>({ queryKey: ['tools', companyId], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/tools/`);
+    const response = await authFetch(`/api/v1/tools/`);
     if (!response.ok) {
       throw new Error("Failed to fetch tools");
     }
@@ -25,7 +25,7 @@ const ToolManagementPage = () => {
   }});
 
   const { data: preBuiltConnectors, isLoading: isLoadingPreBuiltConnectors } = useQuery<Record<string, PreBuiltConnector>>({ queryKey: ['preBuiltConnectors'], queryFn: async () => {
-    const response = await authFetch(`http://localhost:8000/api/v1/pre-built-connectors`);
+    const response = await authFetch(`/api/v1/pre-built-connectors`);
     if (!response.ok) {
       throw new Error("Failed to fetch pre-built connectors");
     }
@@ -34,7 +34,7 @@ const ToolManagementPage = () => {
 
   const createToolMutation = useMutation({
     mutationFn: async (newTool: Partial<Tool> & { pre_built_connector_name?: string }) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/tools/`, {
+      const response = await authFetch(`/api/v1/tools/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -53,7 +53,7 @@ const ToolManagementPage = () => {
 
   const updateToolMutation = useMutation({
     mutationFn: async (updatedTool: Tool) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/tools/${updatedTool.id}`, {
+      const response = await authFetch(`/api/v1/tools/${updatedTool.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -72,7 +72,7 @@ const ToolManagementPage = () => {
 
   const deleteToolMutation = useMutation({
     mutationFn: async (toolId: number) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/tools/${toolId}`, {
+      const response = await authFetch(`/api/v1/tools/${toolId}`, {
         method: "DELETE",
       });
       if (!response.ok) {
@@ -351,7 +351,7 @@ const TestToolDialog = ({ tool, companyId }: { tool: Tool, companyId: number }) 
 
   const executeMutation = useMutation({
     mutationFn: async (params: Record<string, any>) => {
-      const response = await authFetch(`http://localhost:8000/api/v1/tools/${tool.id}/execute`,
+      const response = await authFetch(`/api/v1/tools/${tool.id}/execute`,
         {
           method: "POST",
           headers: {

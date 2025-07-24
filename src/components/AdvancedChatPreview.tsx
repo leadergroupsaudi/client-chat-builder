@@ -63,7 +63,7 @@ export const AdvancedChatPreview = () => {
   useEffect(() => {
     const fetchAgents = async () => {
       try {
-        const response = await authFetch(`http://localhost:8000/api/v1/agents/`);
+        const response = await authFetch(`/api/v1/agents/`);
         if (response.ok) {
           const data = await response.json();
           setAgents(data);
@@ -83,7 +83,7 @@ export const AdvancedChatPreview = () => {
 
     const fetchWidgetSettings = async () => {
       try {
-        const response = await authFetch(`http://localhost:8000/api/v1/agents/${selectedAgentId}/widget-settings`);
+        const response = await authFetch(`/api/v1/agents/${selectedAgentId}/widget-settings`);
         if (response.ok) {
           const data = await response.json();
           // Ensure all fields are present, falling back to initial state
@@ -115,7 +115,7 @@ export const AdvancedChatPreview = () => {
       delete (settingsToSave as any).id;
 
 
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/${selectedAgentId}/widget-settings`, {
+      const response = await authFetch(`/api/v1/agents/${selectedAgentId}/widget-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settingsToSave)

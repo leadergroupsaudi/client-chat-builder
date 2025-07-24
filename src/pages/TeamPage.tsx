@@ -67,7 +67,7 @@ export const UserManagement = () => {
   const { data: users = [], isLoading: isLoadingUsers } = useQuery<User[]>({
     queryKey: ['users', companyId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/users/`);
+      const response = await authFetch(`/api/v1/users/`);
       if (!response.ok) throw new Error('Failed to fetch users');
       return response.json();
     },
@@ -76,7 +76,7 @@ export const UserManagement = () => {
   const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ['teams', companyId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/teams/`);
+      const response = await authFetch(`/api/v1/teams/`);
       if (!response.ok) throw new Error('Failed to fetch teams');
       return response.json();
     },
@@ -85,7 +85,7 @@ export const UserManagement = () => {
   const { data: roles = [], isLoading: isLoadingRoles } = useQuery<Role[]>({
     queryKey: ['roles', companyId],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/roles/`);
+      const response = await authFetch(`/api/v1/roles/`);
       if (!response.ok) throw new Error('Failed to fetch roles');
       return response.json();
     },
@@ -94,7 +94,7 @@ export const UserManagement = () => {
   const { data: permissions = [], isLoading: isLoadingPermissions } = useQuery<Permission[]>({
     queryKey: ['permissions'],
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/permissions/`);
+      const response = await authFetch(`/api/v1/permissions/`);
       if (!response.ok) throw new Error('Failed to fetch permissions');
       return response.json();
     },
@@ -102,7 +102,7 @@ export const UserManagement = () => {
 
   // --- MUTATIONS ---
   const createUserMutation = useMutation({
-    mutationFn: (newUser: any) => authFetch(`http://localhost:8000/api/v1/users/`, {
+    mutationFn: (newUser: any) => authFetch(`/api/v1/users/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newUser),
@@ -118,7 +118,7 @@ export const UserManagement = () => {
   });
 
   const createTeamMutation = useMutation({
-    mutationFn: (newTeam: { name: string }) => authFetch(`http://localhost:8000/api/v1/teams/`, {
+    mutationFn: (newTeam: { name: string }) => authFetch(`/api/v1/teams/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTeam),
@@ -133,7 +133,7 @@ export const UserManagement = () => {
   });
 
   const addMemberMutation = useMutation({
-    mutationFn: ({ teamId, userId, role }: { teamId: number; userId: number; role: string }) => authFetch(`http://localhost:8000/api/v1/teams/${teamId}/members`, {
+    mutationFn: ({ teamId, userId, role }: { teamId: number; userId: number; role: string }) => authFetch(`/api/v1/teams/${teamId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, role }),
@@ -148,7 +148,7 @@ export const UserManagement = () => {
   });
 
   const removeMemberMutation = useMutation({
-    mutationFn: ({ teamId, userId }: { teamId: number; userId: number }) => authFetch(`http://localhost:8000/api/v1/teams/${teamId}/members/${userId}`, {
+    mutationFn: ({ teamId, userId }: { teamId: number; userId: number }) => authFetch(`/api/v1/teams/${teamId}/members/${userId}`, {
       method: 'DELETE',
     }).then(res => { if (!res.ok) throw new Error('Failed to remove member'); return res.json() }),
     onSuccess: () => {
@@ -161,8 +161,8 @@ export const UserManagement = () => {
   const roleMutation = useMutation({
     mutationFn: (roleData: { id?: number, name: string, description?: string, permission_ids: number[] }) => {
       const url = roleData.id
-        ? `http://localhost:8000/api/v1/roles/${roleData.id}`
-        : `http://localhost:8000/api/v1/roles/`;
+        ? `/api/v1/roles/${roleData.id}`
+        : `/api/v1/roles/`;
       const method = roleData.id ? 'PUT' : 'POST';
       return authFetch(url, {
         method,
@@ -179,7 +179,7 @@ export const UserManagement = () => {
   });
 
   const deleteRoleMutation = useMutation({
-    mutationFn: (roleId: number) => authFetch(`http://localhost:8000/api/v1/roles/${roleId}`, {
+    mutationFn: (roleId: number) => authFetch(`/api/v1/roles/${roleId}`, {
       method: 'DELETE',
     }).then(res => { if (!res.ok) throw new Error('Failed to delete role'); return res.json() }),
     onSuccess: () => {

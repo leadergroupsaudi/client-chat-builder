@@ -26,7 +26,7 @@ export const ConversationManager = () => {
 
   // Mock function to get sessions - replace with your actual API call
   async function getSessions(agentId: number, companyId: number): Promise<Session[]> {
-    const response = await authFetch(`http://localhost:8000/api/v1/conversations/${agentId}/sessions`);
+    const response = await authFetch(`/api/v1/conversations/${agentId}/sessions`);
     if (!response.ok) {
       throw new Error("Failed to fetch sessions");
     }
@@ -36,7 +36,7 @@ export const ConversationManager = () => {
   const { data: agents, isLoading: isLoadingAgents } = useQuery<Agent[]>({ 
     queryKey: ['agents', companyId], 
     queryFn: async () => {
-      const response = await authFetch(`http://localhost:8000/api/v1/agents/`);
+      const response = await authFetch(`/api/v1/agents/`);
       if (!response.ok) throw new Error("Failed to fetch agents");
       return response.json();
     },

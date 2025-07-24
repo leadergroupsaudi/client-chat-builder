@@ -51,7 +51,7 @@ const VisualWorkflowBuilder = () => {
 
   const fetchWorkflows = async () => {
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/workflows/?company_id=1');
+      const response = await authFetch('/api/v1/workflows/?company_id=1');
       if (!response.ok) throw new Error('Failed to fetch workflows');
       const data = await response.json();
       setWorkflows(data);
@@ -286,7 +286,7 @@ const VisualWorkflowBuilder = () => {
     };
 
     try {
-      const response = await authFetch(`http://localhost:8000/api/v1/workflows/${selectedWorkflow.id}`,
+      const response = await authFetch(`/api/v1/workflows/${selectedWorkflow.id}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json'},
@@ -313,7 +313,7 @@ const VisualWorkflowBuilder = () => {
     };
 
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/workflows/?company_id=1', {
+      const response = await authFetch('/api/v1/workflows/?company_id=1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newWorkflowPayload),
@@ -335,7 +335,7 @@ const VisualWorkflowBuilder = () => {
     if (!selectedWorkflow) return toast.error("No workflow selected.");
     if (window.confirm(`Delete "${selectedWorkflow.name}"?`)) {
       try {
-        const response = await authFetch(`http://localhost:8000/api/v1/workflows/${selectedWorkflow.id}`, {
+        const response = await authFetch(`/api/v1/workflows/${selectedWorkflow.id}`, {
           method: 'DELETE',
         });
         if (!response.ok) throw new Error('Deletion failed');
