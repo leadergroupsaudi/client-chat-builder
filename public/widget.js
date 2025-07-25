@@ -98,7 +98,7 @@
         widgetButton.style.alignItems = 'center';
         widgetButton.style.justifyContent = 'center';
         widgetButton.innerHTML = widgetSettings.agent_avatar_url 
-            ? `<img src="${widgetSettings.agent_avatar_url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` 
+            ? `<img src="${httpBackendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(widgetSettings.agent_avatar_url)}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` 
             : '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
         chatContainer.appendChild(widgetButton);
 
@@ -121,7 +121,10 @@
 
         chatWindow.innerHTML = `
             <div class="agent-connect-header" style="background-color:${widgetSettings.primary_color}; color:white; padding:1rem; font-weight:bold; display:${headerDisplay}; justify-content:space-between; align-items:center; border-top-left-radius:${headerBorderRadius}; border-top-right-radius:${headerBorderRadius};">
-                <span>${widgetSettings.header_title}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img src="${httpBackendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(widgetSettings.agent_avatar_url)}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                    <span>${widgetSettings.header_title}</span>
+                </div>
                 <button class="agent-connect-close" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</button>
             </div>
             <div class="chat-messages" style="flex-grow:1; padding:0.75rem; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;"></div>

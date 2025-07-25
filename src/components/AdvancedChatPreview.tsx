@@ -336,7 +336,7 @@ export const AdvancedChatPreview = () => {
                     <div className="text-white p-3 flex items-center justify-between" style={{ backgroundColor: customization.primary_color, borderTopLeftRadius: `${customization.border_radius}px`, borderTopRightRadius: `${customization.border_radius}px` }}>
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage key={customization.agent_avatar_url} src={customization.agent_avatar_url} alt="Agent" />
+                          <AvatarImage key={customization.agent_avatar_url} src={`/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} alt="Agent" />
                           <AvatarFallback style={{ backgroundColor: `${customization.primary_color}20` }}>
                             {customization.header_title.charAt(0)}
                           </AvatarFallback>
@@ -384,7 +384,7 @@ export const AdvancedChatPreview = () => {
                   style={{ backgroundColor: customization.primary_color }}
                   onClick={() => setIsExpanded(true)}
                 >
-                  {customization.agent_avatar_url ? <img src={customization.agent_avatar_url} className="h-full w-full rounded-full object-cover" /> : <MessageSquare className="h-8 w-8" />}
+                  {customization.agent_avatar_url ? <img src={`/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} className="h-full w-full rounded-full object-cover" /> : <MessageSquare className="h-8 w-8" />}
                 </Button>
               )}
             </div>
