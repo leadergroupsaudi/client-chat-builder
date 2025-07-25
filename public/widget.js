@@ -43,6 +43,8 @@
         bot_message_text_color: "#1F2937",
         widget_size: "medium",
         show_header: true,
+        dark_mode: false,
+        typing_indicator_enabled: false,
     };
 
     function generateSessionId() {
@@ -105,7 +107,7 @@
         chatWindow = document.createElement('div');
         chatWindow.style.width = width;
         chatWindow.style.height = height;
-        chatWindow.style.backgroundColor = 'white';
+        chatWindow.style.backgroundColor = widgetSettings.dark_mode ? '#262626' : 'white';
         chatWindow.style.borderRadius = `${widgetSettings.border_radius}px`;
         chatWindow.style.fontFamily = widgetSettings.font_family;
         chatWindow.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
@@ -128,6 +130,7 @@
                 <button class="agent-connect-close" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</button>
             </div>
             <div class="chat-messages" style="flex-grow:1; padding:0.75rem; overflow-y:auto; display:flex; flex-direction:column; gap:0.5rem;"></div>
+            <div class="typing-indicator" style="display:none; padding:0.75rem; font-style:italic; color:#888;">Agent is typing...</div>
             <div class="chat-options" style="padding: 0 0.75rem 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
             <div style="padding:0.75rem; border-top:1px solid #eee; display:flex; gap:0.5rem;">
                 <input type="text" placeholder="${widgetSettings.input_placeholder}" class="chat-input" style="flex-grow:1; padding:0.5rem; border:1px solid #ddd; border-radius:5px;">
@@ -140,6 +143,23 @@
         chatInput = chatWindow.querySelector('.chat-input');
         const sendButton = chatWindow.querySelector('.send-button');
         const closeButton = chatWindow.querySelector('.agent-connect-close');
+        const typingIndicator = chatWindow.querySelector('.typing-indicator');
+
+        function showTypingIndicator() {
+            if (widgetSettings.typing_indicator_enabled) {
+                typingIndicator.style.display = 'block';
+                typingIndicator.style.padding = '10px';
+                typingIndicator.style.textAlign = 'center';
+                typingIndicator.style.color = '#555';
+                typingIndicator.textContent = 'Agent is typing...';
+                chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom
+            }
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.style.display = 'none';
+            typingIndicator.textContent = '';
+        }
 
         widgetButton.onclick = toggleChatWindow;
         closeButton.onclick = toggleChatWindow;
@@ -186,6 +206,10 @@
                 if (data.options && data.options.length > 0) {
                     addOptionsButtons(data.options);
                 }
+            } else if (data.message_type === 'typing_on') {
+                showTypingIndicator();
+            } else if (data.message_type === 'typing_off') {
+                hideTypingIndicator();
             } else if (data.message_type === 'video_call_invitation') {
                 addVideoCallInvitation(data.message);
             }
@@ -209,7 +233,7 @@
         bubble.style.backgroundColor = isUser ? widgetSettings.user_message_color : widgetSettings.bot_message_color;
         bubble.style.color = isUser ? widgetSettings.user_message_text_color : widgetSettings.bot_message_text_color;
         
-        bubble.style.borderRadius = '18px';
+        bubble.style.borderRadius = `${widgetSettings.border_radius}px`;
         if (isUser) {
             bubble.style.borderBottomRightRadius = '4px';
         } else {

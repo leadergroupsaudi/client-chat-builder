@@ -33,6 +33,8 @@ const initialCustomizationState = {
   proactive_message: "Hello! Do you have any questions?",
   proactive_message_delay: 5,
   suggestions_enabled: false,
+  dark_mode: false,
+  typing_indicator_enabled: false,
   agent_id: 0
 };
 
@@ -243,6 +245,27 @@ export const AdvancedChatPreview = () => {
                   <Label htmlFor="border_radius">Border Radius ({customization.border_radius}px)</Label>
                   <Input id="border_radius" type="range" min="0" max="30" value={customization.border_radius} onChange={(e) => updateCustomization("border_radius", parseInt(e.target.value))} className="mt-2" />
                 </div>
+                <div>
+                  <Label htmlFor="font_family">Font Family</Label>
+                  <select id="font_family" value={customization.font_family} onChange={(e) => updateCustomization("font_family", e.target.value)} className="w-full mt-1 p-2 border rounded-md">
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Lato">Lato</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <Label>Dark Mode</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Enable a dark theme for the widget.
+                  </p>
+                </div>
+                <Switch
+                  checked={customization.dark_mode}
+                  onCheckedChange={(checked) => updateCustomization("dark_mode", checked)}
+                />
               </div>
             </TabsContent>
 
@@ -321,6 +344,18 @@ export const AdvancedChatPreview = () => {
                   onCheckedChange={(checked) => updateCustomization("suggestions_enabled", checked)}
                 />
               </div>
+              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <Label>Typing Indicator</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Show a typing indicator when the agent is responding.
+                  </p>
+                </div>
+                <Switch
+                  checked={customization.typing_indicator_enabled}
+                  onCheckedChange={(checked) => updateCustomization("typing_indicator_enabled", checked)}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -349,14 +384,22 @@ export const AdvancedChatPreview = () => {
                     </div>
                   )}
 
-                  <div className="flex-1 p-4 overflow-y-auto space-y-3">
+                  <div className="flex-1 p-4 overflow-y-auto space-y-3" style={{ backgroundColor: customization.dark_mode ? '#1a1a1a' : '#fff' }}>
                     {messages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                         <div
                           className={`max-w-xs px-3 py-2 rounded-lg text-sm`}
-                          style={msg.sender === "user" 
-                            ? { backgroundColor: customization.user_message_color, color: customization.user_message_text_color } 
-                            : { backgroundColor: customization.bot_message_color, color: customization.bot_message_text_color }}
+                          style={{
+                            backgroundColor: msg.sender === "user" 
+                              ? customization.user_message_color 
+                              : customization.bot_message_color,
+                            color: msg.sender === "user" 
+                              ? customization.user_message_text_color 
+                              : customization.bot_message_text_color,
+                            borderRadius: `${customization.border_radius}px`,
+                            borderBottomLeftRadius: msg.sender === "user" ? `${customization.border_radius}px` : '4px',
+                            borderBottomRightRadius: msg.sender === "user" ? '4px' : `${customization.border_radius}px`,
+                          }}
                         >
                           {msg.text}
                         </div>
