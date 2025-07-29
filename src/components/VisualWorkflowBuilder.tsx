@@ -251,7 +251,11 @@ const VisualWorkflowBuilder = () => {
         stepConfig.params = { ...node.data.params, options };
       } else if (node.type === 'condition') {
         stepConfig.tool = 'condition_tool';
-        stepConfig.params = { condition: node.data.condition };
+        stepConfig.params = { 
+          variable: node.data.variable,
+          operator: node.data.operator,
+          value: node.data.value
+        };
       } else if (node.type === 'knowledge') {
         stepConfig.tool = 'knowledge_retrieval_tool';
         stepConfig.params = {

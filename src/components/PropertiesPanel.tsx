@@ -278,12 +278,44 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
           <div style={sectionStyle}>
             <h3 style={{ fontSize: '16px', marginBottom: '15px', color: '#222' }}>Condition Logic</h3>
             <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>Condition Expression:</label>
-              <VariableInput
-                value={selectedNode.data.condition || ''}
-                onChange={(e) => updateNodeData({ condition: e.target.value })}
-                placeholder="e.g., {{context.variable}} == 'some_value'" 
-                availableVars={availableVariables}
+              <label style={labelStyle}>Variable:</label>
+              <select
+                value={selectedNode.data.variable || ''}
+                onChange={(e) => updateNodeData({ variable: e.target.value })}
+                style={commonInputStyle}
+              >
+                <option value="">Select a variable</option>
+                {availableVariables.map(v => (
+                  <option key={v.value} value={v.value}>{v.label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>Operator:</label>
+              <select
+                value={selectedNode.data.operator || 'equals'}
+                onChange={(e) => updateNodeData({ operator: e.target.value })}
+                style={commonInputStyle}
+              >
+                <option value="equals">Equals</option>
+                <option value="not_equals">Not Equals</option>
+                <option value="contains">Contains</option>
+                <option value="greater_than">Greater Than</option>
+                <option value="less_than">Less Than</option>
+                <option value="is_set">Is Set (Exists)</option>
+                <option value="is_not_set">Is Not Set (Doesn't Exist)</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={labelStyle}>Value:</label>
+              <input
+                type="text"
+                value={selectedNode.data.value || ''}
+                onChange={(e) => updateNodeData({ value: e.target.value })}
+                style={commonInputStyle}
+                placeholder="Value to compare against"
+                // Disable if operator doesn't need a value
+                disabled={['is_set', 'is_not_set'].includes(selectedNode.data.operator)}
               />
             </div>
           </div>
