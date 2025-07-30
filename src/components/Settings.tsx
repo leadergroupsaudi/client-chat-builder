@@ -22,6 +22,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { IntegrationsList } from "./IntegrationsList";
+import { ApiKeys } from "./ApiKeys";
+import { ProactiveMessageTester } from "./ProactiveMessageTester";
+import { ApiDocs } from "./ApiDocs";
 
 export const Settings = () => {
   const { toast } = useToast();
@@ -166,7 +169,7 @@ export const Settings = () => {
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          <TabsTrigger value="developer">Developer</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -426,48 +429,23 @@ export const Settings = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="advanced" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5" />
-                Advanced Configuration
-              </CardTitle>
-              <CardDescription>Advanced platform settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="apiKey">API Key</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    value="sk-1234567890abcdef"
-                    readOnly
-                    className="flex-1"
-                  />
-                  <Button variant="outline">Regenerate</Button>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="webhookUrl">Webhook URL</Label>
-                <Input
-                  id="webhookUrl"
-                  placeholder="https://your-app.com/webhook"
-                />
-              </div>
-
-              <div>
-                <Label>Data Export</Label>
-                <div className="flex gap-2 mt-2">
-                  <Button variant="outline">Export Conversations</Button>
-                  <Button variant="outline">Export Analytics</Button>
-                  <Button variant="outline">Export Users</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="developer" className="space-y-6">
+          <Tabs defaultValue="api-keys" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+              <TabsTrigger value="tester">Tester</TabsTrigger>
+              <TabsTrigger value="documentation">Documentation</TabsTrigger>
+            </TabsList>
+            <TabsContent value="api-keys">
+              <ApiKeys />
+            </TabsContent>
+            <TabsContent value="tester">
+              <ProactiveMessageTester />
+            </TabsContent>
+            <TabsContent value="documentation">
+              <ApiDocs />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
 
