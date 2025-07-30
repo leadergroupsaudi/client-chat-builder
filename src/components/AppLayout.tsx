@@ -21,10 +21,10 @@ import {
   Menu,
   X,
   Key,
-  BookOpen
+  BookOpen,
+  CreditCard
 } from "lucide-react";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
-import { useQuery } from "@tanstack/react-query";
 
 const sidebarItems = [
   { title: "Conversations", url: "/dashboard/conversations", icon: Inbox },
@@ -38,43 +38,15 @@ const sidebarItems = [
   { title: "Knowledge Bases", url: "/dashboard/knowledge-base/manage", icon: BookOpen },
   { title: "Tools", url: "/dashboard/tools", icon: Zap },
   { title: "Workflows", url: "/dashboard/workflows", icon: WorkflowIcon },
-  { title: "Subscription", url: "/dashboard/subscription", icon: Sparkles },
+  { title: "Billing", url: "/dashboard/billing", icon: CreditCard },
   { title: "User Management", url: "/dashboard/users", icon: Users },
+  { title: "Manage Plans", url: "/dashboard/admin/subscriptions", icon: Sparkles },
 ];
 
 const AppLayout = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { logout, isAuthenticated, companyId ,authFetch} = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
-  
-
-  // Fetch user details to determine admin status
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser', isAuthenticated, companyId],
-    queryFn: async () => {
-      if (!isAuthenticated || !companyId) return null;
-      const response = await authFetch("/api/v1/users/me");
-      if (!response.ok) {
-        throw new Error("Failed to fetch current user");
-      }
-      return response.json();
-    },
-    enabled: isAuthenticated && !!companyId,
-  });
-
-  useEffect(() => {
-    if (currentUser) {
-      setIsAdmin(currentUser.is_admin);
-    }
-  }, [currentUser]);
-
-  const filteredSidebarItems = sidebarItems.filter(item => {
-    if (item.title === "Subscription" || item.title === "User Management") {
-      return isAdmin;
-    }
-    return true;
-  });
+  const { logout } = useAuth();
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -132,7 +104,7 @@ const AppLayout = () => {
         <aside className={`w-64 flex-shrink-0 bg-white border-r transition-all duration-300 ${sidebarOpen ? '' : '-ml-64'}`}>
           <nav className="p-4 space-y-1 h-full flex flex-col">
             <div className="flex-1">
-              {filteredSidebarItems.map((item) => (
+              {sidebarItems.map((item) => (
                 <NavLink
                   key={item.url}
                   to={item.url}

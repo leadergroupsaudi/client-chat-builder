@@ -25,6 +25,7 @@ import KnowledgeBaseManagementPage from "./pages/KnowledgeBaseManagementPage";
 import WorkflowManagementPage from "./pages/WorkflowManagementPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { SubscriptionManagementPage } from "./pages/SubscriptionManagementPage";
+import ClientBillingPage from "./pages/ClientBillingPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
 import NotFound from "./pages/NotFound";
@@ -60,8 +61,9 @@ const App = () => (
                 <Route path="knowledge-base/manage" element={<KnowledgeBaseManagementPage />} />
                 <Route path="workflows" element={<WorkflowManagementPage />} />
                 <Route path="profile" element={<ProfilePage />} />
-                <Route path="subscription" element={<SubscriptionManagementPage />} />
+                <Route path="billing" element={<ClientBillingPage />} />
                 <Route path="users" element={<UserManagementPage />} />
+                <Route path="admin/subscriptions" element={<SubscriptionManagementPage />} />
               </Route>
             </Route>
             <Route path="/client-portal" element={<ProtectedRoute />}>
