@@ -51,7 +51,7 @@ const App = () => (
                 <Route path="conversations" element={<ConversationsPage />} />
                 <Route path="agents" element={<AgentsPage />} />
                 <Route path="builder" element={<BuilderPage />} />
-                <Route path="builder/:workflowId" element={<VisualWorkflowBuilder />} />
+                <Route path="builder/:agentId" element={<BuilderPage />} />
                 <Route path="designer" element={<DesignerPage />} />
                 <Route path="team" element={<TeamPage />} />
                 <Route path="reports" element={<ReportsPage />} />

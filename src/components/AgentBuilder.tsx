@@ -578,7 +578,7 @@ export const AgentBuilder = ({ agent, onSave, onCancel }: AgentBuilderProps) => 
             <TabsContent value="credentials" className="space-y-6">
               <h3 className="text-lg font-semibold">Credential Management</h3>
               <ResourceSelector
-                resources={credentials || []}
+                resources={(credentials || []).map(c => ({ ...c, name: `${c.name} (${c.service})` }))}
                 selectedIds={agentConfig.credential_id ? [agentConfig.credential_id] : []}
                 onSelect={(ids) => setAgentConfig({ ...agentConfig, credential_id: ids[0] })}
                 title="Select Credential"
