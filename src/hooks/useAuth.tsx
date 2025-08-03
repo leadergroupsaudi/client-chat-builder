@@ -6,6 +6,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   token: string | null;
   user: User | null;
+  companyId: number | null;
   isLoading: boolean;
   login: (token: string) => void;
   logout: () => void;
@@ -15,8 +16,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('accessToken'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('accessToken'));
   const [user, setUser] = useState<User | null>(null);
+  const [companyId, setCompanyId] = useState<number | null>(() => {
+    const storedCompanyId = localStorage.getItem('companyId');
+    return storedCompanyId ? parseInt(storedCompanyId, 10) : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -33,7 +38,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (response.status === 401) {
       setToken(null);
       setUser(null);
+      setCompanyId(null);
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('companyId');
       navigate('/login');
       throw new Error('Unauthorized');
     }
@@ -41,60 +48,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return response;
   }, [navigate]);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      const storedToken = localStorage.getItem('accessToken');
-      if (storedToken) {
-        setToken(storedToken);
-        try {
-          const response = await authFetch('/api/v1/users/me');
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          } else {
-            // Token is invalid
-            throw new Error('Invalid token');
+  const fetchAndSetUser = useCallback(async () => {
+    const storedToken = localStorage.getItem('accessToken');
+    if (storedToken) {
+      setToken(storedToken);
+      try {
+        const response = await authFetch('/api/v1/users/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+          if (userData.company_id) {
+            setCompanyId(userData.company_id);
+            localStorage.setItem('companyId', userData.company_id.toString());
           }
-        } catch (error) {
-          console.error("Failed to fetch user", error);
-          setToken(null);
-          localStorage.removeItem('accessToken');
+        } else {
+          throw new Error('Invalid token');
         }
+      } catch (error) {
+        console.error("Failed to fetch user", error);
+        setToken(null);
+        setUser(null);
+        setCompanyId(null);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('companyId');
       }
-      setIsLoading(false);
-    };
-
-    loadUser();
+    }
+    setIsLoading(false);
   }, [authFetch]);
+
+  useEffect(() => {
+    fetchAndSetUser();
+  }, [fetchAndSetUser]);
 
   const login = (newToken: string) => {
     setToken(newToken);
     localStorage.setItem('accessToken', newToken);
-    setIsLoading(true); // Start loading user info
-    const loadUser = async () => {
-        try {
-          const response = await authFetch('/api/v1/users/me');
-          if (response.ok) {
-            const userData = await response.json();
-            setUser(userData);
-          } else {
-            throw new Error('Invalid token');
-          }
-        } catch (error) {
-          console.error("Failed to fetch user on login", error);
-          setToken(null);
-          localStorage.removeItem('accessToken');
-        } finally {
-            setIsLoading(false);
-        }
-      };
-    loadUser();
+    setIsLoading(true);
+    fetchAndSetUser();
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
+    setCompanyId(null);
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('companyId');
     navigate('/login');
   };
 
@@ -102,6 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!token && !!user,
     token,
     user,
+    companyId,
     isLoading,
     login,
     logout,

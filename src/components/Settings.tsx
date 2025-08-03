@@ -16,7 +16,9 @@ import {
   Mail,
   Lock,
   Users,
-  Database
+  Database,
+  Building,
+  ChevronsUpDown
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
@@ -25,9 +27,15 @@ import { IntegrationsList } from "./IntegrationsList";
 import { ApiKeys } from "./ApiKeys";
 import { ProactiveMessageTester } from "./ProactiveMessageTester";
 import { ApiDocs } from "./ApiDocs";
+import { useQuery } from "@tanstack/react-query";
+import { Company } from "@/types";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
 
 export const Settings = () => {
   const { toast } = useToast();
+  const { user, companyId, setCompanyId, authFetch } = useAuth();
+
   const [settings, setSettings] = useState({
     companyName: "",
     supportEmail: "",
@@ -41,15 +49,29 @@ export const Settings = () => {
     emailNotifications: false,
     slackNotifications: false,
     autoAssignment: false,
+    logoUrl: "",
+    primaryColor: "",
+    secondaryColor: "",
+    customDomain: "",
+    maxFileSize: 10, // Initialize with default value
+    sessionTimeout: 30, // Initialize with default value
   });
 
-  const userId = 1; // Hardcoded user ID for now
-  const companyId = 1; // Hardcoded company ID for now
-  const { authFetch } = useAuth();
-  
+  const { data: companies } = useQuery<Company[]>({
+    queryKey: ['companies'],
+    queryFn: async () => {
+      const response = await authFetch(`/api/v1/companies/`);
+      if (!response.ok) throw new Error("Failed to fetch companies");
+      return response.json();
+    },
+    enabled: !!user?.is_super_admin,
+  });
+
+  const currentCompany = companies?.find(c => c.id === companyId);
 
   useEffect(() => {
     const fetchSettings = async () => {
+      if (!companyId) return;
       try {
         const [userResponse, companyResponse, notificationResponse] = await Promise.all([
           authFetch(`/api/v1/settings/`),
@@ -69,6 +91,10 @@ export const Settings = () => {
             timezone: companyData.timezone,
             language: companyData.language,
             businessHours: companyData.business_hours,
+            logoUrl: companyData.logo_url,
+            primaryColor: companyData.primary_color,
+            secondaryColor: companyData.secondary_color,
+            customDomain: companyData.custom_domain,
             emailNotifications: notificationData.email_notifications_enabled,
             slackNotifications: notificationData.slack_notifications_enabled,
             autoAssignment: notificationData.auto_assignment_enabled,
@@ -91,7 +117,7 @@ export const Settings = () => {
     };
 
     fetchSettings();
-  }, [userId, companyId, toast]);
+  }, [companyId, authFetch, toast]);
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -118,6 +144,10 @@ export const Settings = () => {
             timezone: settings.timezone,
             language: settings.language,
             business_hours: settings.businessHours,
+            logo_url: settings.logoUrl,
+            primary_color: settings.primaryColor,
+            secondary_color: settings.secondaryColor,
+            custom_domain: settings.customDomain,
           }),
         }),
         authFetch(`/api/v1/notification-settings/`, {
@@ -173,6 +203,35 @@ export const Settings = () => {
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
+          {user?.is_super_admin && companies && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Company Context</CardTitle>
+                <CardDescription>Switch between companies to manage their settings and data.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full md:w-1/2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        <span>{currentCompany?.name || "Select Company"}</span>
+                      </div>
+                      <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-full md:w-1/2">
+                    <DropdownMenuLabel>Switch Company</DropdownMenuLabel>
+                    {companies.map(c => (
+                      <DropdownMenuItem key={c.id} onSelect={() => setCompanyId(c.id)}>
+                        {c.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -376,6 +435,8 @@ export const Settings = () => {
                     id="maxFileSize"
                     type="number"
                     value="10"
+                    // value={maxFileSize}
+                    // onChange={(e) => setMaxFileSize(Number(e.target.value))}
                     className="w-32"
                   />
                 </div>
@@ -386,6 +447,8 @@ export const Settings = () => {
                     id="sessionTimeout"
                     type="number"
                     value="30"
+                    // value={settings.sessionTimeout}
+                    // onChange={(e) => handleSettingChange("sessionTimeout", Number(e.target.value))}
                     className="w-32"
                   />
                 </div>
@@ -424,6 +487,40 @@ export const Settings = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="logoUrl">Logo URL</Label>
+                <Input
+                  id="logoUrl"
+                  value={settings.logoUrl}
+                  onChange={(e) => handleSettingChange("logoUrl", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="primaryColor">Primary Color</Label>
+                <Input
+                  id="primaryColor"
+                  type="color"
+                  value={settings.primaryColor}
+                  onChange={(e) => handleSettingChange("primaryColor", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="secondaryColor">Secondary Color</Label>
+                <Input
+                  id="secondaryColor"
+                  type="color"
+                  value={settings.secondaryColor}
+                  onChange={(e) => handleSettingChange("secondaryColor", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="customDomain">Custom Domain</Label>
+                <Input
+                  id="customDomain"
+                  value={settings.customDomain}
+                  onChange={(e) => handleSettingChange("customDomain", e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>

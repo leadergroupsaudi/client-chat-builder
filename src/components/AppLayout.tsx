@@ -2,7 +2,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CircleUser } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -23,33 +23,35 @@ import {
   Key,
   BookOpen,
   CreditCard,
-  Mic
+  Mic,
+  Building
 } from "lucide-react";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
-
-const sidebarItems = [
-  { title: "Conversations", url: "/dashboard/conversations", icon: Inbox },
-  { title: "Agents", url: "/dashboard/agents", icon: Bot },
-  { title: "Agent Builder", url: "/dashboard/builder", icon: Settings },
-  { title: "Widget Designer", url: "/dashboard/designer", icon: Palette },
-  { title: "Team Management", url: "/dashboard/team", icon: Users },
-  { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
-  { title: "Settings", url: "/dashboard/settings", icon: FileText },
-  { title: "API Vault", url: "/dashboard/vault", icon: Key },
-  { title: "Knowledge Bases", url: "/dashboard/knowledge-base/manage", icon: BookOpen },
-  { title: "Tools", url: "/dashboard/tools", icon: Zap },
-  { title: "Workflows", url: "/dashboard/workflows", icon: WorkflowIcon },
-  { title: "Voices", url: "/dashboard/voices", icon: Mic },
-  { title: "Voice Lab", url: "/dashboard/voice-lab", icon: Mic },
-  { title: "Billing", url: "/dashboard/billing", icon: CreditCard },
-  { title: "User Management", url: "/dashboard/users", icon: Users },
-  { title: "Manage Plans", url: "/dashboard/admin/subscriptions", icon: Sparkles },
-];
+import { Permission } from "./Permission";
 
 const AppLayout = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  console.log("Logged in user:", user);
+
+  const sidebarItems = [
+    { title: "Conversations", url: "/dashboard/conversations", icon: Inbox, permission: "conversation:read" },
+    { title: "Agents", url: "/dashboard/agents", icon: Bot, permission: "agent:read" },
+    { title: "Agent Builder", url: "/dashboard/builder", icon: Settings, permission: "agent:update" },
+    { title: "Widget Designer", url: "/dashboard/designer", icon: Palette, permission: "company_settings:update" },
+    { title: "Team Management", url: "/dashboard/team", icon: Users, permission: "user:read" },
+    { title: "Reports", url: "/dashboard/reports", icon: BarChart3, permission: "analytics:read" },
+    { title: "Settings", url: "/dashboard/settings", icon: FileText, permission: "company_settings:update" },
+    { title: "API Vault", url: "/dashboard/vault", icon: Key, permission: "company_settings:update" },
+    { title: "Knowledge Bases", url: "/dashboard/knowledge-base/manage", icon: BookOpen, permission: "knowledgebase:read" },
+    { title: "Tools", url: "/dashboard/tools", icon: Zap, permission: "tool:read" },
+    { title: "Workflows", url: "/dashboard/workflows", icon: WorkflowIcon, permission: "workflow:read" },
+    { title: "Voice Lab", url: "/dashboard/voice-lab", icon: Mic, permission: "voice:create" }, 
+    { title: "Billing", url: "/dashboard/billing", icon: CreditCard, permission: "billing:manage" },
+    { title: "Manage Plans", url: "/dashboard/admin/subscriptions", icon: Sparkles, admin: true },
+    { title: "Companies", url: "/dashboard/companies", icon: Building, admin: true },
+  ];
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -74,13 +76,15 @@ const AppLayout = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                onClick={() => setIsCreateDialogOpen(true)} 
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Agent
-              </Button>
+              <Permission permission="agent:create">
+                <Button 
+                  onClick={() => setIsCreateDialogOpen(true)} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Agent
+                </Button>
+              </Permission>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="rounded-full">
@@ -108,20 +112,21 @@ const AppLayout = () => {
           <nav className="p-4 space-y-1 h-full flex flex-col">
             <div className="flex-1">
               {sidebarItems.map((item) => (
-                <NavLink
-                  key={item.url}
-                  to={item.url}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`
-                  }
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.title}</span>
-                </NavLink>
+                <Permission key={item.url} permission={item.permission}>
+                  <NavLink
+                    to={item.url}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.title}</span>
+                  </NavLink>
+                </Permission>
               ))}
             </div>
           </nav>

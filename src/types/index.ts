@@ -1,5 +1,5 @@
 export interface Session {
-  session_id: string;
+  conversation_id: string;
   status: string;
   assignee_id?: number;
   last_message_timestamp: string;
@@ -86,7 +86,9 @@ export interface User {
   phone_number?: string;
   job_title?: string;
   profile_picture_url?: string;
-  is_admin: boolean;
+  role_id?: number;
+  role?: Role;
+  is_super_admin?: boolean;
   last_login_at?: string;
   subscription_plan_id?: number;
   subscription_status?: string;

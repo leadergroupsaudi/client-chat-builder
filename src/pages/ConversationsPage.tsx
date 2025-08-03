@@ -110,7 +110,7 @@ const ConversationsPage: React.FC = () => {
           <CardContent>
             {isLoadingSessions ? <p>Loading...</p> : (
               <div className="flex flex-col space-y-2 overflow-y-auto">
-                {sessions && sessions.length > 0 ? sessions.slice(0,10).map((session) => {
+                {sessions && sessions.length > 0 ? sessions.filter(session => session.status === 'resolved' || session.status === 'archived'||  session.status === 'active').map((session) => {
                   console.log("Rendering session button for:", session);
                   return (
                   <Button

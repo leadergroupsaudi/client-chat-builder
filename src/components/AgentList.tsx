@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Agent } from "@/types";
+import { Agent, Session } from "@/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 
 import { useAuth } from "@/hooks/useAuth";
+import { ConversationDetail } from "./ConversationDetail";
 
 interface ChatMessage {
   id: number;
@@ -37,8 +38,9 @@ export const AgentList = () => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   console.log("AgentList Render - selectedAgent:", selectedAgent, "selectedSessionId:", selectedSessionId);
-  const companyId = 1; // Hardcoded company ID for now
-  const { authFetch } = useAuth(); 
+  console.log("Selected Agent after click:", selectedAgent);
+  const { authFetch, user } = useAuth();
+  const companyId = user?.company_id; // Get companyId from auth context 
 
   const { data: agents, isLoading, isError } = useQuery<Agent[]>({ queryKey: ['agents', companyId], queryFn: async () => {
     const response = await authFetch(`/api/v1/agents/`);
@@ -48,7 +50,7 @@ export const AgentList = () => {
     return response.json();
   }});
 
-  const { data: sessions, isLoading: isLoadingSessions } = useQuery<string[]>({ 
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery<Session[]>({ 
     queryKey: ['sessions', selectedAgent?.id, companyId], 
     queryFn: async () => {
       if (!selectedAgent) return [];
@@ -117,14 +119,17 @@ export const AgentList = () => {
   if (isLoading) return <div>Loading agents...</div>;
   if (isError) return <div>Error loading agents.</div>;
 
+  console.log("AgentList rendering with agents:", agents);
+  console.log("AgentList rendering with sessions:", sessions);
+
   return (
     <div className="space-y-4">
       {selectedAgent && selectedSessionId ? (
         <ConversationDetail
           agentId={selectedAgent.id}
           sessionId={selectedSessionId}
-          companyId={companyId}
-          onBack={() => setSelectedSessionId(null)}
+          // companyId={companyId}
+          // onBack={() => setSelectedSessionId(null)}
         />
       ) : selectedAgent ? (
         <div className="space-y-4">
@@ -136,11 +141,11 @@ export const AgentList = () => {
             <div>Loading conversations...</div>
           ) : sessions && sessions.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sessions.map((sessionId) => (
-                <Card key={sessionId} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedSessionId(sessionId)}>
+              {sessions.filter(session => session.conversation_id).map((session) => (
+                <Card key={session.conversation_id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedSessionId(session.conversation_id)}>
                   <CardHeader>
-                    <CardTitle className="text-lg">Session: {sessionId.substring(0, 8)}...</CardTitle>
-                    <CardDescription>Click to view messages</CardDescription>
+                    <CardTitle className="text-lg">Session: {session.conversation_id.substring(0, 8)}...</CardTitle>
+                    <CardDescription>Status: {session.status}</CardDescription>
                   </CardHeader>
                 </Card>
               ))}

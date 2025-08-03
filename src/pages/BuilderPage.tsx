@@ -1,7 +1,7 @@
 
 import { useAuth } from "@/hooks/useAuth";
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
 import { AgentBuilder } from "@/components/AgentBuilder";
@@ -11,14 +11,30 @@ import { toast } from "@/hooks/use-toast";
 import { History, PlusCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Comments } from "@/components/Comments";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const BuilderPage = () => {
   const { agentId } = useParams<{ agentId: string }>();
+  const navigate = useNavigate();
   const [isCreateAgentDialogOpen, setIsCreateAgentDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const companyId = localStorage.getItem("companyId");
   const { authFetch } = useAuth();
   const queryClient = useQueryClient();
+
+  const { data: agents, isLoading: isLoadingAgents } = useQuery<Agent[]>({
+    queryKey: ['agents', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const response = await authFetch(`/api/v1/agents/`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch agents');
+      }
+      return response.json();
+    },
+    enabled: !agentId,
+  });
 
   const { data: agent, isLoading, isError } = useQuery<Agent>({
     queryKey: ['agent', agentId, companyId],
@@ -122,13 +138,33 @@ const BuilderPage = () => {
       </div>
 
       {agentId && agent ? (
-        <AgentBuilder
-          agent={agent}
-          onSave={() => { /* Handle save, e.g., navigate back or show toast */ }}
-          onCancel={() => { /* Handle cancel, e.g., navigate back */ }}
-        />
+        <>
+          <AgentBuilder
+            agent={agent}
+            onSave={() => { /* Handle save, e.g., navigate back or show toast */ }}
+            onCancel={() => { /* Handle cancel, e.g., navigate back */ }}
+          />
+        </>
       ) : !agentId && (
-        <p>Select an agent from the list or create a new one to start building.</p>
+        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+          <p className="mb-4 text-lg text-gray-600">Select an agent to begin</p>
+          {isLoadingAgents ? (
+            <p>Loading agents...</p>
+          ) : (
+            <Select onValueChange={(value) => navigate(`/dashboard/builder/${value}`)}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Select an agent" />
+              </SelectTrigger>
+              <SelectContent>
+                {agents?.map((agent) => (
+                  <SelectItem key={agent.id} value={String(agent.id)}>
+                    {agent.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       )}
 
       <CreateAgentDialog

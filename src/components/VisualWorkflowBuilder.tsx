@@ -19,6 +19,7 @@ import PropertiesPanel from './PropertiesPanel';
 import { WorkflowDetailsDialog } from './WorkflowDetailsDialog';
 import { LlmNode, ToolNode, ConditionNode, OutputNode, StartNode, ListenNode, PromptNode, KnowledgeNode, CodeNode, DataManipulationNode, HttpRequestNode, FormNode } from './CustomNodes';
 import { useAuth } from "@/hooks/useAuth";
+import { Comments } from './Comments';
 
 const initialNodes = [
   { id: 'start-node', type: 'start', data: { label: 'Start' }, position: { x: 250, y: 5 } },
@@ -164,6 +165,9 @@ const VisualWorkflowBuilder = () => {
             </div>
             <div style={{ width: '300px', borderLeft: '1px solid #eee', background: '#fcfcfc' }}>
               <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} />
+              {workflow && workflow.id && (
+                <Comments workflowId={workflow.id} />
+              )}
             </div>
           </ReactFlowProvider>
         </div>

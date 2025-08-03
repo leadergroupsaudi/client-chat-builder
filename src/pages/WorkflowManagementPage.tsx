@@ -112,9 +112,17 @@ const WorkflowManagementPage = () => {
                   <AccordionTrigger className="p-4 hover:no-underline">
                     <div className="flex justify-between items-center w-full">
                         <span className="font-semibold text-lg">{workflow.name}</span>
-                        <Button size="sm" variant="ghost" onClick={(e) => {e.stopPropagation(); deleteWorkflow(workflow.id)}}>
+                        <div
+                            role="button"
+                            aria-label="Delete workflow"
+                            className="p-2 rounded-full hover:bg-gray-100"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteWorkflow(workflow.id);
+                            }}
+                        >
                             <Trash2 className="h-4 w-4 text-red-500"/>
-                        </Button>
+                        </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="p-4 border-t">
@@ -137,7 +145,7 @@ const WorkflowManagementPage = () => {
                             ) : (
                               <Badge variant="secondary">Inactive</Badge>
                             )}
-                            <Button size="sm" variant="outline" onClick={() => navigate(`/dashboard/builder/${version.id}`)}>
+                            <Button size="sm" variant="outline" onClick={() => navigate(`/dashboard/workflows/${version.id}`)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </Button>

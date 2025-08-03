@@ -12,13 +12,12 @@ export const ProtectedRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // This logic assumes that you want to redirect non-admins away from the main dashboard routes.
-  // Adjust the condition based on your application's specific routing rules.
-  // For example, if you are on a route that is NOT the client portal, and you are not an admin, redirect.
-  if (window.location.pathname.startsWith('/dashboard') && user && !user.is_admin) {
+  // Redirect non-admins away from the main dashboard.
+  // The "Client" role should be redirected to the client portal.
+  const isClient = user?.role?.name === 'Client';
+  if (window.location.pathname.startsWith('/dashboard') && isClient) {
     return <Navigate to="/client-portal" replace />;
   }
-
 
   return <Outlet />;
 };
