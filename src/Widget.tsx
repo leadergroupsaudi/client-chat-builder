@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageSquare, X, Mic, Send, Loader2, Bot, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetForm } from '@/components/WidgetForm';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Type definitions
 interface WidgetProps {
@@ -66,6 +68,7 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isUsingTool, setIsUsingTool] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [activeForm, setActiveForm] = useState<any[] | null>(null);
   
@@ -136,8 +139,18 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
             setIsTyping(data.is_typing);
             return;
         }
+
+        if (data.message_type === 'tool_use') {
+            setIsUsingTool(true);
+            // Optionally, you can display which tool is being used
+            // const toolName = data.tool_call?.function?.name;
+            // console.log(`Agent is using tool: ${toolName}`);
+            return;
+        }
         
         setIsTyping(false);
+        setIsUsingTool(false); // A new message arrived, so the tool is no longer in use.
+
         const newMessage: Message = {
           id: data.id || `msg-${Date.now()}`,
           sender: data.sender,
@@ -270,12 +283,22 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  <p className="text-sm break-words">{msg.text}</p>
+                  <div className="prose prose-sm dark:prose-invert max-w-full">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline" />
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  </div>
                   {msg.type === 'video_call_invitation' && (<Button onClick={() => window.open(msg.videoCallUrl, '_blank', 'width=800,height=600')} className="mt-2 w-full" style={{backgroundColor: primary_color, color: 'white'}}>Join Video Call</Button>)}
                 </div>
               </div>
             ))}
             {isTyping && <div className="text-sm text-gray-500 italic px-2">Agent is typing...</div>}
+            {isUsingTool && <div className="text-sm text-gray-500 italic px-2">Using a tool...</div>}
             <div ref={messagesEndRef} />
           </div>
           {activeForm ? (<WidgetForm fields={activeForm} onSubmit={handleFormSubmit} primaryColor={primary_color} darkMode={dark_mode} />) : (

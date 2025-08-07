@@ -65,8 +65,10 @@ export interface Tool {
   id: number;
   name: string;
   description?: string;
-  parameters: any; // JSON schema
-  code: string;
+  tool_type: "custom" | "mcp";
+  parameters?: any; // JSON schema
+  code?: string;
+  mcp_server_url?: string;
   configuration?: any;
 }
 
@@ -144,4 +146,34 @@ export interface OptimizationSuggestion {
   company_id: number;
   details?: Record<string, any>;
   created_at: string;
+}
+
+export interface NotificationSettings {
+  id: number;
+  user_id: number;
+  email_notifications: boolean;
+  push_notifications: boolean;
+  notification_types?: Record<string, boolean>;
+}
+
+export interface CompanySettings {
+  id: number;
+  company_id: number;
+  setting_key: string;
+  setting_value: string;
+}
+
+export interface WidgetSettings {
+  id: number;
+  agent_id: number;
+  widget_title: string;
+  widget_color: string;
+  welcome_message: string;
+  is_open_by_default: boolean;
+  show_on_mobile: boolean;
+  show_on_desktop: boolean;
+  custom_css?: string;
+  custom_icon_url?: string;
+  typing_indicator_enabled: boolean;
+  response_delay_ms: number;
 }

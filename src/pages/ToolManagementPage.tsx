@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tool, PreBuiltConnector } from "@/types";
+import { Tool } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Edit, Search, Settings, Play } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Trash2, Edit, Search, Play } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -14,7 +14,6 @@ const ToolManagementPage = () => {
   const queryClient = useQueryClient();
   const companyId = 1; // Hardcoded for now
   const { authFetch } = useAuth();
-  
 
   const { data: tools, isLoading: isLoadingTools } = useQuery<Tool[]>({ queryKey: ['tools', companyId], queryFn: async () => {
     const response = await authFetch(`/api/v1/tools/`);
@@ -24,16 +23,8 @@ const ToolManagementPage = () => {
     return response.json();
   }});
 
-  const { data: preBuiltConnectors, isLoading: isLoadingPreBuiltConnectors } = useQuery<Record<string, PreBuiltConnector>>({ queryKey: ['preBuiltConnectors'], queryFn: async () => {
-    const response = await authFetch(`/api/v1/pre-built-connectors`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch pre-built connectors");
-    }
-    return response.json();
-  }});
-
   const createToolMutation = useMutation({
-    mutationFn: async (newTool: Partial<Tool> & { pre_built_connector_name?: string }) => {
+    mutationFn: async (newTool: Partial<Tool>) => {
       const response = await authFetch(`/api/v1/tools/`, {
         method: "POST",
         headers: {
@@ -87,8 +78,6 @@ const ToolManagementPage = () => {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isMarketplaceDialogOpen, setIsMarketplaceDialogOpen] = useState(false);
-  const [isConfigureDialogOpen, setIsConfigureDialogOpen] = useState(false);
   const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,50 +87,88 @@ const ToolManagementPage = () => {
     tool.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const [creationStep, setCreationStep] = useState<'initial' | 'custom' | 'mcp'>('initial');
+
   const handleCreate = (newTool: Omit<Tool, 'id'>) => {
-    createToolMutation.mutate(newTool);
-    setIsCreateDialogOpen(false);
+    createToolMutation.mutate(newTool, {
+      onSuccess: () => {
+        setIsCreateDialogOpen(false);
+        setCreationStep('initial');
+      }
+    });
   };
 
   const handleUpdate = (updatedTool: Tool) => {
-    updateToolMutation.mutate(updatedTool);
-    setIsEditDialogOpen(false);
-    setIsConfigureDialogOpen(false);
+    updateToolMutation.mutate(updatedTool, {
+      onSuccess: () => {
+        setIsEditDialogOpen(false);
+      }
+    });
   };
-  
-  const handleInstallConnector = (connectorName: string) => {
-    createToolMutation.mutate({ pre_built_connector_name: connectorName });
-  };
+
+  const resetCreationFlow = () => {
+    setCreationStep('initial');
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Tool Management</h1>
         <div className="flex gap-2">
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <Dialog open={isCreateDialogOpen} onOpenChange={(isOpen) => {
+            setIsCreateDialogOpen(isOpen);
+            if (!isOpen) {
+              resetCreationFlow();
+            }
+          }}>
             <DialogTrigger asChild>
               <Button> <Plus className="mr-2 h-4 w-4" /> Create Tool</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Create New Tool</DialogTitle>
+                <DialogTitle>Create a New Tool</DialogTitle>
+                <DialogDescription>
+                  Select the type of tool you want to create. Each type serves a different purpose.
+                </DialogDescription>
               </DialogHeader>
-              <ToolForm onSubmit={handleCreate} />
-            </DialogContent>
-          </Dialog>
-          <Dialog open={isMarketplaceDialogOpen} onOpenChange={setIsMarketplaceDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline"> <Search className="mr-2 h-4 w-4" /> Browse Marketplace</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>Tool Marketplace</DialogTitle>
-              </DialogHeader>
-              <Marketplace
-                connectors={preBuiltConnectors || {}}
-                onInstall={handleInstallConnector}
-                isLoading={isLoadingPreBuiltConnectors}
-              />
+              {creationStep === 'initial' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                  <div
+                    className="group relative p-6 border rounded-lg hover:bg-muted/50 transition-all cursor-pointer"
+                    onClick={() => setCreationStep('custom')}
+                  >
+                    <div className="flex flex-col items-start gap-3">
+                      <div className="bg-muted p-3 rounded-lg">
+                        <Edit className="h-6 w-6 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-semibold">Custom Tool</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Write your own Python code to perform any action. Best for unique, internal logic.
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className="group relative p-6 border rounded-lg hover:bg-muted/50 transition-all cursor-pointer"
+                    onClick={() => setCreationStep('mcp')}
+                  >
+                    <div className="flex flex-col items-start gap-3">
+                      <div className="bg-muted p-3 rounded-lg">
+                        <Search className="h-6 w-6 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-semibold">MCP Connection</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Connect to an external MCP server to use its library of pre-built tools.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {creationStep === 'custom' && (
+                <ToolForm onSubmit={handleCreate} onBack={resetCreationFlow} />
+              )}
+              {creationStep === 'mcp' && (
+                <McpToolForm onSubmit={handleCreate} onBack={resetCreationFlow} />
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -164,60 +191,52 @@ const ToolManagementPage = () => {
             filteredTools?.map((tool) => (
               <div key={tool.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
-                  <h4 className="font-semibold">{tool.name} {tool.code === "" && <span className="text-xs text-gray-500">(Marketplace)</span>}</h4>
+                  <h4 className="font-semibold flex items-center gap-2">
+                    {tool.name}
+                    <span className="text-xs font-normal bg-secondary text-secondary-foreground py-0.5 px-2 rounded-full">
+                      {tool.tool_type === 'mcp' ? 'MCP Connection' : 'Custom'}
+                    </span>
+                  </h4>
                   <p className="text-sm text-gray-500">{tool.description}</p>
+                  {tool.tool_type === 'mcp' && (
+                    <p className="text-xs text-gray-400 mt-1">{tool.mcp_server_url}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {tool.code === "" && (
-                  <Dialog open={isConfigureDialogOpen && selectedTool?.id === tool.id} onOpenChange={(isOpen) => {
-                    if (!isOpen) {
-                      setSelectedTool(null);
-                    }
-                    setIsConfigureDialogOpen(isOpen);
-                  }}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => setSelectedTool(tool)}><Settings className="h-4 w-4" /></Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Configure {tool.name}</DialogTitle>
-                      </DialogHeader>
-                      <ConfigurationForm tool={tool} onSubmit={(values) => handleUpdate({ ...tool, ...values })} />
-                    </DialogContent>
-                  </Dialog>
+                    <Dialog open={isEditDialogOpen && selectedTool?.id === tool.id} onOpenChange={(isOpen) => {
+                        if (!isOpen) setSelectedTool(null);
+                        setIsEditDialogOpen(isOpen);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" onClick={() => setSelectedTool(tool)}><Edit className="h-4 w-4" /></Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit {tool.tool_type === 'mcp' ? 'Connection' : 'Tool'}</DialogTitle>
+                          </DialogHeader>
+                          {tool.tool_type === 'custom' ? (
+                            <ToolForm tool={tool} onSubmit={(values) => handleUpdate({ ...tool, ...values })} onBack={() => setIsEditDialogOpen(false)} />
+                          ) : (
+                            <McpToolForm tool={tool} onSubmit={(values) => handleUpdate({ ...tool, ...values })} onBack={() => setIsEditDialogOpen(false)} />
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                  {tool.tool_type === 'custom' && (
+                      <Dialog open={isTestDialogOpen && selectedTool?.id === tool.id} onOpenChange={(isOpen) => {
+                        if (!isOpen) setSelectedTool(null);
+                        setIsTestDialogOpen(isOpen);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" onClick={() => setSelectedTool(tool)}><Play className="h-4 w-4" /></Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Test {tool.name}</DialogTitle>
+                          </DialogHeader>
+                          <TestToolDialog tool={tool} companyId={companyId} />
+                        </DialogContent>
+                      </Dialog>
                   )}
-                  <Dialog open={isEditDialogOpen && selectedTool?.id === tool.id} onOpenChange={(isOpen) => {
-                    if (!isOpen) {
-                      setSelectedTool(null);
-                    }
-                    setIsEditDialogOpen(isOpen);
-                  }}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => setSelectedTool(tool)}><Edit className="h-4 w-4" /></Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Edit Tool</DialogTitle>
-                      </DialogHeader>
-                      <ToolForm tool={tool} onSubmit={(values) => handleUpdate({ ...tool, ...values })} />
-                    </DialogContent>
-                  </Dialog>
-                  <Dialog open={isTestDialogOpen && selectedTool?.id === tool.id} onOpenChange={(isOpen) => {
-                    if (!isOpen) {
-                      setSelectedTool(null);
-                    }
-                    setIsTestDialogOpen(isOpen);
-                  }}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" onClick={() => setSelectedTool(tool)}><Play className="h-4 w-4" /></Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Test {tool.name}</DialogTitle>
-                      </DialogHeader>
-                      <TestToolDialog tool={tool} companyId={companyId} />
-                    </DialogContent>
-                  </Dialog>
                   <Button variant="destructive" onClick={() => deleteToolMutation.mutate(tool.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -231,30 +250,8 @@ const ToolManagementPage = () => {
   );
 };
 
-const ToolForm = ({ tool, onSubmit }: { tool?: Tool, onSubmit: (values: any) => void }) => {
-  const [values, setValues] = useState(tool || { name: "", description: "", code: "", parameters: { type: "object", properties: {}, required: [] } });
-
-  const handleParameterChange = (index, field, value) => {
-    const newProperties = { ...values.parameters.properties };
-    const key = Object.keys(newProperties)[index];
-    newProperties[key][field] = value;
-    setValues({ ...values, parameters: { ...values.parameters, properties: newProperties } });
-  };
-
-  const addParameter = () => {
-    const newParamName = `param${Object.keys(values.parameters.properties).length + 1}`;
-    const newProperties = { ...values.parameters.properties, [newParamName]: { type: "string", description: "" } };
-    const newRequired = [...values.parameters.required, newParamName];
-    setValues({ ...values, parameters: { ...values.parameters, properties: newProperties, required: newRequired } });
-  };
-
-  const removeParameter = (index) => {
-    const newProperties = { ...values.parameters.properties };
-    const key = Object.keys(newProperties)[index];
-    delete newProperties[key];
-    const newRequired = values.parameters.required.filter(p => p !== key);
-    setValues({ ...values, parameters: { ...values.parameters, properties: newProperties, required: newRequired } });
-  };
+const ToolForm = ({ tool, onSubmit, onBack }: { tool?: Tool, onSubmit: (values: any) => void, onBack: () => void }) => {
+  const [values, setValues] = useState(tool || { name: "", description: "", code: "", parameters: { type: "object", properties: {}, required: [] }, tool_type: "custom" });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,11 +259,12 @@ const ToolForm = ({ tool, onSubmit }: { tool?: Tool, onSubmit: (values: any) => 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 pt-4">
       <Input
         placeholder="Tool Name"
         value={values.name}
         onChange={(e) => setValues({ ...values, name: e.target.value })}
+        required
       />
       <Textarea
         placeholder="Description"
@@ -274,71 +272,107 @@ const ToolForm = ({ tool, onSubmit }: { tool?: Tool, onSubmit: (values: any) => 
         onChange={(e) => setValues({ ...values, description: e.target.value })}
       />
       <Textarea
-        placeholder="Code"
+        placeholder="Enter Python code here..."
         value={values.code}
         onChange={(e) => setValues({ ...values, code: e.target.value })}
         rows={10}
+        className="font-mono"
       />
-      <div>
-        <Label>Parameters</Label>
-        {Object.keys(values.parameters.properties).map((key, index) => (
-          <div key={index} className="flex items-center gap-2 p-2 border rounded-lg">
-            <Input
-              placeholder="Name"
-              value={key}
-              disabled // Editing the name directly is complex, so we disable it for now
-            />
-            <Input
-              placeholder="Description"
-              value={values.parameters.properties[key].description}
-              onChange={(e) => handleParameterChange(index, "description", e.target.value)}
-            />
-            <select
-              value={values.parameters.properties[key].type}
-              onChange={(e) => handleParameterChange(index, "type", e.target.value)}
-            >
-              <option value="string">string</option>
-              <option value="number">number</option>
-              <option value="boolean">boolean</option>
-            </select>
-            <Button type="button" variant="destructive" onClick={() => removeParameter(index)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-        <Button type="button" variant="outline" onClick={addParameter} className="mt-2">
-          <Plus className="mr-2 h-4 w-4" /> Add Parameter
+      {/* A simplified parameter editor could be added here in the future */}
+      <div className="flex justify-between">
+        <Button type="button" variant="ghost" onClick={onBack}>Back</Button>
+        <Button type="submit">
+          {tool ? "Update Tool" : "Create Tool"}
         </Button>
       </div>
-      <Button type="submit">
-        {tool ? "Update" : "Create"}
-      </Button>
     </form>
   );
 };
 
-const ConfigurationForm = ({ tool, onSubmit }: { tool: Tool, onSubmit: (values: any) => void }) => {
-  const [config, setConfig] = useState(tool.configuration || {});
+const McpToolForm = ({ tool, onSubmit, onBack }: { tool?: Tool, onSubmit: (values: any) => void, onBack: () => void }) => {
+  const [name, setName] = useState(tool?.name || "");
+  const [description, setDescription] = useState(tool?.description || "");
+  const [url, setUrl] = useState(tool?.mcp_server_url || "");
+  const [inspected, setInspected] = useState(!!tool); // If we are editing, assume it was inspected.
+  const { authFetch } = useAuth();
+
+  const { mutate: inspect, data: inspectData, error: inspectError, isPending: isInspecting } = useMutation({
+    mutationFn: async (urlToInspect: string) => {
+      const response = await authFetch(`/api/v1/mcp/inspect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlToInspect }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to inspect MCP server');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setInspected(true);
+    }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({ configuration: config });
+    onSubmit({
+      name,
+      description,
+      mcp_server_url: url,
+      tool_type: "mcp",
+    });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {Object.keys(tool.parameters).map((paramName) => (
-        <div key={paramName}>
-          <Label htmlFor={paramName}>{tool.parameters[paramName].description}</Label>
-          <Input
-            id={paramName}
-            type={tool.parameters[paramName].type === "integer" ? "number" : "text"}
-            value={config[paramName] || ""}
-            onChange={(e) => setConfig({ ...config, [paramName]: e.target.value })}
-          />
+    <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+      <Input
+        placeholder="Connection Name (e.g., My Internal Tools)"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <Textarea
+        placeholder="Description of this MCP connection"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
+      <div className="flex items-start gap-2">
+        <Input
+          placeholder="MCP Server URL"
+          value={url}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            setInspected(false); // Reset inspected status if URL changes
+          }}
+          required
+          type="url"
+        />
+        <Button type="button" onClick={() => inspect(url)} disabled={isInspecting || !url}>
+          {isInspecting ? "Inspecting..." : "Test & Inspect"}
+        </Button>
+      </div>
+
+      {inspectData && inspected && (
+        <div className="p-4 border bg-green-50 border-green-200 rounded-lg">
+          <h4 className="font-semibold text-green-800">Inspection Successful!</h4>
+          <p className="text-sm text-green-700">Found {inspectData.tools.length} tools on this server.</p>
         </div>
-      ))}
-      <Button type="submit">Save Configuration</Button>
+      )}
+
+      {inspectError && (
+         <div className="p-4 border bg-red-50 border-red-200 rounded-lg">
+          <h4 className="font-semibold text-red-800">Inspection Failed</h4>
+          <p className="text-sm text-red-700">{inspectError.message}</p>
+        </div>
+      )}
+
+      <div className="flex justify-between">
+        <Button type="button" variant="ghost" onClick={onBack}>Back</Button>
+        <Button type="submit" disabled={!inspected && !tool}>
+          {tool ? "Update Connection" : "Create Connection"}
+        </Button>
+      </div>
     </form>
   );
 };
@@ -384,7 +418,7 @@ const TestToolDialog = ({ tool, companyId }: { tool: Tool, companyId: number }) 
   return (
     <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {Object.keys(tool.parameters).map((paramName) => (
+        {tool.parameters && Object.keys(tool.parameters).map((paramName) => (
           <div key={paramName}>
             <Label htmlFor={paramName}>{tool.parameters[paramName].description}</Label>
             <Input
@@ -406,39 +440,6 @@ const TestToolDialog = ({ tool, companyId }: { tool: Tool, companyId: number }) 
             {JSON.stringify(result, null, 2)}
           </pre>
         </div>
-      )}
-    </div>
-  );
-};
-
-const Marketplace = ({ connectors, onInstall, isLoading }: { connectors: Record<string, PreBuiltConnector>, onInstall: (name: string) => void, isLoading: boolean }) => {
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const filteredConnectors = Object.entries(connectors).filter(([_, connector]) =>
-    connector.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    connector.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="space-y-4">
-      <Input
-        placeholder="Search marketplace..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4"
-      />
-      {isLoading ? (
-        <p>Loading marketplace...</p>
-      ) : (
-        filteredConnectors.map(([name, connector]) => (
-          <div key={name} className="flex items-center justify-between p-4 border rounded-lg">
-            <div>
-              <h4 className="font-semibold">{connector.name}</h4>
-              <p className="text-sm text-gray-500">{connector.description}</p>
-            </div>
-            <Button onClick={() => onInstall(name)}>Install</Button>
-          </div>
-        ))
       )}
     </div>
   );
