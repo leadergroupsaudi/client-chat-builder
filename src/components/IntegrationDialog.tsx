@@ -261,6 +261,40 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
             </div>
           </>
         );
+      case 'linkedin':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label>Connect to LinkedIn</Label>
+              <Button
+                onClick={async () => {
+                  try {
+                    const response = await authFetch('/api/v1/config/linkedin-client-id');
+                    if (!response.ok) {
+                      throw new Error('Failed to fetch LinkedIn Client ID');
+                    }
+                    const { client_id } = await response.json();
+                    
+                    const redirectUri = `${window.location.origin}/linkedin-callback`;
+                    const scope = "openid profile email"; // Updated to OIDC scopes
+                    const state = "DCEeFWf45A53sdfKef424"; // Should be a random, unique string
+                    const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${client_id}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
+                    
+                    const width = 600, height = 600;
+                    const left = (window.innerWidth / 2) - (width / 2);
+                    const top = (window.innerHeight / 2) - (height / 2);
+                    
+                    window.open(linkedInAuthUrl, 'LinkedIn', `width=${width},height=${height},top=${top},left=${left}`);
+                  } catch (error) {
+                    toast({ title: 'Error', description: 'Could not initiate LinkedIn connection.', variant: 'destructive' });
+                  }
+                }}
+              >
+                Connect with LinkedIn
+              </Button>
+            </div>
+          </>
+        );
       default:
         return null;
     }
@@ -289,6 +323,7 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
                 <SelectItem value="instagram">Instagram</SelectItem>
                 <SelectItem value="gmail">Gmail</SelectItem>
                 <SelectItem value="telegram">Telegram</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
               </SelectContent>
             </Select>
           </div>

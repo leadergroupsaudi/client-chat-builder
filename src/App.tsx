@@ -35,6 +35,7 @@ import VoiceLabPage from "./pages/VoiceLabPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
 import { useAuth } from "./hooks/useAuth";
 import WorkflowBuilderPage from "./pages/WorkflowBuilderPage";
+import { LinkedInCallback } from "./pages/LinkedInCallback";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const AppRoutes = () => {
       </Route>
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/video-call" element={<UserVideoCallPage />} />
+      <Route path="/linkedin-callback" element={<LinkedInCallback />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

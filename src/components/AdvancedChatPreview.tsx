@@ -13,6 +13,7 @@ import { Button } from "./ui/button";
 import { Bot, Loader2, MessageSquare, Mic, Send, User, X } from "lucide-react";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
+import { Agent } from "@/types";
 
 const initialCustomizationState = {
   primary_color: "#3B82F6",
