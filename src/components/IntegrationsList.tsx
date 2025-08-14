@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,23 @@ export const IntegrationsList: React.FC = () => {
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const { authFetch } = useAuth();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+      if (event.data === 'linkedin-success' || event.data === 'google-success') {
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
+        toast({ title: 'Success', description: 'Integration connected successfully.' });
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [queryClient]);
 
   const { data: integrations, isLoading } = useQuery<Integration[]>({
     queryKey: ['integrations'],

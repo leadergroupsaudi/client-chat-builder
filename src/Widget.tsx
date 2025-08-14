@@ -161,12 +161,15 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
           fields: data.fields,
           videoCallUrl: data.message_type === 'video_call_invitation' ? `${settings?.frontend_url}/video-call?token=${data.token}&livekitUrl=${encodeURIComponent(settings?.livekit_url || '')}&sessionId=${newSessionId}` : undefined
         };
-        if (data.message_type === 'form') setActiveForm(data.fields);
         
         setMessages(prev => {
             if (prev.find(msg => msg.id === newMessage.id)) return prev;
             return [...prev, newMessage];
         });
+
+        if (data.message_type === 'form') {
+          setActiveForm(data.fields);
+        }
       };
 
       const voiceUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${agentId}/${newSessionId}?user_type=user&voice_id=${settings?.voice_id || 'default'}&stt_provider=${settings?.stt_provider || 'groq'}`;
@@ -293,6 +296,21 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
                       {msg.text}
                     </ReactMarkdown>
                   </div>
+                  {msg.options && msg.options.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {msg.options.map((option, index) => (
+                        <Button
+                          key={index}
+                          onClick={() => handleSendMessage(option)}
+                          variant="outline"
+                          size="sm"
+                          className={cn('rounded-full', dark_mode ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' : 'bg-gray-100 hover:bg-gray-200 border-gray-300')}
+                        >
+                          {option}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   {msg.type === 'video_call_invitation' && (<Button onClick={() => window.open(msg.videoCallUrl, '_blank', 'width=800,height=600')} className="mt-2 w-full" style={{backgroundColor: primary_color, color: 'white'}}>Join Video Call</Button>)}
                 </div>
               </div>

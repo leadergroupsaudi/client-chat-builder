@@ -94,10 +94,21 @@ const VisualWorkflowBuilder = () => {
   const onDrop = useCallback((event) => {
     event.preventDefault();
     if (!reactFlowInstance) return;
+    
     const type = event.dataTransfer.getData('application/reactflow');
+    const dataString = event.dataTransfer.getData('application/reactflow-data');
+    const data = dataString ? JSON.parse(dataString) : { label: `${type} node` };
+
     if (typeof type === 'undefined' || !type) return;
+    
     const position = reactFlowInstance.screenToFlowPosition({ x: event.clientX, y: event.clientY });
-    const newNode = { id: `${type}-${+new Date()}`, type, position, data: { label: `${type} node` } };
+    const newNode = { 
+      id: `${type}-${+new Date()}`, 
+      type, 
+      position, 
+      data
+    };
+    
     setNodes((nds) => nds.concat(newNode));
   }, [reactFlowInstance, setNodes]);
   const onNodeClick = useCallback((_, node) => setSelectedNode(node), []);

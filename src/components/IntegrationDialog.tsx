@@ -295,6 +295,70 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
             </div>
           </>
         );
+      case 'google_calendar':
+        return (
+          <div className="space-y-2">
+            <Label>Connect to Google Calendar</Label>
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await authFetch('/api/v1/config/google-client-id');
+                  if (!response.ok) {
+                    throw new Error('Failed to fetch Google Client ID');
+                  }
+                  const { client_id } = await response.json();
+                  
+                  const redirectUri = `${window.location.origin}/api/v1/calendar/google/callback`;
+                  const scope = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email";
+                  const state = "some_random_state_string"; // Should be a random, unique string
+                  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${client_id}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
+                  
+                  const width = 600, height = 600;
+                  const left = (window.innerWidth / 2) - (width / 2);
+                  const top = (window.innerHeight / 2) - (height / 2);
+                  
+                  window.open(googleAuthUrl, 'Google', `width=${width},height=${height},top=${top},left=${left}`);
+                } catch (error) {
+                  toast({ title: 'Error', description: 'Could not initiate Google connection.', variant: 'destructive' });
+                }
+              }}
+            >
+              Connect with Google
+            </Button>
+          </div>
+        );
+      case 'm365_calendar':
+        return (
+          <div className="space-y-2">
+            <Label>Connect to Microsoft 365 Calendar</Label>
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await authFetch('/api/v1/config/m365-client-id');
+                  if (!response.ok) {
+                    throw new Error('Failed to fetch Microsoft 365 Client ID');
+                  }
+                  const { client_id } = await response.json();
+                  
+                  const redirectUri = `${window.location.origin}/api/v1/teams-calendar/callback`;
+                  const scope = "https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/User.Read offline_access";
+                  const state = "some_random_state_string_m365"; // Should be a random, unique string
+                  const m365AuthUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code&client_id=${client_id}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}&response_mode=query`;
+                  
+                  const width = 600, height = 600;
+                  const left = (window.innerWidth / 2) - (width / 2);
+                  const top = (window.innerHeight / 2) - (height / 2);
+                  
+                  window.open(m365AuthUrl, 'Microsoft', `width=${width},height=${height},top=${top},left=${left}`);
+                } catch (error) {
+                  toast({ title: 'Error', description: 'Could not initiate Microsoft 365 connection.', variant: 'destructive' });
+                }
+              }}
+            >
+              Connect with Microsoft
+            </Button>
+          </div>
+        );
       default:
         return null;
     }
@@ -324,6 +388,8 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
                 <SelectItem value="gmail">Gmail</SelectItem>
                 <SelectItem value="telegram">Telegram</SelectItem>
                 <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="google_calendar">Google Calendar</SelectItem>
+                <SelectItem value="m365_calendar">Microsoft 365 Calendar</SelectItem>
               </SelectContent>
             </Select>
           </div>
