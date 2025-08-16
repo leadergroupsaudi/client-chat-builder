@@ -1,4 +1,7 @@
-
+import { useState } from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -9,23 +12,66 @@ import {
   MessageSquare,
   Users,
   Star,
-  Calendar,
   Download,
   Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 
+function DatePicker({ date, setDate, placeholder }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className={cn(
+            "w-[280px] justify-start text-left font-normal",
+            !date && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export const Reports = () => {
   const { authFetch, companyId } = useAuth();
+  const [dateRange, setDateRange] = useState({
+    from: new Date(2024, 0, 1),
+    to: new Date(2024, 11, 31),
+  });
+
+  const buildUrl = (baseUrl) => {
+    const params = new URLSearchParams();
+    if (dateRange.from) params.append("start_date", format(dateRange.from, "yyyy-MM-dd"));
+    if (dateRange.to) params.append("end_date", format(dateRange.to, "yyyy-MM-dd"));
+    return `${baseUrl}?${params.toString()}`;
+  }
 
   const { data: metricsData, isLoading: isLoadingMetrics, isError: isErrorMetrics } = useQuery({
-    queryKey: ['overallMetrics', companyId],
+    queryKey: ['overallMetrics', companyId, dateRange],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`/api/v1/reports/metrics?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(buildUrl(`/api/v1/reports/metrics`), {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -39,10 +85,10 @@ export const Reports = () => {
   });
 
   const { data: agentPerformanceData, isLoading: isLoadingAgentPerformance, isError: isErrorAgentPerformance } = useQuery({
-    queryKey: ['agentPerformance', companyId],
+    queryKey: ['agentPerformance', companyId, dateRange],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`/api/v1/reports/agent-performance?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(buildUrl(`/api/v1/reports/agent-performance`), {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -56,10 +102,10 @@ export const Reports = () => {
   });
 
   const { data: customerSatisfactionData, isLoading: isLoadingCustomerSatisfaction, isError: isErrorCustomerSatisfaction } = useQuery({
-    queryKey: ['customerSatisfaction', companyId],
+    queryKey: ['customerSatisfaction', companyId, dateRange],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`/api/v1/reports/customer-satisfaction?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(buildUrl(`/api/v1/reports/customer-satisfaction`), {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -73,10 +119,10 @@ export const Reports = () => {
   });
 
   const { data: topIssuesData, isLoading: isLoadingTopIssues, isError: isErrorTopIssues } = useQuery({
-    queryKey: ['topIssues', companyId],
+    queryKey: ['topIssues', companyId, dateRange],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`/api/v1/reports/top-issues?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(buildUrl(`/api/v1/reports/top-issues`), {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -90,10 +136,10 @@ export const Reports = () => {
   });
 
   const { data: errorRatesData, isLoading: isLoadingErrorRates, isError: isErrorErrorRates } = useQuery({
-    queryKey: ['errorRates', companyId],
+    queryKey: ['errorRates', companyId, dateRange],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`/api/v1/reports/error-rates?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(buildUrl(`/api/v1/reports/error-rates`), {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -107,10 +153,10 @@ export const Reports = () => {
   });
 
   const { data: latencyData, isLoading: isLoadingLatency, isError: isErrorLatency } = useQuery({
-    queryKey: ['latency', companyId],
+    queryKey: ['latency', companyId, dateRange],
     queryFn: async () => {
       if (!companyId) return null;
-      const response = await authFetch(`/api/v1/reports/latency?start_date=2024-01-01&end_date=2024-12-31`, {
+      const response = await authFetch(buildUrl(`/api/v1/reports/latency`), {
         headers: {
           "X-Company-ID": companyId.toString(),
         },
@@ -142,8 +188,8 @@ export const Reports = () => {
 
   const metrics = [
     {
-      title: "Total Conversations",
-      value: metricsData?.total_conversations || "N/A",
+      title: "Total Sessions",
+      value: metricsData?.total_sessions ?? "N/A",
       change: "+12%", // Placeholder, needs backend calculation
       trend: "up",
       icon: MessageSquare,
@@ -151,7 +197,7 @@ export const Reports = () => {
     },
     {
       title: "Avg Response Time",
-      value: latencyData?.avg_response_time || "N/A",
+      value: latencyData?.avg_response_time ?? "N/A",
       change: "-15%", // Placeholder
       trend: "down",
       icon: Clock,
@@ -159,7 +205,7 @@ export const Reports = () => {
     },
     {
       title: "Customer Satisfaction",
-      value: metricsData?.customer_satisfaction || "N/A",
+      value: metricsData?.customer_satisfaction ?? "N/A",
       change: "+0.2", // Placeholder
       trend: "up",
       icon: Star,
@@ -167,7 +213,7 @@ export const Reports = () => {
     },
     {
       title: "Active Agents",
-      value: metricsData?.active_agents || "N/A",
+      value: metricsData?.active_agents ?? "N/A",
       change: "+3%", // Placeholder
       trend: "up",
       icon: Users,
@@ -175,7 +221,7 @@ export const Reports = () => {
     },
     {
       title: "Overall Error Rate",
-      value: errorRatesData?.overall_error_rate || "N/A",
+      value: errorRatesData?.overall_error_rate ?? "N/A",
       change: "",
       trend: "up",
       icon: TrendingUp,
@@ -243,10 +289,16 @@ export const Reports = () => {
           <p className="text-gray-600">Track performance and insights</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
+          <DatePicker
+            date={dateRange.from}
+            setDate={(date) => setDateRange({ ...dateRange, from: date })}
+            placeholder="Start date"
+          />
+          <DatePicker
+            date={dateRange.to}
+            setDate={(date) => setDateRange({ ...dateRange, to: date })}
+            placeholder="End date"
+          />
           <Button>
             <Download className="h-4 w-4 mr-2" />
             Export

@@ -73,15 +73,19 @@ export const AgentSettingsPage = () => {
   if (isLoading) return <div>Loading...</div>;
 
   return (
-    <div className="p-6">
-      <Button variant="outline" onClick={() => navigate(`/dashboard/builder/${agentId}`)} className="mb-6">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Agent Hub
-      </Button>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-gray-900">Agent Settings</h1>
+        <Button variant="outline" onClick={() => navigate(`/dashboard/builder/${agentId}`)}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Agent Hub
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Agent Settings</CardTitle>
-          <CardDescription>Configure the agent's basic information and voice.</CardDescription>
+          <CardTitle>Basic Configuration</CardTitle>
+          <CardDescription>Configure the agent's basic information and voice settings.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
