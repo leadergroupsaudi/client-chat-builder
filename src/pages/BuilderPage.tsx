@@ -95,7 +95,7 @@ const BuilderPage = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['agentHistory'] });
-      queryClient.invalidateQueries({ queryKey: ['agent', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['agent', data.id.toString()] });
       toast({ title: `Agent version ${data.version_number} activated!` });
       setIsHistoryDialogOpen(false);
     },

@@ -36,6 +36,12 @@ import { CompaniesPage } from "./pages/CompaniesPage";
 import { useAuth } from "./hooks/useAuth";
 import WorkflowBuilderPage from "./pages/WorkflowBuilderPage";
 import { LinkedInCallback } from "./pages/LinkedInCallback";
+import { AgentKnowledgePage } from "./pages/AgentKnowledgePage";
+import { AgentPromptPage } from "./pages/AgentPromptPage";
+import { AgentSettingsPage } from "./pages/AgentSettingsPage";
+import { AgentToolsPage } from "./pages/AgentToolsPage";
+import { AgentWebhooksPage } from "./pages/AgentWebhooksPage";
+import { AgentCredentialsPage } from "./pages/AgentCredentialsPage";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +60,12 @@ const AppRoutes = () => {
           <Route path="agents" element={<AgentsPage />} />
           <Route path="builder" element={<BuilderPage />} />
           <Route path="builder/:agentId" element={<BuilderPage />} />
+          <Route path="builder/:agentId/prompt" element={<AgentPromptPage />} />
+          <Route path="builder/:agentId/tools" element={<AgentToolsPage />} />
+          <Route path="builder/:agentId/knowledge" element={<AgentKnowledgePage />} />
+          <Route path="builder/:agentId/webhooks" element={<AgentWebhooksPage />} />
+          <Route path="builder/:agentId/settings" element={<AgentSettingsPage />} />
+          <Route path="builder/:agentId/credentials" element={<AgentCredentialsPage />} />
           <Route path="designer" element={<DesignerPage />} />
           <Route path="team" element={<TeamPage />} />
           <Route path="reports" element={<ReportsPage />} />

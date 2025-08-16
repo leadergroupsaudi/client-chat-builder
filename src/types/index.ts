@@ -15,13 +15,15 @@ export interface Agent {
   timezone?: string;
   is_active?: boolean;
   credential_id?: number;
-  knowledge_base_id?: number;
+  knowledge_base_ids?: number[];
   tool_ids?: number[];
   version_number: number;
   parent_version_id?: number;
   status: string;
   created_at: string;
   updated_at: string;
+  tools: Tool[];
+  knowledge_bases?: KnowledgeBase[];
 }
 
 export interface ChatMessage {
