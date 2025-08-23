@@ -30,6 +30,8 @@ import ClientBillingPage from "./pages/ClientBillingPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
 import NotFound from "./pages/NotFound";
 import UserVideoCallPage from "./pages/UserVideoCallPage";
+import InternalVideoCallPage from "./pages/InternalVideoCallPage";
+import InternalChatPage from "./pages/InternalChatPage";
 import VoicesPage from "./pages/VoicesPage";
 import VoiceLabPage from "./pages/VoiceLabPage";
 import { CompaniesPage } from "./pages/CompaniesPage";
@@ -42,6 +44,7 @@ import { AgentSettingsPage } from "./pages/AgentSettingsPage";
 import { AgentToolsPage } from "./pages/AgentToolsPage";
 import { AgentWebhooksPage } from "./pages/AgentWebhooksPage";
 import { AgentCredentialsPage } from "./pages/AgentCredentialsPage";
+import GoogleCallback from "./pages/GoogleCallback";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +60,7 @@ const AppRoutes = () => {
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard/conversations" replace />} />
           <Route path="conversations" element={<ConversationsPage />} />
+          <Route path="internal-chat" element={<InternalChatPage />} />
           <Route path="agents" element={<AgentsPage />} />
           <Route path="builder" element={<BuilderPage />} />
           <Route path="builder/:agentId" element={<BuilderPage />} />
@@ -90,7 +94,9 @@ const AppRoutes = () => {
       </Route>
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/video-call" element={<UserVideoCallPage />} />
+      <Route path="/internal-video-call" element={<InternalVideoCallPage />} />
       <Route path="/linkedin-callback" element={<LinkedInCallback />} />
+      <Route path="/google/callback" element={<GoogleCallback />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

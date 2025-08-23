@@ -293,7 +293,9 @@ const McpToolForm = ({ tool, onSubmit, onBack }: { tool?: Tool, onSubmit: (value
   const [name, setName] = useState(tool?.name || "");
   const [description, setDescription] = useState(tool?.description || "");
   const [url, setUrl] = useState(tool?.mcp_server_url || "");
-  const [inspected, setInspected] = useState(!!tool); // If we are editing, assume it was inspected.
+  const [inspected, setInspected] = useState(!!tool);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [authUrl, setAuthUrl] = useState<string | null>(null);
   const { authFetch } = useAuth();
 
   const { mutate: inspect, data: inspectData, error: inspectError, isPending: isInspecting } = useMutation({
@@ -303,16 +305,37 @@ const McpToolForm = ({ tool, onSubmit, onBack }: { tool?: Tool, onSubmit: (value
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: urlToInspect }),
       });
+      const data = await response.json();
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || 'Failed to inspect MCP server');
+        throw new Error(data.detail || 'Failed to inspect MCP server');
       }
-      return response.json();
+      return data;
     },
-    onSuccess: () => {
-      setInspected(true);
+    onSuccess: (data) => {
+      if (data.authentication_required) {
+        setAuthRequired(true);
+        setAuthUrl(data.authorization_url);
+        setInspected(false);
+      } else {
+        setAuthRequired(false);
+        setAuthUrl(null);
+        setInspected(true);
+      }
     }
   });
+
+  const handleAuthenticate = () => {
+    if (authUrl) {
+      const popup = window.open(authUrl, 'google-auth', 'width=600,height=700');
+      const timer = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(timer);
+          // Re-run inspection after authentication
+          inspect(url);
+        }
+      }, 500);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,7 +366,9 @@ const McpToolForm = ({ tool, onSubmit, onBack }: { tool?: Tool, onSubmit: (value
           value={url}
           onChange={(e) => {
             setUrl(e.target.value);
-            setInspected(false); // Reset inspected status if URL changes
+            setInspected(false);
+            setAuthRequired(false);
+            setAuthUrl(null);
           }}
           required
           type="url"
@@ -353,7 +378,17 @@ const McpToolForm = ({ tool, onSubmit, onBack }: { tool?: Tool, onSubmit: (value
         </Button>
       </div>
 
-      {inspectData && inspected && (
+      {authRequired && (
+        <div className="p-4 border bg-yellow-50 border-yellow-200 rounded-lg text-center">
+          <h4 className="font-semibold text-yellow-800">Authentication Required</h4>
+          <p className="text-sm text-yellow-700 mb-4">This MCP server requires you to authenticate with your Google account.</p>
+          <Button type="button" onClick={handleAuthenticate}>
+            Connect to Google
+          </Button>
+        </div>
+      )}
+
+      {inspectData && inspected && !authRequired && (
         <div className="p-4 border bg-green-50 border-green-200 rounded-lg">
           <h4 className="font-semibold text-green-800">Inspection Successful!</h4>
           <p className="text-sm text-green-700">Found {inspectData.tools.length} tools on this server.</p>

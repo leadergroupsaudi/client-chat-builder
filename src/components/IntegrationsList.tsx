@@ -7,6 +7,7 @@ import { Integration } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { IntegrationDialog } from './IntegrationDialog';
 import { Zap, Trash2, Edit } from 'lucide-react';
+import GoogleAuth from './GoogleAuth';
 
 export const IntegrationsList: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -82,7 +83,10 @@ export const IntegrationsList: React.FC = () => {
           </CardTitle>
           <CardDescription>Connect with external messaging channels</CardDescription>
         </div>
-        <Button onClick={handleAddNew}>Add New</Button>
+        <div className="flex items-center gap-2">
+          <GoogleAuth />
+          <Button onClick={handleAddNew}>Add New</Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

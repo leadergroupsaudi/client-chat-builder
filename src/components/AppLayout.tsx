@@ -37,6 +37,7 @@ const AppLayout = () => {
 
   const sidebarItems = [
     { title: "Conversations", url: "/dashboard/conversations", icon: Inbox, permission: "conversation:read" },
+    
     { title: "Agents", url: "/dashboard/agents", icon: Bot, permission: "agent:read" },
     { title: "Agent Builder", url: "/dashboard/builder", icon: Settings, permission: "agent:update" },
     { title: "Widget Designer", url: "/dashboard/designer", icon: Palette, permission: "company_settings:update" },
