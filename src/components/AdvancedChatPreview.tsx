@@ -5,6 +5,7 @@ import { MessengerPreview } from './previews/MessengerPreview';
 import { InstagramPreview } from './previews/InstagramPreview';
 import { GmailPreview } from './previews/GmailPreview';
 import { TelegramPreview } from './previews/TelegramPreview';
+import { VoiceAgentPreview } from './previews/VoiceAgentPreview';
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Label } from "./ui/label";
@@ -36,7 +37,9 @@ const initialCustomizationState = {
   suggestions_enabled: false,
   dark_mode: false,
   typing_indicator_enabled: false,
-  agent_id: 0
+  agent_id: 0,
+  livekit_url: '',
+  isPreConnectBufferEnabled: false,
 };
 
 const widgetSizes = {
@@ -81,6 +84,46 @@ export const AdvancedChatPreview = () => {
   const audioChunks = useRef<Blob[]>([]);
   const audioPlaybackTimer = useRef<NodeJS.Timeout | null>(null);
   const incomingAudioChunks = useRef<Blob[]>([]);
+  const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
+  const [shouldConnect, setShouldConnect] = useState(false);
+
+  useEffect(() => {
+    if (previewType === 'voice' && selectedAgentId) {
+      const fetchToken = async () => {
+        try {
+          const response = await authFetch(`/api/v1/video-calls/token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              room_name: `agent-${selectedAgentId}-voice-preview`,
+              participant_name: `user-${user?.id}`,
+              agent_id: String(selectedAgentId),
+            }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setLiveKitToken(data.access_token);
+          } else {
+            toast({
+              title: "Error",
+              description: "Failed to get voice call token.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch voice call token:", error);
+          toast({
+            title: "Error",
+            description: "An unexpected error occurred while getting the voice call token.",
+            variant: "destructive",
+          });
+        }
+      };
+      fetchToken();
+    }
+  }, [previewType, selectedAgentId, authFetch, toast, user]);
 
   useEffect(() => {
     if (selectedAgentId && companyId && isExpanded) {
@@ -231,14 +274,15 @@ export const AdvancedChatPreview = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!selectedAgentId) return;
+    if (!selectedAgentId || !user) return;
 
     const fetchWidgetSettings = async () => {
       try {
         const response = await authFetch(`/api/v1/agents/${selectedAgentId}/widget-settings`);
         if (response.ok) {
           const data = await response.json();
-          setCustomization({ ...initialCustomizationState, ...data, agent_id: selectedAgentId });
+          const newSessionId = generateSessionId();
+          setCustomization({ ...initialCustomizationState, ...data, agent_id: selectedAgentId, backendUrl: backendUrl, companyId: user.company_id, sessionId: newSessionId });
         }
       } catch (error) {
         console.error("Failed to fetch widget settings:", error);
@@ -246,7 +290,7 @@ export const AdvancedChatPreview = () => {
       }
     };
     fetchWidgetSettings();
-  }, [selectedAgentId]);
+  }, [selectedAgentId, user]);
 
   const updateCustomization = (key: string, value: string | number | boolean) => {
     setCustomization(prev => ({ ...prev, [key]: value }));
@@ -338,6 +382,7 @@ export const AdvancedChatPreview = () => {
               <option value="messenger">Messenger</option>
               <option value="instagram">Instagram</option>
               <option value="telegram">Telegram</option>
+              <option value="voice">Voice Call</option>
             </select>
           </div>
         </div>
@@ -435,6 +480,7 @@ export const AdvancedChatPreview = () => {
             {previewType === 'instagram' && <InstagramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
             {previewType === 'gmail' && <GmailPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
             {previewType === 'telegram' && <TelegramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
+            {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={backendUrl}/>}
         </div>
       </div>
     </div>

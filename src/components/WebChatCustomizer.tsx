@@ -110,6 +110,17 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerProps> = ({
                 </select>
               </div>
             </div>
+            <h4 className="font-semibold pt-2">Mode</h4>
+             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="communication_mode">Communication Mode</Label>
+                <select id="communication_mode" value={customization.communication_mode} onChange={(e) => updateCustomization("communication_mode", e.target.value)} className="w-full mt-1 p-2 border rounded-md">
+                  <option value="chat_and_voice">Chat & voice</option>
+                  <option value="voice">Voice</option>
+                  <option value="chat">Chat</option>
+                </select>
+              </div>
+            </div>
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">
                 <Label>Dark Mode</Label>
