@@ -1,4 +1,4 @@
-import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { WebChatCustomizer } from './WebChatCustomizer';
 import { WhatsappPreview } from './previews/WhatsappPreview';
 import { MessengerPreview } from './previews/MessengerPreview';
@@ -15,6 +15,7 @@ import { Bot, Loader2, MessageSquare, Mic, Send, User, X } from "lucide-react";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 const initialCustomizationState = {
   primary_color: "#3B82F6",
@@ -40,6 +41,7 @@ const initialCustomizationState = {
   agent_id: 0,
   livekit_url: '',
   isPreConnectBufferEnabled: false,
+  client_website_url: "",
 };
 
 const widgetSizes = {
@@ -86,6 +88,8 @@ export const AdvancedChatPreview = () => {
   const incomingAudioChunks = useRef<Blob[]>([]);
   const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
   const [shouldConnect, setShouldConnect] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
 
   useEffect(() => {
     if (previewType === 'voice' && selectedAgentId) {
@@ -330,6 +334,36 @@ export const AdvancedChatPreview = () => {
     }
   };
 
+  const handlePublish = async () => {
+    if (!selectedAgentId) return;
+    try {
+      const response = await authFetch(`/api/v1/agents/${selectedAgentId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customization)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPublishedUrl(`${window.location.origin}/preview/${data.publish_id}`);
+        setIsPublishDialogOpen(true);
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Error",
+          description: `Failed to publish: ${errorData.detail || 'Unknown error'}`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to publish:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while publishing.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const generateEmbedCode = () => {
     if (!selectedAgentId || !companyId) return "";
     const scriptSrc = `${backendUrl}/widget.js`;
@@ -351,138 +385,174 @@ export const AdvancedChatPreview = () => {
   const { width, height } = widgetSizes[customization.widget_size as keyof typeof widgetSizes];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="agent-selector">Select Agent</Label>
-            <select
-              id="agent-selector"
-              value={selectedAgentId ?? ""}
-              onChange={(e) => setSelectedAgentId(parseInt(e.target.value))}
-              className="w-full mt-2 p-2 border rounded-md"
-            >
-              <option value="" disabled>Select an agent</option>
-              {agents.map(agent => (
-                <option key={agent.id} value={agent.id}>{agent.name}</option>
-              ))}
-            </select>
-          </div>
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="agent-selector">Select Agent</Label>
+              <select
+                id="agent-selector"
+                value={selectedAgentId ?? ""}
+                onChange={(e) => setSelectedAgentId(parseInt(e.target.value))}
+                className="w-full mt-2 p-2 border rounded-md"
+              >
+                <option value="" disabled>Select an agent</option>
+                {agents.map(agent => (
+                  <option key={agent.id} value={agent.id}>{agent.name}</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <Label htmlFor="preview-type-selector">Preview Type</Label>
-            <select
-              id="preview-type-selector"
-              value={previewType}
-              onChange={(e) => setPreviewType(e.target.value)}
-              className="w-full mt-2 p-2 border rounded-md"
-            >
-              <option value="web">Web Chat</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="messenger">Messenger</option>
-              <option value="instagram">Instagram</option>
-              <option value="telegram">Telegram</option>
-              <option value="voice">Voice Call</option>
-            </select>
+            <div>
+              <Label htmlFor="preview-type-selector">Preview Type</Label>
+              <select
+                id="preview-type-selector"
+                value={previewType}
+                onChange={(e) => setPreviewType(e.target.value)}
+                className="w-full mt-2 p-2 border rounded-md"
+              >
+                <option value="web">Web Chat</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="messenger">Messenger</option>
+                <option value="instagram">Instagram</option>
+                <option value="telegram">Telegram</option>
+                <option value="voice">Voice Call</option>
+              </select>
+            </div>
           </div>
+          {previewType === 'web' && (
+            <WebChatCustomizer
+              customization={customization}
+              updateCustomization={updateCustomization}
+              handleSaveChanges={handleSaveChanges}
+              handlePublish={handlePublish}
+              generateEmbedCode={generateEmbedCode}
+              toast={toast}
+              selectedAgentId={selectedAgentId}
+            />
+          )}
         </div>
-        {previewType === 'web' && (
-          <WebChatCustomizer
-            customization={customization}
-            updateCustomization={updateCustomization}
-            handleSaveChanges={handleSaveChanges}
-            generateEmbedCode={generateEmbedCode}
-            toast={toast}
-            selectedAgentId={selectedAgentId}
-          />
-        )}
-      </div>
 
-      <div className="flex flex-col items-center justify-center">
-        <Label>Live Preview</Label>
-        <div className="mt-2 bg-gradient-to-br from-gray-50 to-gray-200 p-4 rounded-lg relative overflow-hidden" style={{ fontFamily: customization.font_family, width: width + 40, height: height + 80 }}>
-            {previewType === 'web' && (
-              <div className={`absolute`} style={{ [customization.position.split('-')[0]]: '20px', [customization.position.split('-')[1]]: '20px' }}>
-                {isExpanded ? (
-                  <div className="bg-white rounded-lg shadow-2xl flex flex-col animate-scale-in" style={{ width, height, borderRadius: `${customization.border_radius}px`, backgroundColor: customization.dark_mode ? '#1a1a1a' : '#fff' }}>
-                    {customization.show_header && (
-                      <div className="text-white p-3 flex items-center justify-between" style={{ backgroundColor: customization.primary_color, borderTopLeftRadius: `${customization.border_radius}px`, borderTopRightRadius: `${customization.border_radius}px` }}>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage key={customization.agent_avatar_url} src={`${backendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} alt="Agent" />
-                            <AvatarFallback style={{ backgroundColor: `${customization.primary_color}20` }}>
-                              {customization.header_title.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-sm">{customization.header_title}</div>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="ghost" className="text-white hover:bg-white/20 p-1 h-6 w-6" onClick={() => setIsExpanded(false)}><X className="h-4 w-4" /></Button>
-                      </div>
-                    )}
-
-                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                      {messages.map((msg) => (
-                         <div key={msg.id} className={cn('flex w-full', msg.sender === 'user' ? 'justify-end' : 'justify-start')}>
-                          <div className={cn('max-w-[85%] p-3 flex flex-col')} style={{ backgroundColor: msg.sender === 'user' ? customization.user_message_color : customization.bot_message_color, color: msg.sender === 'user' ? customization.user_message_text_color : customization.bot_message_text_color, borderRadius: `${customization.border_radius}px` }}>
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarFallback className="bg-transparent text-xs">
-                                    {msg.sender === 'agent' ? <Bot size={14} /> : <User size={14} />}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-xs font-semibold">{msg.sender === 'agent' ? 'Agent' : 'You'}</span>
-                              </div>
-                              <span className={cn('text-xs', customization.dark_mode ? 'text-gray-400' : 'text-gray-500', msg.sender === 'user' && 'text-opacity-80')}>
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <p className="text-sm break-words">{msg.text}</p>
-                          </div>
-                        </div>
-                      ))}
-                      <div ref={messagesEndRef} />
-                    </div>
-
-                    <div className="p-2 border-t" style={{borderColor: customization.dark_mode ? '#333' : '#eee'}}>
-                      <div className="flex space-x-2">
-                        <Input
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                          placeholder={customization.input_placeholder}
-                          className="flex-1 text-sm"
-                        />
-                        <Button size="icon" onClick={() => handleSendMessage()} style={{ backgroundColor: customization.primary_color, color: 'white' }}>
-                            <Send className="h-4 w-4" />
-                          </Button>
-                          <Button onClick={handleToggleRecording} variant="ghost" size="icon" className={isRecording ? 'text-red-500' : ''}>
-                            {isRecording ? <Loader2 className="animate-spin" /> : <Mic className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                  </div>
-                ) : (
-                  <Button
-                    className="rounded-full h-16 w-16 shadow-xl hover:scale-110 transition-transform duration-200 flex items-center justify-center"
-                    style={{ backgroundColor: customization.primary_color }}
-                    onClick={() => setIsExpanded(true)}
-                  >
-                    {customization.agent_avatar_url ? <img src={`${backendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} className="h-full w-full rounded-full object-contain"  /> : <MessageSquare className="h-8 w-8 text-white" />}
-                  </Button>
-                )}
-              </div>
+        <div className="flex flex-col items-center justify-center">
+          <Label>Live Preview</Label>
+          <div className="mt-2 bg-gradient-to-br from-gray-50 to-gray-200 p-4 rounded-lg relative overflow-hidden" style={{ fontFamily: customization.font_family, width: width + 40, height: height + 80 }}>
+            {customization.client_website_url && (
+              <iframe
+                src={customization.client_website_url}
+                className="absolute top-0 left-0 w-full h-full border-0"
+                title="Client Website Preview"
+              />
             )}
-            {previewType === 'whatsapp' && <WhatsappPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-            {previewType === 'messenger' && <MessengerPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-            {previewType === 'instagram' && <InstagramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-            {previewType === 'gmail' && <GmailPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-            {previewType === 'telegram' && <TelegramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-            {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={backendUrl}/>}
+              {previewType === 'web' && (
+                <div className={`absolute`} style={{ [customization.position.split('-')[0]]: '20px', [customization.position.split('-')[1]]: '20px' }}>
+                  {isExpanded ? (
+                    <div className="bg-white rounded-lg shadow-2xl flex flex-col animate-scale-in" style={{ width, height, borderRadius: `${customization.border_radius}px`, backgroundColor: customization.dark_mode ? '#1a1a1a' : '#fff' }}>
+                      {customization.show_header && (
+                        <div className="text-white p-3 flex items-center justify-between" style={{ backgroundColor: customization.primary_color, borderTopLeftRadius: `${customization.border_radius}px`, borderTopRightRadius: `${customization.border_radius}px` }}>
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage key={customization.agent_avatar_url} src={`${backendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} alt="Agent" />
+                              <AvatarFallback style={{ backgroundColor: `${customization.primary_color}20` }}>
+                                {customization.header_title.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium text-sm">{customization.header_title}</div>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="ghost" className="text-white hover:bg-white/20 p-1 h-6 w-6" onClick={() => setIsExpanded(false)}><X className="h-4 w-4" /></Button>
+                        </div>
+                      )}
+
+                      <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                        {messages.map((msg) => (
+                           <div key={msg.id} className={cn('flex w-full', msg.sender === 'user' ? 'justify-end' : 'justify-start')}>
+                            <div className={cn('max-w-[85%] p-3 flex flex-col')} style={{ backgroundColor: msg.sender === 'user' ? customization.user_message_color : customization.bot_message_color, color: msg.sender === 'user' ? customization.user_message_text_color : customization.bot_message_text_color, borderRadius: `${customization.border_radius}px` }}>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-5 w-5">
+                                    <AvatarFallback className="bg-transparent text-xs">
+                                      {msg.sender === 'agent' ? <Bot size={14} /> : <User size={14} />}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs font-semibold">{msg.sender === 'agent' ? 'Agent' : 'You'}</span>
+                                </div>
+                                <span className={cn('text-xs', customization.dark_mode ? 'text-gray-400' : 'text-gray-500', msg.sender === 'user' && 'text-opacity-80')}>
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-sm break-words">{msg.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+
+                      <div className="p-2 border-t" style={{borderColor: customization.dark_mode ? '#333' : '#eee'}}>
+                        <div className="flex space-x-2">
+                          <Input
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            placeholder={customization.input_placeholder}
+                            className="flex-1 text-sm"
+                          />
+                          <Button size="icon" onClick={() => handleSendMessage()} style={{ backgroundColor: customization.primary_color, color: 'white' }}>
+                              <Send className="h-4 w-4" />
+                            </Button>
+                            <Button onClick={handleToggleRecording} variant="ghost" size="icon" className={isRecording ? 'text-red-500' : ''}>
+                              {isRecording ? <Loader2 className="animate-spin" /> : <Mic className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </div>
+                    </div>
+                  ) : (
+                    <Button
+                      className="rounded-full h-16 w-16 shadow-xl hover:scale-110 transition-transform duration-200 flex items-center justify-center"
+                      style={{ backgroundColor: customization.primary_color }}
+                      onClick={() => setIsExpanded(true)}
+                    >
+                      {customization.agent_avatar_url ? <img src={`${backendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} className="h-full w-full rounded-full object-contain"  /> : <MessageSquare className="h-8 w-8 text-white" />}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {previewType === 'whatsapp' && <WhatsappPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
+              {previewType === 'messenger' && <MessengerPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
+              {previewType === 'instagram' && <InstagramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
+              {previewType === 'gmail' && <GmailPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
+              {previewType === 'telegram' && <TelegramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
+              {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={backendUrl}/>}
+          </div>
         </div>
       </div>
-    </div>
+      <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Published Successfully!</DialogTitle>
+            <DialogDescription>
+              Your widget has been published. Share the URL below with your client for a live demo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <Input
+              readOnly
+              value={publishedUrl || ""}
+              className="w-full"
+            />
+            <Button
+              className="mt-2 w-full"
+              onClick={() => {
+                navigator.clipboard.writeText(publishedUrl || "");
+                toast({ title: "Copied to clipboard!" });
+              }}
+            >
+              Copy URL
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

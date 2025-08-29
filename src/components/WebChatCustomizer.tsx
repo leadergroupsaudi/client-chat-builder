@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Code } from 'lucide-react';
+import { Save, Code, Send } from 'lucide-react';
 
 interface WebChatCustomizerProps {
   customization: any;
   updateCustomization: (key: string, value: any) => void;
   handleSaveChanges: () => void;
+  handlePublish: () => void;
   generateEmbedCode: () => string;
   toast: any;
   selectedAgentId: number | null;
@@ -20,6 +21,7 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerProps> = ({
   customization,
   updateCustomization,
   handleSaveChanges,
+  handlePublish,
   generateEmbedCode,
   toast,
   selectedAgentId
@@ -31,10 +33,16 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerProps> = ({
           <div className="flex items-center gap-2">
             Web Chat Customization
           </div>
-          <Button onClick={handleSaveChanges} disabled={!selectedAgentId}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSaveChanges} disabled={!selectedAgentId}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+            <Button onClick={handlePublish} disabled={!selectedAgentId}>
+              <Send className="h-4 w-4 mr-2" />
+              Publish
+            </Button>
+          </div>
         </CardTitle>
         <CardDescription>
           Customize the chat widget. Changes are shown live.
@@ -163,6 +171,10 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerProps> = ({
             <div>
               <Label htmlFor="agent_avatar_url">Agent Avatar URL</Label>
               <Input id="agent_avatar_url" value={customization.agent_avatar_url} onChange={(e) => updateCustomization("agent_avatar_url", e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="client_website_url">Client Website URL</Label>
+              <Input id="client_website_url" value={customization.client_website_url} onChange={(e) => updateCustomization("client_website_url", e.target.value)} className="mt-1" placeholder="https://example.com" />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
               <div className="space-y-0.5">

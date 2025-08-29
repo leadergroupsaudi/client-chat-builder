@@ -45,6 +45,7 @@ import { AgentToolsPage } from "./pages/AgentToolsPage";
 import { AgentWebhooksPage } from "./pages/AgentWebhooksPage";
 import { AgentCredentialsPage } from "./pages/AgentCredentialsPage";
 import GoogleCallback from "./pages/GoogleCallback";
+import PublishedPreviewPage from "./pages/PublishedPreviewPage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/preview/:publishId" element={<PublishedPreviewPage />} />
       <Route path="/dashboard" element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard/conversations" replace />} />
