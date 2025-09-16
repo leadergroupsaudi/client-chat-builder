@@ -55,6 +55,7 @@ const AppLayout = () => {
     { title: "AI Image Generator", url: "/dashboard/ai-image-generator", icon: Sparkles, permission: "image:create" },
     { title: "AI Image Gallery", url: "/dashboard/ai-image-gallery", icon: FileText, permission: "image:read" },
     { title: "AI Chat", url: "/dashboard/ai-chat", icon: MessageSquare, permission: "chat:read" },
+    { title: "Vision AI", url: "/dashboard/object-detection", icon: Sparkles, permission: "image:create" },
   ];
 
   return (

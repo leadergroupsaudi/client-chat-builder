@@ -49,6 +49,8 @@ import PublishedPreviewPage from "./pages/PublishedPreviewPage";
 import AIImageGeneratorPage from "./pages/AIImageGeneratorPage";
 import AIImageGalleryPage from "./pages/AIImageGalleryPage";
 import AIChatPage from "./pages/AIChatPage";
+import KnowledgeBaseProcessing from "./pages/KnowledgeBaseProcessing";
+import { ObjectDetectionPage } from "./pages/ObjectDetectionPage";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +86,7 @@ const AppRoutes = () => {
           <Route path="knowledge-base" element={<KnowledgeBaseListPage />} />
           <Route path="tools" element={<ToolManagementPage />} />
           <Route path="knowledge-base/manage" element={<KnowledgeBaseManagementPage />} />
+          <Route path="knowledge-base/processing" element={<KnowledgeBaseProcessing />} />
           <Route path="workflows" element={<WorkflowManagementPage />} />
           <Route path="workflows/:workflowId" element={<WorkflowBuilderPage />} />
           <Route path="voices" element={<VoicesPage />} />
@@ -96,6 +99,7 @@ const AppRoutes = () => {
           <Route path="ai-image-generator" element={<AIImageGeneratorPage />} />
           <Route path="ai-image-gallery" element={<AIImageGalleryPage />} />
           <Route path="ai-chat" element={<AIChatPage />} />
+          <Route path="object-detection" element={<ObjectDetectionPage />} />
         </Route>
       </Route>
       <Route path="/client-portal" element={<ProtectedRoute />}>
