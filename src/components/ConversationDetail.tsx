@@ -46,7 +46,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const { data: sessionDetails } = useQuery({
     queryKey: ['sessionDetails', sessionId],
     queryFn: async () => {
-      const res = await authFetch(`/api/v1/sessions/${sessionId}`);
+      const res = await authFetch(`/api/v1/conversations/${agentId}/sessions/${sessionId}`);
       if (!res.ok) throw new Error('Failed to fetch session details');
       return res.json();
     },

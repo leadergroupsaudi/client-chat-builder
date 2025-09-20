@@ -34,7 +34,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 
 export const Settings = () => {
   const { toast } = useToast();
-  const { user, companyId, setCompanyId, authFetch } = useAuth();
+  const { user, companyId, setCompanyIdGlobaly, authFetch } = useAuth();
 
   const [settings, setSettings] = useState({
     companyName: "",
@@ -223,7 +223,7 @@ export const Settings = () => {
                   <DropdownMenuContent className="w-full md:w-1/2">
                     <DropdownMenuLabel>Switch Company</DropdownMenuLabel>
                     {companies.map(c => (
-                      <DropdownMenuItem key={c.id} onSelect={() => setCompanyId(c.id)}>
+                      <DropdownMenuItem key={c.id} onSelect={() => setCompanyIdGlobaly(c.id)}>
                         {c.name}
                       </DropdownMenuItem>
                     ))}

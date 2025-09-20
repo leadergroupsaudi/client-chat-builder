@@ -362,9 +362,7 @@ export const TeamManagement = () => {
                               </Select>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={user.is_active ? "default" : "secondary"}>
                                 {user.is_active ? "Active" : "Inactive"}
-                              </Badge>
                             </TableCell>
                             <TableCell className="text-right">
                               <DropdownMenu>

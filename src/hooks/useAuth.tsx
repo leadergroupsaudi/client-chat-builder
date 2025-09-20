@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (token: string) => void;
   logout: () => void;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
+  setCompanyIdGlobaly: (companyId: number | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -100,6 +101,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate('/login');
   };
 
+  const setCompanyIdGlobaly = (companyId: number | null) => {
+    if (companyId) {
+      setCompanyId(companyId);
+      localStorage.setItem('companyId', companyId.toString());
+    } else {
+      localStorage.removeItem('companyId');
+    }
+    // window.location.reload();
+  };
+
   const value = {
     isAuthenticated: !!token && !!user,
     token,
@@ -109,6 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     logout,
     authFetch,
+    setCompanyIdGlobaly
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

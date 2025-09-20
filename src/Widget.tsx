@@ -59,7 +59,7 @@ const widgetSizes = {
   large: { width: 400, height: 650 },
 };
 
-const generateSessionId = () => `session_${Math.random().toString(36).substring(2, 15)}`;
+const generateSessionId = () => Date.now(); // milliseconds timestamp
 
 // Main Widget Component
 const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
