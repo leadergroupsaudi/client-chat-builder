@@ -49,6 +49,10 @@ import PublishedPreviewPage from "./pages/PublishedPreviewPage";
 import AIImageGeneratorPage from "./pages/AIImageGeneratorPage";
 import AIImageGalleryPage from "./pages/AIImageGalleryPage";
 import AIChatPage from "./pages/AIChatPage";
+import AIToolsPage from "./pages/AIToolsPage";
+import AIToolCreatePage from "./pages/AIToolCreatePage";
+import AIToolDetailPage from "./pages/AIToolDetailPage";
+import AIToolEditPage from "./pages/AIToolEditPage";
 import KnowledgeBaseProcessing from "./pages/KnowledgeBaseProcessing";
 import { ObjectDetectionPage } from "./pages/ObjectDetectionPage";
 
@@ -99,6 +103,10 @@ const AppRoutes = () => {
           <Route path="ai-image-generator" element={<AIImageGeneratorPage />} />
           <Route path="ai-image-gallery" element={<AIImageGalleryPage />} />
           <Route path="ai-chat" element={<AIChatPage />} />
+          <Route path="ai-tools" element={<AIToolsPage />} />
+          <Route path="ai-tools/new" element={<AIToolCreatePage />} />
+          <Route path="ai-tools/:id" element={<AIToolDetailPage />} />
+          <Route path="ai-tools/:id/edit" element={<AIToolEditPage />} />
           <Route path="object-detection" element={<ObjectDetectionPage />} />
         </Route>
       </Route>

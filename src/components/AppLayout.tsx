@@ -46,8 +46,8 @@ const AppLayout = () => {
     { title: "Settings", url: "/dashboard/settings", icon: FileText, permission: "company_settings:update" },
     { title: "API Vault", url: "/dashboard/vault", icon: Key, permission: "company_settings:update" },
     { title: "Knowledge Bases", url: "/dashboard/knowledge-base/manage", icon: BookOpen, permission: "knowledgebase:read" },
-    { title: "Tools", url: "/dashboard/tools", icon: Zap, permission: "tool:read" },
-    { title: "Workflows", url: "/dashboard/workflows", icon: WorkflowIcon, permission: "workflow:read" },
+    { title: "Custom Tools", url: "/dashboard/tools", icon: Zap, permission: "tool:read" },
+    { title: "Custom Workflows", url: "/dashboard/workflows", icon: WorkflowIcon, permission: "workflow:read" },
     { title: "Voice Lab", url: "/dashboard/voice-lab", icon: Mic, permission: "voice:create" }, 
     { title: "Billing", url: "/dashboard/billing", icon: CreditCard, permission: "billing:manage" },
     { title: "Manage Plans", url: "/dashboard/admin/subscriptions", icon: Sparkles, admin: true },
@@ -55,6 +55,7 @@ const AppLayout = () => {
     { title: "AI Image Generator", url: "/dashboard/ai-image-generator", icon: Sparkles, permission: "image:create" },
     { title: "AI Image Gallery", url: "/dashboard/ai-image-gallery", icon: FileText, permission: "image:read" },
     { title: "AI Chat", url: "/dashboard/ai-chat", icon: MessageSquare, permission: "chat:read" },
+    { title: "AI Tools", url: "/dashboard/ai-tools", icon: Sparkles, permission: "ai-tool:read" },
     { title: "Vision AI", url: "/dashboard/object-detection", icon: Sparkles, permission: "image:create" },
   ];
 

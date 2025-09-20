@@ -3,6 +3,9 @@ export interface Session {
   status: string;
   assignee_id?: number;
   last_message_timestamp: string;
+  channel: string;
+  contact_name?: string;
+  contact_phone?: string;
 }
 
 export interface Agent {

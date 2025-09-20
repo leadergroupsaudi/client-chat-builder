@@ -122,9 +122,9 @@ const ConversationsPage: React.FC = () => {
                     onClick={() => setSelectedSessionId(session.conversation_id)}
                     className="h-auto justify-start items-start flex-col"
                   >
-                    <div className="flex items-center gap-2 font-bold text-sm truncate">
+                    <div className="flex items-center gap-2 text-sm truncate">
                       {getChannelIcon(session.channel)}
-                      {session.contact_name || session.contact_phone || session.session_id}
+                      {session.contact_name || session.contact_phone || new Date(Number(session.conversation_id)).toLocaleString()}
                     </div>
                     <div className="flex items-center gap-2 text-xs pl-6">
                       <Badge variant={getStatusBadgeVariant(session.status)}>{session.status}</Badge>
