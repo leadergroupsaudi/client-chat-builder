@@ -1,13 +1,13 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Trash2, Edit, PlusCircle } from "lucide-react";
+import { Trash2, Edit, PlusCircle, Copy } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Updated type to match the new backend schema
@@ -138,33 +138,42 @@ export const VaultSettings = () => {
     }
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
+  };
+
   if (isLoading) return <div>Loading credentials...</div>;
   if (isError) return <div>Error loading credentials.</div>;
 
   const renderDialogContent = () => (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Name</Label>
+    <form onSubmit={handleSubmit} className="space-y-6 p-2">
+      <div className="space-y-2">
+        <Label htmlFor="name" className="text-lg">Name</Label>
         <Input
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder="e.g., My OpenAI Key"
           required
+          className="p-3 text-lg"
         />
+        <p className="text-sm text-gray-500">A descriptive name for your credential.</p>
       </div>
-      <div>
-        <Label htmlFor="service">Service</Label>
+      <div className="space-y-2">
+        <Label htmlFor="service" className="text-lg">Service</Label>
         <Input
           id="service"
           value={formData.service}
           onChange={(e) => setFormData({ ...formData, service: e.target.value })}
           placeholder="e.g., openai"
           required
+          className="p-3 text-lg"
         />
+        <p className="text-sm text-gray-500">The name of the service (e.g., openai, google, etc.).</p>
       </div>
-      <div>
-        <Label htmlFor="credentials">
+      <div className="space-y-2">
+        <Label htmlFor="credentials" className="text-lg">
           {currentCredential ? "New API Key (Leave blank to keep current)" : "API Key"}
         </Label>
         <Input
@@ -173,13 +182,15 @@ export const VaultSettings = () => {
           value={formData.credentials}
           onChange={(e) => setFormData({ ...formData, credentials: e.target.value })}
           required={!currentCredential}
+          className="p-3 text-lg"
         />
+        <p className="text-sm text-gray-500">Your secret API key.</p>
       </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={() => currentCredential ? setIsEditDialogOpen(false) : setIsCreateDialogOpen(false)}>
+      <DialogFooter className="pt-6">
+        <Button type="button" variant="outline" onClick={() => currentCredential ? setIsEditDialogOpen(false) : setIsCreateDialogOpen(false)} className="text-lg p-3">
           Cancel
         </Button>
-        <Button type="submit" disabled={createCredentialMutation.isPending || updateCredentialMutation.isPending}>
+        <Button type="submit" disabled={createCredentialMutation.isPending || updateCredentialMutation.isPending} className="text-lg p-3 bg-blue-500 hover:bg-blue-600 text-white">
           {currentCredential ? (updateCredentialMutation.isPending ? "Saving..." : "Save Changes") : (createCredentialMutation.isPending ? "Adding..." : "Add Key")}
         </Button>
       </DialogFooter>
@@ -187,53 +198,77 @@ export const VaultSettings = () => {
   );
 
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-2xl font-bold">API Key Vault</CardTitle>
-        <Button onClick={handleOpenCreate}>
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-900 to-teal-900 bg-clip-text text-transparent">
+            API Key Vault
+          </h2>
+          <p className="text-gray-600 mt-1">Manage your API credentials for various AI platforms</p>
+        </div>
+        <Button onClick={handleOpenCreate} className="bg-blue-500 hover:bg-blue-600 text-white">
           <PlusCircle className="mr-2 h-4 w-4" /> Add New Key
         </Button>
-      </CardHeader>
-      <CardContent>
-        {credentials && credentials.length > 0 ? (
-          <div className="space-y-4">
-            {credentials.map((credential) => (
-              <div key={credential.id} className="flex items-center justify-between p-4 border rounded-md">
-                <div>
-                  <p className="text-lg font-medium">{credential.name}</p>
-                  <p className="text-sm text-gray-500">Service: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">{credential.service}</span></p>
+      </div>
+
+      {credentials && credentials.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {credentials.map((credential) => (
+            <Card key={credential.id} className="hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between">
+              <CardHeader>
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-gray-200 rounded-md mr-4 flex items-center justify-center">
+                    {/* Placeholder for service logo */}
+                    <i className="fas fa-key text-2xl text-gray-500"></i>
+                  </div>
+                  <div>
+                    <p className="text-lg font-medium">{credential.name}</p>
+                    <p className="text-sm text-gray-500">Service: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">{credential.service}</span></p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => handleOpenEdit(credential)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm"><Trash2 className="h-4 w-4" /></Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete the <span className="font-bold">{credential.name}</span> credential.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteCredentialMutation.mutate(credential.id)}>
-                          Continue
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No API keys found. Add one to get started!</p>
-        )}
-      </CardContent>
+              </CardHeader>
+              <CardContent>
+                <Button variant="ghost" size="sm" onClick={() => handleCopy(credential.id.toString())} className="w-full justify-start p-2 text-left">
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy Key ID
+                </Button>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleOpenEdit(credential)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm"><Trash2 className="h-4 w-4" /></Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the <span className="font-bold">{credential.name}</span> credential.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteCredentialMutation.mutate(credential.id)}>
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16 border-2 border-dashed rounded-lg">
+          <h3 className="text-xl font-medium text-gray-800">No API keys found</h3>
+          <p className="text-gray-500 mt-2">Add one to get started!</p>
+          <Button onClick={handleOpenCreate} className="mt-6 bg-blue-500 hover:bg-blue-600 text-white">
+            <PlusCircle className="mr-2 h-4 w-4" /> Add New Key
+          </Button>
+        </div>
+      )}
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
@@ -248,6 +283,6 @@ export const VaultSettings = () => {
           {renderDialogContent()}
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 };

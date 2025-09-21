@@ -88,3 +88,29 @@ export const executeAITool = async (id: number, answers: any, language: string) 
   return response.data;
 };
 
+export const exportAITools = async () => {
+  const response = await axios.get(`${API_URL}/api/v1/ai-tools/admin/export`, {
+    headers: getAuthHeaders(),
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'ai_tools.json');
+  document.body.appendChild(link);
+  link.click();
+};
+
+export const importAITools = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = localStorage.getItem('accessToken');
+  const response = await axios.post(`${API_URL}/api/v1/ai-tools/admin/import`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
