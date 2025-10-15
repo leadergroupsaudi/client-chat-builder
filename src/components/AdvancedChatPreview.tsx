@@ -386,41 +386,9 @@ export const AdvancedChatPreview = () => {
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="agent-selector">Select Agent</Label>
-              <select
-                id="agent-selector"
-                value={selectedAgentId ?? ""}
-                onChange={(e) => setSelectedAgentId(parseInt(e.target.value))}
-                className="w-full mt-2 p-2 border rounded-md"
-              >
-                <option value="" disabled>Select an agent</option>
-                {agents.map(agent => (
-                  <option key={agent.id} value={agent.id}>{agent.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <Label htmlFor="preview-type-selector">Preview Type</Label>
-              <select
-                id="preview-type-selector"
-                value={previewType}
-                onChange={(e) => setPreviewType(e.target.value)}
-                className="w-full mt-2 p-2 border rounded-md"
-              >
-                <option value="web">Web Chat</option>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="messenger">Messenger</option>
-                <option value="instagram">Instagram</option>
-                <option value="telegram">Telegram</option>
-                <option value="voice">Voice Call</option>
-              </select>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Left Column - Customization (2/3 width) */}
+        <div className="xl:col-span-2">
           {previewType === 'web' && (
             <WebChatCustomizer
               customization={customization}
@@ -430,13 +398,26 @@ export const AdvancedChatPreview = () => {
               generateEmbedCode={generateEmbedCode}
               toast={toast}
               selectedAgentId={selectedAgentId}
+              agents={agents}
+              onAgentChange={setSelectedAgentId}
+              previewType={previewType}
+              onPreviewTypeChange={setPreviewType}
             />
           )}
         </div>
 
-        <div className="flex flex-col items-center justify-center">
-          <Label>Live Preview</Label>
-          <div className="mt-2 bg-gradient-to-br from-gray-50 to-gray-200 p-4 rounded-lg relative overflow-hidden" style={{ fontFamily: customization.font_family, width: width + 40, height: height + 80 }}>
+        {/* Right Column - Live Preview (1/3 width) */}
+        <div className="xl:col-span-1">
+          <div className="sticky top-6">
+            <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700 card-shadow-lg">
+              <h3 className="text-xl font-bold dark:text-white mb-2 flex items-center gap-2">
+                <span className="text-2xl">👁️</span>
+                Live Preview
+              </h3>
+              <p className="text-sm text-muted-foreground dark:text-gray-400 mb-6">Changes reflect in real-time</p>
+
+              <div className="flex justify-center">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-200 dark:from-slate-900 dark:to-slate-800 p-4 rounded-xl relative overflow-hidden border-2 border-slate-300 dark:border-slate-600 shadow-xl" style={{ fontFamily: customization.font_family, width: width + 40, height: height + 80 }}>
             {customization.client_website_url && (
               <iframe
                 src={customization.client_website_url}
@@ -524,6 +505,9 @@ export const AdvancedChatPreview = () => {
               {previewType === 'gmail' && <GmailPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
               {previewType === 'telegram' && <TelegramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
               {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={backendUrl}/>}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

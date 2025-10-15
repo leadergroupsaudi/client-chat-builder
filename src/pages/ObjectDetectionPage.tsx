@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Image as ImageIcon, Video, List, PlayCircle, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, List, PlayCircle, X, Eye, Loader2, Scan } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Detection {
@@ -225,56 +225,88 @@ const ObjectDetectionPage: React.FC = () => {
     }
   };
 
-  const renderForm = (accept: string) => (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <label htmlFor="file" className="text-sm font-medium">Upload {accept === 'image/*' ? 'Image' : 'Video'}</label>
-        {file ? (
-          <div className="flex items-center justify-between w-full h-32 border-2 border-dashed rounded-lg bg-gray-50 px-6">
-            <div className="flex items-center space-x-4">
-              {accept === 'image/*' ? <ImageIcon className="w-10 h-10 text-gray-400" /> : <Video className="w-10 h-10 text-gray-400" />}
-              <p className="text-sm text-gray-500 font-medium">{file.name}</p>
+  const renderForm = (accept: string) => {
+    const isLoading = detectionMutation.isPending || segmentationMutation.isPending || poseMutation.isPending || trackingMutation.isPending;
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="file" className="text-sm font-medium dark:text-gray-300">Upload {accept === 'image/*' ? 'Image' : 'Video'}</label>
+          {file ? (
+            <div className="flex items-center justify-between w-full h-32 border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-600 px-6">
+              <div className="flex items-center space-x-4">
+                {accept === 'image/*' ?
+                  <ImageIcon className="w-10 h-10 text-violet-500 dark:text-violet-400" /> :
+                  <Video className="w-10 h-10 text-violet-500 dark:text-violet-400" />
+                }
+                <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">{file.name}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setFile(null)} className="dark:hover:bg-slate-700">
+                <X className="h-5 w-5 dark:text-gray-400" />
+              </Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center w-full">
-              <label htmlFor="file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-10 h-10 mb-3 text-gray-400" />
-                      <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                      <p className="text-xs text-gray-500">{accept === 'image/*' ? 'PNG, JPG, GIF up to 10MB' : 'MP4, AVI, MOV up to 50MB'}</p>
-                  </div>
-                  <Input id="file" type="file" className="hidden" onChange={handleFileChange} accept={accept} />
-              </label>
-          </div> 
-        )}
-      </div>
-      <div className="flex space-x-4">
-        <Button type="submit" className="w-full" disabled={(detectionMutation.isLoading || segmentationMutation.isLoading || poseMutation.isLoading || trackingMutation.isLoading) || !file}>
-          {(detectionMutation.isLoading || segmentationMutation.isLoading || poseMutation.isLoading || trackingMutation.isLoading) ? 'Processing...' : `Process ${accept === 'image/*' ? 'Image' : 'Video'}`}
-        </Button>
-        <Button type="button" variant="outline" className="w-full" onClick={handleDemo}>
-          <PlayCircle className="mr-2 h-4 w-4" /> Try a Demo
-        </Button>
-      </div>
-    </form>
-  );
+          ) : (
+            <div className="flex items-center justify-center w-full">
+                <label htmlFor="file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-600 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-10 h-10 mb-3 text-violet-500 dark:text-violet-400" />
+                        <p className="mb-2 text-sm text-gray-600 dark:text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">{accept === 'image/*' ? 'PNG, JPG, GIF up to 10MB' : 'MP4, AVI, MOV up to 50MB'}</p>
+                    </div>
+                    <Input id="file" type="file" className="hidden" onChange={handleFileChange} accept={accept} />
+                </label>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            type="submit"
+            className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+            disabled={isLoading || !file}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Scan className="mr-2 h-4 w-4" />
+                Process {accept === 'image/*' ? 'Image' : 'Video'}
+              </>
+            )}
+          </Button>
+          <Button type="button" variant="outline" className="flex-1 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700" onClick={handleDemo}>
+            <PlayCircle className="mr-2 h-4 w-4" /> Try Demo
+          </Button>
+        </div>
+      </form>
+    );
+  };
 
   const renderResult = () => {
     if (activeTab === 'object-tracking') {
       return tracks.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center"><List className="mr-2"/> Tracking Result</CardTitle>
+          <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+              <CardTitle className="flex items-center dark:text-white">
+                <List className="mr-2 text-violet-600 dark:text-violet-400"/>
+                Tracking Result
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
+            <CardContent className="pt-6">
+              <ul className="space-y-3">
                 {tracks.map(track => (
-                  <li key={track.track_id} className="text-sm">{`Track ID: ${track.track_id}, Label: ${track.label}, Confidence: ${track.confidence.toFixed(2)}`}</li>
+                  <li key={track.track_id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    <div className="w-8 h-8 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{track.track_id}</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium dark:text-white">{track.label}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Confidence: {(track.confidence * 100).toFixed(1)}%</p>
+                    </div>
+                  </li>
                 ))}
               </ul>
             </CardContent>
@@ -284,17 +316,19 @@ const ObjectDetectionPage: React.FC = () => {
     }
     return previewUrl && (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              {activeTab === 'object-detection' && <ImageIcon className="mr-2"/>}
-              {activeTab === 'image-segmentation' && <ImageIcon className="mr-2"/>}
-              {activeTab === 'pose-estimation' && <ImageIcon className="mr-2"/>}
+        <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+          <CardHeader className="border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+            <CardTitle className="flex items-center dark:text-white">
+              {activeTab === 'object-detection' && <Scan className="mr-2 text-violet-600 dark:text-violet-400"/>}
+              {activeTab === 'image-segmentation' && <ImageIcon className="mr-2 text-violet-600 dark:text-violet-400"/>}
+              {activeTab === 'pose-estimation' && <Eye className="mr-2 text-violet-600 dark:text-violet-400"/>}
               Result
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <canvas ref={canvasRef} className="w-full h-auto rounded-lg shadow-md" />
+          <CardContent className="pt-6">
+            <div className="rounded-lg overflow-auto max-h-[600px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+              <canvas ref={canvasRef} className="w-full h-auto" />
+            </div>
           </CardContent>
         </Card>
       </motion.div>
@@ -302,37 +336,75 @@ const ObjectDetectionPage: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col p-4 sm:p-6 lg:p-8 bg-gray-50">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Vision AI</h1>
-        <p className="text-lg text-gray-600 mt-1">Explore the power of YOLO for object detection, segmentation, pose estimation, and tracking.</p>
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+      <header>
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent mb-2">
+          👁️ Vision AI
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 text-lg">Explore the power of YOLO for object detection, segmentation, pose estimation, and tracking</p>
       </header>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1">
-        <div className="lg:col-span-1">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Controls</CardTitle>
-              <CardDescription>Select a feature and upload your media.</CardDescription>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800 h-full">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+              <CardTitle className="dark:text-white flex items-center gap-2">
+                <Eye className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                Controls
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">Select a feature and upload your media</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Tabs defaultValue="object-detection" onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-                  <TabsTrigger value="object-detection">Detection</TabsTrigger>
-                  <TabsTrigger value="image-segmentation">Segmentation</TabsTrigger>
-                  <TabsTrigger value="pose-estimation">Pose</TabsTrigger>
-                  <TabsTrigger value="object-tracking">Tracking</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-lg mb-6">
+                  <TabsTrigger
+                    value="object-detection"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white dark:text-gray-400"
+                  >
+                    Detection
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="image-segmentation"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white dark:text-gray-400"
+                  >
+                    Segmentation
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="pose-estimation"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white dark:text-gray-400"
+                  >
+                    Pose
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="object-tracking"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white dark:text-gray-400"
+                  >
+                    Tracking
+                  </TabsTrigger>
                 </TabsList>
-                <TabsContent value="object-detection" className="mt-6">{renderForm('image/*')}</TabsContent>
-                <TabsContent value="image-segmentation" className="mt-6">{renderForm('image/*')}</TabsContent>
-                <TabsContent value="pose-estimation" className="mt-6">{renderForm('image/*')}</TabsContent>
-                <TabsContent value="object-tracking" className="mt-6">{renderForm('video/*')}</TabsContent>
+                <TabsContent value="object-detection">{renderForm('image/*')}</TabsContent>
+                <TabsContent value="image-segmentation">{renderForm('image/*')}</TabsContent>
+                <TabsContent value="pose-estimation">{renderForm('image/*')}</TabsContent>
+                <TabsContent value="object-tracking">{renderForm('video/*')}</TabsContent>
               </Tabs>
             </CardContent>
           </Card>
         </div>
-        <div className="lg:col-span-2">
-          <AnimatePresence>
-            {renderResult()}
+        <div className="lg:col-span-3">
+          <AnimatePresence mode="wait">
+            {renderResult() || (
+              <div className="h-full flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/50 p-16">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Eye className="h-10 w-10 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">No Results Yet</h3>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                    Upload an image or video and process it to see AI-powered vision analysis
+                  </p>
+                </div>
+              </div>
+            )}
           </AnimatePresence>
         </div>
       </div>

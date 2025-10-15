@@ -1,7 +1,8 @@
 
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { CircleUser } from "lucide-react";
+import { CircleUser, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const AppLayout = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   console.log("Logged in user:", user);
 
   const sidebarItems = [
@@ -60,9 +62,9 @@ const AppLayout = () => {
   ];
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-screen w-screen flex flex-col bg-gray-50 dark:bg-slate-900 overflow-hidden transition-colors">
       {/* Header */}
-      <header className="flex-shrink-0 bg-white border-b z-20">
+      <header className="flex-shrink-0 bg-white dark:bg-slate-800 border-b dark:border-slate-700 z-20">
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -78,19 +80,35 @@ const AppLayout = () => {
                  <div className="p-2 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-lg shadow-md">
                   <MessageSquare className="h-6 w-6 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-gray-800">AgentConnect</h1>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">AgentConnect</h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Permission permission="agent:create">
-                <Button 
-                  onClick={() => setIsCreateDialogOpen(true)} 
+                <Button
+                  onClick={() => setIsCreateDialogOpen(true)}
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Agent
                 </Button>
               </Permission>
+
+              {/* Theme Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                className="rounded-full"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5 text-yellow-500" />
+                ) : (
+                  <Moon className="h-5 w-5 text-slate-700" />
+                )}
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="rounded-full">
@@ -113,33 +131,58 @@ const AppLayout = () => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className={`w-64 flex-shrink-0 bg-white border-r transition-all duration-300 ${sidebarOpen ? '' : '-ml-64'}`}>
-          <nav className="p-4 space-y-1 h-full flex flex-col">
-            <div className="flex-1">
-              {sidebarItems.map((item) => (
-                <Permission key={item.url} permission={item.permission}>
-                  <NavLink
-                    to={item.url}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                      }`
-                    }
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.title}</span>
-                  </NavLink>
-                </Permission>
-              ))}
+        {/* Enhanced Sidebar with Dark Mode */}
+        <aside
+          className={`w-64 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ${
+            sidebarOpen ? '' : '-ml-64 lg:ml-0'
+          }`}
+        >
+          <nav className="p-3 space-y-1 h-full flex flex-col overflow-y-auto">
+            <div className="flex-1 space-y-1">
+              {sidebarItems.map((item) => {
+                // Only show admin items if user is super admin
+                if (item.admin && !user?.is_super_admin) return null;
+
+                return (
+                  <Permission key={item.url} permission={item.permission}>
+                    <NavLink
+                      to={item.url}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
+                          isActive
+                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
+                        }`
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            className={`h-5 w-5 transition-transform duration-200 ${
+                              isActive ? '' : 'group-hover:scale-110'
+                            }`}
+                          />
+                          <span className="truncate">{item.title}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  </Permission>
+                );
+              })}
+            </div>
+
+            {/* Sidebar Footer */}
+            <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
+                <p className="font-semibold mb-1 text-gray-900 dark:text-gray-100">{user?.email}</p>
+                <p className="truncate text-gray-500 dark:text-gray-400">{user?.company_name || 'AgentConnect'}</p>
+              </div>
             </div>
           </nav>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
+        {/* Main Content with Background */}
+        <main className="flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900 transition-colors">
           <Outlet />
         </main>
       </div>

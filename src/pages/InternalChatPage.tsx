@@ -267,15 +267,25 @@ const InternalChatPage: React.FC = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans">
+      <div className="flex h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900 text-gray-800 dark:text-gray-200 font-sans overflow-hidden">
         {/* Left Sidebar: Channel List */}
-        <Card className="w-80 flex-shrink-0 border-r dark:border-gray-800 rounded-none bg-white dark:bg-gray-900">
-          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
-            <CardTitle className="text-xl font-bold">Channels</CardTitle>
+        <Card className="w-80 flex-shrink-0 border-r dark:border-slate-700 rounded-none bg-white dark:bg-slate-800 shadow-lg flex flex-col h-full">
+          <CardHeader className="flex flex-row items-center justify-between p-5 pb-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 flex-shrink-0">
+            <CardTitle className="text-xl font-bold dark:text-white flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                <Users className="h-4 w-4 text-white" />
+              </div>
+              Channels
+            </CardTitle>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setCreateChannelModalOpen(true)}>
-                  <Plus className="h-5 w-5" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCreateChannelModalOpen(true)}
+                  className="hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full"
+                >
+                  <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -283,63 +293,87 @@ const InternalChatPage: React.FC = () => {
               </TooltipContent>
             </Tooltip>
           </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-80px)]">
-              {channels?.map((channel) => (
-                <div
-                  key={channel.id}
-                  className={cn(
-                    'flex items-center p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200',
-                    selectedChannel?.id === channel.id &&
-                      'bg-blue-50 dark:bg-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-900/50'
-                  )}
-                  onClick={() => setSelectedChannel(channel)}
-                >
-                  <Avatar className="h-10 w-10 mr-4">
-                    <AvatarFallback className="bg-blue-500 text-white font-bold">
-                      {channel.name ? channel.name[0].toUpperCase() : '#'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold text-md">{channel.name || 'Direct Message'}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                      {channel.description || 'No description'}
-                    </p>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              {channels?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4">
+                  <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
+                    <Users className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center">No channels yet. Create your first channel!</p>
                 </div>
-              ))}
+              ) : (
+                channels?.map((channel) => (
+                  <div
+                    key={channel.id}
+                    className={cn(
+                      'flex items-center p-4 cursor-pointer border-b border-slate-100 dark:border-slate-700 transition-all duration-200',
+                      selectedChannel?.id === channel.id
+                        ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-l-4 border-l-purple-600 dark:border-l-purple-400'
+                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 border-l-4 border-l-transparent'
+                    )}
+                    onClick={() => setSelectedChannel(channel)}
+                  >
+                    <Avatar className="h-11 w-11 mr-3 ring-2 ring-slate-200 dark:ring-slate-600">
+                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-lg">
+                        {channel.name ? channel.name[0].toUpperCase() : '#'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm dark:text-white truncate">{channel.name || 'Direct Message'}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {channel.description || 'No description'}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </ScrollArea>
           </CardContent>
         </Card>
 
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+        <div className="flex-1 flex flex-col bg-white dark:bg-slate-800 h-full overflow-hidden">
           {selectedChannel ? (
             <>
-              <CardHeader className="flex flex-row items-center justify-between p-4 border-b dark:border-gray-700">
-                <div>
-                  <CardTitle className="text-2xl font-bold">{selectedChannel.name || 'Direct Message'}</CardTitle>
-                  <div className="flex items-center mt-2">
-                    <div className="flex -space-x-2 overflow-hidden">
-                      {channelMembers?.slice(0, 3).map((member: any) => (
-                        <Avatar key={member.user?.id} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800">
-                          <AvatarImage src={member.user?.profile_picture_url} />
-                          <AvatarFallback>{member.user?.first_name?.[0] || 'U'}</AvatarFallback>
-                        </Avatar>
-                      ))}
+              <CardHeader className="flex flex-row items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-sm flex-shrink-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 ring-2 ring-purple-200 dark:ring-purple-800">
+                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-lg">
+                        {selectedChannel.name ? selectedChannel.name[0].toUpperCase() : '#'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <CardTitle className="text-xl font-bold dark:text-white">{selectedChannel.name || 'Direct Message'}</CardTitle>
+                      <div className="flex items-center mt-1 gap-2">
+                        <div className="flex -space-x-2 overflow-hidden">
+                          {channelMembers?.slice(0, 5).map((member: any) => (
+                            <Avatar key={member.user?.id} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-800">
+                              <AvatarImage src={member.user?.profile_picture_url} />
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+                                {member.user?.first_name?.[0] || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                        </div>
+                        <span className="text-xs px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-medium">
+                          {channelMembers?.length} {channelMembers?.length === 1 ? 'member' : 'members'}
+                        </span>
+                      </div>
                     </div>
-                    <span className="ml-3 text-sm font-medium text-gray-500 dark:text-gray-400">{channelMembers?.length} members</span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
                         onClick={() => setManageMembersModalOpen(true)}
+                        className="hover:bg-purple-50 dark:hover:bg-purple-900/20 dark:border-slate-600 dark:text-white rounded-full"
                       >
-                        <Users className="h-6 w-6" />
+                        <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -349,16 +383,15 @@ const InternalChatPage: React.FC = () => {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        variant="ghost"
                         size="icon"
                         onClick={handleVideoCallAction}
                         disabled={initiateVideoCallMutation.isLoading}
-                        className="bg-green-500 hover:bg-green-600 text-white rounded-full w-12 h-12"
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-full w-11 h-11 shadow-md hover:shadow-lg transition-all"
                       >
                         {initiateVideoCallMutation.isLoading ? (
-                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
-                          <Video className="h-6 w-6" />
+                          <Video className="h-5 w-5" />
                         )}
                       </Button>
                     </TooltipTrigger>
@@ -368,59 +401,101 @@ const InternalChatPage: React.FC = () => {
                   </Tooltip>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 p-6 flex flex-col overflow-hidden">
-                <ScrollArea className="flex-1 pr-4">
-                  <div className="space-y-6">
+              <CardContent className="flex-1 p-6 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900/50 min-h-0">
+                <ScrollArea className="flex-1 pr-4 h-full">
+                  <div className="space-y-4">
                     {isLoadingMessages ? (
                       <div className="flex justify-center items-center h-full">
-                        <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="h-10 w-10 animate-spin text-purple-600 dark:text-purple-400" />
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Loading messages...</p>
+                        </div>
                       </div>
                     ) : messagesError ? (
-                      <div className="text-red-500 text-center p-4">
-                        Error loading messages: {messagesError.message}
+                      <div className="flex justify-center items-center h-full">
+                        <div className="text-center p-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                          <p className="text-red-600 dark:text-red-400 font-medium">Error loading messages</p>
+                          <p className="text-sm text-red-500 dark:text-red-400 mt-1">{messagesError.message}</p>
+                        </div>
+                      </div>
+                    ) : messages?.length === 0 ? (
+                      <div className="flex justify-center items-center h-full">
+                        <div className="text-center py-12">
+                          <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
+                            <Send className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+                          </div>
+                          <p className="text-slate-500 dark:text-slate-400">No messages yet. Start the conversation!</p>
+                        </div>
                       </div>
                     ) : (
                       messages?.map((msg) => (
                         <div
                           key={msg.id}
                           className={cn(
-                            'flex w-full items-end gap-3',
+                            'flex w-full items-end gap-2.5 animate-fade-in',
                             msg.sender_id === user?.id ? 'justify-end' : 'justify-start'
                           )}
                         >
                           {msg.sender_id !== user?.id && (
-                            <Avatar className="h-8 w-8">
+                            <Avatar className="h-8 w-8 ring-2 ring-white dark:ring-slate-800 flex-shrink-0">
                               <AvatarImage src={msg.sender?.profile_picture_url} />
-                              <AvatarFallback>{msg.sender?.first_name?.[0] || 'U'}</AvatarFallback>
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+                                {msg.sender?.first_name?.[0] || 'U'}
+                              </AvatarFallback>
                             </Avatar>
                           )}
-                          <div
-                            className={cn(
-                              'max-w-[70%] p-4 rounded-2xl',
-                              msg.sender_id === user?.id
-                                ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-br-none'
-                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none'
-                            )}
-                          >
-                            <div className="flex items-center justify-between gap-4 mb-2">
-                              <span className="text-sm font-bold">
-                                {msg.sender_id === user?.id
-                                  ? 'You'
-                                  : msg.sender?.first_name || msg.sender?.email}
-                              </span>
-                              <span className="text-xs text-gray-400 dark:text-gray-500">
-                                {new Date(msg.created_at).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                            <div className="prose prose-sm max-w-full dark:prose-invert text-white">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {msg.content}
-                              </ReactMarkdown>
+                          <div className="flex flex-col gap-1 max-w-[70%]">
+                            <div
+                              className={cn(
+                                'p-3.5 rounded-2xl shadow-sm',
+                                msg.sender_id === user?.id
+                                  ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-br-md'
+                                  : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-100 rounded-bl-md border border-slate-200 dark:border-slate-700'
+                              )}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className={cn(
+                                  "text-xs font-semibold",
+                                  msg.sender_id === user?.id
+                                    ? "text-purple-100"
+                                    : "text-purple-600 dark:text-purple-400"
+                                )}>
+                                  {msg.sender_id === user?.id
+                                    ? 'You'
+                                    : msg.sender?.first_name || msg.sender?.email}
+                                </span>
+                                <span className={cn(
+                                  "text-xs",
+                                  msg.sender_id === user?.id
+                                    ? "text-purple-200"
+                                    : "text-slate-400 dark:text-slate-500"
+                                )}>
+                                  {new Date(msg.created_at).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                              <div className={cn(
+                                "prose prose-sm max-w-full",
+                                msg.sender_id === user?.id
+                                  ? "prose-invert"
+                                  : "dark:prose-invert"
+                              )}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {msg.content}
+                                </ReactMarkdown>
+                              </div>
                             </div>
                           </div>
+                          {msg.sender_id === user?.id && (
+                            <Avatar className="h-8 w-8 ring-2 ring-white dark:ring-slate-800 flex-shrink-0">
+                              <AvatarImage src={user?.profile_picture_url} />
+                              <AvatarFallback className="text-xs bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+                                {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
                         </div>
                       ))
                     )}
@@ -428,27 +503,34 @@ const InternalChatPage: React.FC = () => {
                   </div>
                 </ScrollArea>
               </CardContent>
-              <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800">
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <Input
                     placeholder="Type your message..."
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="flex-1 p-4 rounded-full bg-gray-100 dark:bg-gray-700 border-transparent focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                    className="flex-1 px-5 py-3 rounded-full bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-400/20 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                   <Button
                     onClick={handleSendMessage}
-                    className="rounded-full w-12 h-12 bg-blue-500 hover:bg-blue-600 text-white"
+                    disabled={!inputValue.trim()}
+                    className="rounded-full w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Send className="h-6 w-6" />
+                    <Send className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xl">
-              <p>Select a channel to start chatting</p>
+            <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900/50">
+              <div className="text-center py-12">
+                <div className="h-20 w-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+                </div>
+                <p className="text-slate-500 dark:text-slate-400 text-lg">Select a channel to start chatting</p>
+                <p className="text-slate-400 dark:text-slate-500 text-sm mt-2">Choose from the sidebar or create a new channel</p>
+              </div>
             </div>
           )}
         </div>
