@@ -6,6 +6,7 @@ export interface Session {
   channel: string;
   contact_name?: string;
   contact_phone?: string;
+  is_client_connected?: boolean;
 }
 
 export interface Agent {

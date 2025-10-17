@@ -19,8 +19,25 @@ const ConversationsPage: React.FC = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'mine' | 'open' | 'resolved' | 'all'>('mine');
+  const [unreadAssignments, setUnreadAssignments] = useState(0);
 
   const companyId = useMemo(() => user?.company_id, [user]);
+
+  // Update browser tab title with unread count
+  React.useEffect(() => {
+    if (unreadAssignments > 0) {
+      document.title = `(${unreadAssignments}) New Assignments - AgentConnect`;
+    } else {
+      document.title = 'Conversations - AgentConnect';
+    }
+  }, [unreadAssignments]);
+
+  // Clear unread counter when viewing 'mine' tab
+  React.useEffect(() => {
+    if (activeTab === 'mine') {
+      setUnreadAssignments(0);
+    }
+  }, [activeTab]);
 
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
@@ -91,6 +108,8 @@ const ConversationsPage: React.FC = () => {
     {
       onMessage: (event) => {
         const eventData = JSON.parse(event.data);
+        console.log('[WebSocket] Received event:', eventData.type, eventData);
+
         if (eventData.type === 'new_message') {
           toast({
             title: "New Message",
@@ -103,9 +122,65 @@ const ConversationsPage: React.FC = () => {
           if (selectedSessionId === eventData.session.conversation_id) {
             queryClient.invalidateQueries({ queryKey: ['messages', selectedSessionId, companyId] });
           }
+        } else if (eventData.type === 'conversation_assigned') {
+          console.log('[Assignment] Received assignment notification');
+          console.log('[Assignment] Assigned to ID:', eventData.assigned_to_id);
+          console.log('[Assignment] Current user ID:', user?.id);
+          console.log('[Assignment] Match:', eventData.assigned_to_id === user?.id);
+
+          // Check if this assignment is for the current user
+          if (eventData.assigned_to_id === user?.id) {
+            console.log('[Assignment] ✅ Showing notification for current user');
+            // Increment unread counter
+            setUnreadAssignments(prev => prev + 1);
+
+            // Play notification sound (optional)
+            const audio = new Audio('/notification.mp3');
+            audio.play().catch(() => {
+              // Silently fail if audio doesn't play (user interaction required)
+            });
+
+            // Show toast notification with bell icon
+            toast({
+              title: (
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl animate-bounce">🔔</span>
+                  <span className="font-bold">New Assignment!</span>
+                </div>
+              ) as any,
+              description: (
+                <div className="space-y-1">
+                  <p className="font-semibold">{eventData.message}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Channel: {eventData.channel} • {eventData.is_client_connected ? '🟢 Client Online' : '🔴 Client Offline'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSelectedSessionId(eventData.session_id);
+                      setActiveTab('mine');
+                      setUnreadAssignments(0);
+                    }}
+                    className="mt-2 text-xs bg-amber-500 text-white px-3 py-1 rounded hover:bg-amber-600"
+                  >
+                    View Conversation →
+                  </button>
+                </div>
+              ) as any,
+              duration: 10000,
+            });
+
+            // Invalidate queries to show the new assignment
+            queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
+            queryClient.invalidateQueries({ queryKey: ['sessionCounts', companyId] });
+
+            // Switch to 'mine' tab if not already there
+            if (activeTab !== 'mine') {
+              setActiveTab('mine');
+            }
+          }
         } else if (eventData.type === 'session_status_update') {
-          // Handle real-time status updates (active/inactive/resolved)
-          console.log(`Session ${eventData.session_id} status changed to: ${eventData.status}`);
+          // Handle real-time status updates (active/inactive/resolved) and connection status
+          console.log(`Session ${eventData.session_id} status changed to: ${eventData.status}, connected: ${eventData.is_client_connected}`);
 
           // Invalidate counts immediately
           queryClient.invalidateQueries({ queryKey: ['sessionCounts', companyId] });
@@ -128,10 +203,14 @@ const ConversationsPage: React.FC = () => {
                 activeTab === 'all';
 
               if (shouldStayInTab) {
-                // Update the status
+                // Update the status and connection state
                 return oldSessions.map(session =>
                   session.session_id === eventData.session_id
-                    ? { ...session, status: eventData.status }
+                    ? {
+                        ...session,
+                        status: eventData.status,
+                        is_client_connected: eventData.is_client_connected ?? session.is_client_connected
+                      }
                     : session
                 );
               } else {
@@ -230,6 +309,7 @@ const ConversationsPage: React.FC = () => {
   // Conversation Card Component
   const ConversationCard = ({ session }: { session: Session }) => {
     const assignedToMe = isAssignedToMe(session);
+    const isDisconnected = assignedToMe && !session.is_client_connected;
 
     return (
       <button
@@ -244,23 +324,25 @@ const ConversationsPage: React.FC = () => {
           }
           ${session.status === 'resolved' ? 'hover:opacity-100' : ''}
           ${assignedToMe ? 'font-semibold' : ''}
+          ${isDisconnected ? 'opacity-75' : ''}
         `}
       >
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0 mt-1 relative">
             {getChannelIcon(session.channel)}
-            {/* Status indicator dot */}
-            {session.status === 'active' && (
+            {/* Connection status indicator for assigned conversations */}
+            {assignedToMe && session.is_client_connected && (
+              <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse" title="Client connected"></span>
+            )}
+            {assignedToMe && !session.is_client_connected && (
+              <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" title="Client disconnected"></span>
+            )}
+            {/* Status indicator dot for non-assigned */}
+            {!assignedToMe && session.status === 'active' && (
               <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
             )}
-            {session.status === 'inactive' && (
+            {!assignedToMe && session.status === 'inactive' && (
               <span className="absolute -top-1 -right-1 h-2 w-2 bg-gray-400 rounded-full"></span>
-            )}
-            {/* Special indicator for "assigned to me" */}
-            {assignedToMe && (
-              <span className="absolute -top-1 -right-1 h-3 w-3 bg-amber-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-[8px] font-bold">!</span>
-              </span>
             )}
           </div>
           <div className="flex-grow min-w-0">
@@ -302,9 +384,14 @@ const ConversationsPage: React.FC = () => {
                 👤 Assigned to {getAssigneeEmail(session.assignee_id)}
               </p>
             )}
-            {assignedToMe && (
+            {assignedToMe && session.is_client_connected && (
               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 truncate flex items-center gap-1 font-semibold">
-                ⚡ Assigned to you - Action required
+                ⚡ Assigned to you - Client online
+              </p>
+            )}
+            {assignedToMe && !session.is_client_connected && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1 truncate flex items-center gap-1 font-semibold">
+                🔴 Client disconnected
               </p>
             )}
             {session.status === 'resolved' && (
@@ -347,10 +434,15 @@ const ConversationsPage: React.FC = () => {
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'mine' | 'open' | 'resolved' | 'all')} className="w-full">
                 <TabsList className="w-full grid grid-cols-4 bg-white dark:bg-slate-900">
-                  <TabsTrigger value="mine" className="text-xs font-semibold">
+                  <TabsTrigger value="mine" className="text-xs font-semibold relative">
                     <span className="flex items-center gap-1">
                       <span className="text-amber-600 dark:text-amber-400">👤</span>
                       Mine ({sessionCounts?.mine || 0})
+                      {unreadAssignments > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center animate-pulse">
+                          {unreadAssignments}
+                        </span>
+                      )}
                     </span>
                   </TabsTrigger>
                   <TabsTrigger value="open" className="text-xs">
