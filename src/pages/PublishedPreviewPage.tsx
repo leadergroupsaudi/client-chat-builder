@@ -84,7 +84,7 @@ const PublishedPreviewPage = () => {
               width: '60px',
               height: '60px',
               borderRadius: '50%',
-              backgroundColor: primary_color,
+              background: primary_color,
               boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}
             className="flex items-center justify-center"
@@ -115,7 +115,7 @@ const PublishedPreviewPage = () => {
             {show_header && (
               <div
                 style={{
-                  backgroundColor: primary_color,
+                  background: primary_color,
                   borderTopLeftRadius: `${border_radius}px`,
                   borderTopRightRadius: `${border_radius}px`,
                 }}

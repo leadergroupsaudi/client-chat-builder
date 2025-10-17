@@ -135,9 +135,9 @@ const VisualWorkflowBuilder = () => {
         workflow={workflow}
         onSave={saveWorkflow}
       />
-      <div className="dndflow h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="dndflow h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
         {/* Enhanced Toolbar */}
-        <div className="flex-shrink-0 px-6 py-4 border-b bg-white shadow-sm">
+        <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
           <div className="flex items-center gap-4 flex-wrap">
             <Button onClick={() => navigate('/dashboard/workflows')} variant="outline" size="sm" className="btn-hover-lift">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -149,11 +149,11 @@ const VisualWorkflowBuilder = () => {
                   <WorkflowIcon className="h-4 w-4 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-bold truncate">{workflow.name}</h2>
+                  <h2 className="text-lg font-bold truncate dark:text-white">{workflow.name}</h2>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">v{workflow.version}</Badge>
+                    <Badge variant="outline" className="text-xs dark:border-slate-600 dark:text-slate-300">v{workflow.version}</Badge>
                     {workflow.is_active && (
-                      <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                      <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
                         <Sparkles className="h-3 w-3 mr-1" />
                         Active
                       </Badge>
@@ -200,23 +200,28 @@ const VisualWorkflowBuilder = () => {
                 defaultEdgeOptions={{
                   type: 'smoothstep',
                   animated: true,
-                  style: { stroke: '#6366f1', strokeWidth: 2 },
+                  style: { stroke: '#8b5cf6', strokeWidth: 2.5 },
                 }}
+                className="dark:bg-slate-900"
               >
-                <Controls className="bg-white rounded-lg shadow-lg border" />
+                <Controls className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 [&_button]:dark:text-white [&_button]:dark:hover:bg-slate-700" />
                 <MiniMap
-                  className="bg-white rounded-lg shadow-lg border"
+                  className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700"
                   nodeColor={(node) => {
                     if (node.type === 'start') return '#10b981';
                     if (node.type === 'output') return '#ef4444';
-                    return '#3b82f6';
+                    if (node.type === 'llm') return '#6366f1';
+                    if (node.type === 'tool') return '#10b981';
+                    if (node.type === 'condition') return '#f59e0b';
+                    return '#8b5cf6';
                   }}
+                  maskColor="rgb(15, 23, 42, 0.7)"
                 />
-                <Background variant="dots" gap={20} size={1} color="#cbd5e1" />
+                <Background variant="dots" gap={20} size={1} color="#94a3b8" className="dark:opacity-30" />
               </ReactFlow>
             </div>
             {/* Enhanced Properties Panel */}
-            <div className="w-80 border-l bg-white shadow-lg overflow-y-auto">
+            <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-y-auto">
               <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} />
               {workflow && workflow.id && (
                 <Comments workflowId={workflow.id} />

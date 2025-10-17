@@ -13,21 +13,12 @@ const DraggableNode = ({ type, label, icon, nodeData }) => {
 
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '10px',
-        marginBottom: '10px',
-        border: '1px solid #ddd',
-        borderRadius: '5px',
-        background: '#fff',
-        cursor: 'grab',
-      }}
+      className="flex items-center p-3 mb-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 cursor-grab hover:bg-slate-50 dark:hover:bg-slate-750 hover:shadow-md transition-all text-slate-800 dark:text-slate-200"
       onDragStart={(event) => onDragStart(event, type)}
       draggable
     >
-      {icon}
-      <span style={{ marginLeft: '10px' }}>{label}</span>
+      <div className="text-slate-600 dark:text-slate-400">{icon}</div>
+      <span className="ml-3 text-sm font-medium">{label}</span>
     </div>
   );
 };
@@ -36,23 +27,17 @@ const AccordionSection = ({ title, children }) => {
     const [isOpen, setIsOpen] = useState(true);
 
     return (
-        <div style={{ marginTop: '10px', borderTop: '1px solid #eee' }}>
-            <div 
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div
                 onClick={() => setIsOpen(!isOpen)}
-                style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between', 
-                    padding: '10px 0', 
-                    cursor: 'pointer',
-                    fontWeight: 'bold', 
-                    fontSize: '16px' 
-                }}
+                className="flex items-center justify-between py-2 cursor-pointer font-bold text-base text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
                 {title}
-                {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                <div className="text-slate-600 dark:text-slate-400">
+                    {isOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                </div>
             </div>
-            {isOpen && <div style={{padding: '5px 0'}}>{children}</div>}
+            {isOpen && <div className="py-2">{children}</div>}
         </div>
     );
 }
@@ -83,14 +68,7 @@ const Sidebar = () => {
 
   return (
     <aside
-      style={{
-        borderRight: '1px solid #eee',
-        padding: '15px 10px',
-        fontSize: '14px',
-        background: '#fcfcfc',
-        width: '250px',
-        overflowY: 'auto'
-      }}
+      className="w-64 border-r border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-900 overflow-y-auto"
     >
       <AccordionSection title="Node Library">
         <DraggableNode type="llm" label="LLM Prompt" icon={<Bot size={20} />} nodeData={{}} />

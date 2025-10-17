@@ -22,45 +22,34 @@ const VariableInput = ({ value, onChange, placeholder, availableVars }) => {
     }, [containerRef]);
 
     return (
-        <div style={{ position: 'relative' }} ref={containerRef}>
+        <div className="relative" ref={containerRef}>
             <input
                 type="text"
                 value={value || ''}
                 onChange={onChange}
-                style={{ width: '100%', padding: '8px', paddingRight: '40px', borderRadius: '4px', border: '1px solid #ccc' }}
+                className="w-full px-3 py-2 pr-12 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 placeholder={placeholder}
             />
-            <button 
+            <button
                 onClick={() => setShowVars(!showVars)}
                 title="Select a variable"
-                style={{ 
-                    position: 'absolute', right: '1px', top: '1px', bottom: '1px',
-                    border: 'none', background: '#f0f0f0', cursor: 'pointer',
-                    padding: '0 10px', borderTopRightRadius: '4px', borderBottomRightRadius: '4px'
-                }}
+                className="absolute right-0.5 top-0.5 bottom-0.5 border-none bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer px-3 rounded-r-md text-slate-700 dark:text-slate-300 text-sm transition-colors"
             >
                 {`{...}`}
             </button>
             {showVars && (
-                <ul style={{ 
-                    position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', 
-                    border: '1px solid #ccc', listStyle: 'none', padding: '5px 0', margin: '2px 0 0', 
-                    zIndex: 10, maxHeight: '200px', overflowY: 'auto', borderRadius: '4px',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                }}>
+                <ul className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 list-none p-0 mt-1 z-10 max-h-52 overflow-y-auto rounded-md shadow-lg">
                     {availableVars.length === 0 ? (
-                        <li style={{ padding: '8px 12px', color: '#888' }}>No variables available</li>
+                        <li className="px-3 py-2 text-slate-500 dark:text-slate-400">No variables available</li>
                     ) : (
                         availableVars.map(v => (
-                            <li 
-                                key={v.value} 
+                            <li
+                                key={v.value}
                                 onClick={() => handleSelectVar(v.value)}
-                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px' }}
-                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
-                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                className="px-3 py-2 cursor-pointer text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                             >
-                                <strong style={{ display: 'block' }}>{v.label}</strong>
-                                <div style={{ fontSize: '12px', color: '#555' }}>{v.value}</div>
+                                <strong className="block text-slate-900 dark:text-slate-100">{v.label}</strong>
+                                <div className="text-xs text-slate-600 dark:text-slate-400">{v.value}</div>
                             </li>
                         ))
                     )}
@@ -189,43 +178,44 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
   };
 
   const renderNodeProperties = () => {
-    if (!currentNode) return <div style={{ color: '#888', padding: '20px' }}>Select a node to view its properties.</div>;
-
-    const commonInputStyle = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d0d0d0', fontSize: '14px', boxSizing: 'border-box' };
-    const labelStyle = { display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '14px', color: '#333' };
-    const sectionStyle = { marginBottom: '20px', padding: '15px', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee' };
+    if (!currentNode) return <div className="text-slate-500 dark:text-slate-400 p-5">Select a node to view its properties.</div>;
 
     return (
-      <div style={{ padding: '10px' }}>
-        <div style={sectionStyle}>
-          <h3 style={{ fontSize: '16px', marginBottom: '15px', color: '#222' }}>Node Settings</h3>
-          <div style={{ marginBottom: '15px' }}>
-            <label style={labelStyle}>Node Label:</label>
-            <input type="text" value={currentNode.data.label || ''} onChange={(e) => handleDataChange('label', e.target.value)} style={commonInputStyle} />
+      <div className="p-3">
+        <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <h3 className="text-base font-semibold mb-4 text-slate-900 dark:text-slate-100">Node Settings</h3>
+          <div className="mb-4">
+            <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">Node Label:</label>
+            <input
+              type="text"
+              value={currentNode.data.label || ''}
+              onChange={(e) => handleDataChange('label', e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+            />
           </div>
         </div>
 
         {currentNode.type === 'llm' && (
-          <div style={sectionStyle}>
-            <h3 style={{ fontSize: '16px', marginBottom: '15px', color: '#222' }}>LLM Configuration</h3>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>Model:</label>
+          <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 className="text-base font-semibold mb-4 text-slate-900 dark:text-slate-100">LLM Configuration</h3>
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">Model:</label>
               <select
                 value={currentNode.data.model || ''}
                 onChange={(e) => handleDataChange('model', e.target.value)}
-                style={commonInputStyle}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">Select a model</option>
                 <option value="groq/llama3-8b-8192">Groq Llama3 8b</option>
                 <option value="gemini/gemini-pro">Gemini Pro</option>
               </select>
             </div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>Knowledge Base:</label>
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">Knowledge Base:</label>
               <select
                 value={currentNode.data.knowledge_base_id || ''}
                 onChange={(e) => handleDataChange('knowledge_base_id', e.target.value ? parseInt(e.target.value) : null)}
-                style={commonInputStyle}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">None</option>
                 {knowledgeBases.map((kb) => (
@@ -233,8 +223,8 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
                 ))}
               </select>
             </div>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={labelStyle}>Prompt:</label>
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">Prompt:</label>
               <VariableInput
                 value={currentNode.data.prompt || ''}
                 onChange={(e) => handleDataChange('prompt', e.target.value)}
@@ -580,11 +570,14 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
   };
 
   return (
-    <div style={{ padding: '20px', height: '100%', overflowY: 'auto', background: '#fff' }}>
-      <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Properties</div>
+    <div className="p-5 h-full overflow-y-auto bg-white dark:bg-slate-800">
+      <div className="font-bold text-base mb-5 border-b border-slate-200 dark:border-slate-700 pb-3 text-slate-900 dark:text-slate-100">Properties</div>
       {renderNodeProperties()}
       {currentNode && (
-        <button onClick={deleteNode} style={{ marginTop: '20px', padding: '10px', background: '#f44336', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', width: '100%' }}>
+        <button
+          onClick={deleteNode}
+          className="mt-5 px-4 py-2.5 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white border-none rounded-lg cursor-pointer w-full transition-colors font-medium"
+        >
           Delete Node
         </button>
       )}
