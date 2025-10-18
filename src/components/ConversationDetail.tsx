@@ -320,9 +320,9 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
                     <div className={`flex items-end gap-3 ${msg.sender === 'user' ? 'justify-start' : 'justify-end'}`}>
                       {msg.sender === 'user' && (
                         <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-slate-200">
-                          <AvatarImage src={`https://avatar.vercel.sh/${contact?.email}.png`} alt={contact?.name} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                            {contact?.name?.charAt(0).toUpperCase() || 'U'}
+                          <AvatarImage src={`https://avatar.vercel.sh/${contact?.email}.png`} alt={contact?.name || 'User'} />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold text-sm">
+                            {contact?.name?.charAt(0)?.toUpperCase() || contact?.email?.charAt(0)?.toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
                       )}

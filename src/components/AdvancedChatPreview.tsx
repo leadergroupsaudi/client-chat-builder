@@ -16,6 +16,7 @@ import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { Agent } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { BACKEND_URL } from "@/config/env";
 
 const initialCustomizationState = {
   primary_color: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #EC4899 100%)", // AgentConnect gradient
@@ -69,7 +70,6 @@ export const AdvancedChatPreview = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [activeForm, setActiveForm] = useState<any[] | null>(null);
   const [previewType, setPreviewType] = useState('web');
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
   const [isRecording, setIsRecording] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -135,7 +135,7 @@ export const AdvancedChatPreview = () => {
       setSessionId(newSessionId);
       setMessages([]);
 
-      const wsUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/${companyId}/${selectedAgentId}/${newSessionId}?user_type=user`;
+      const wsUrl = `${BACKEND_URL.replace('http', 'ws')}/api/v1/ws/public/${companyId}/${selectedAgentId}/${newSessionId}?user_type=user`;
       ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
@@ -172,7 +172,7 @@ export const AdvancedChatPreview = () => {
       ws.current.onclose = () => {};
       ws.current.onerror = (error) => console.error("Chat preview WebSocket error:", error);
       
-      const voiceUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${selectedAgentId}/${newSessionId}?user_type=user&voice_id=${(customization as any).voice_id || 'default'}&stt_provider=${(customization as any).stt_provider || 'groq'}`;
+      const voiceUrl = `${BACKEND_URL.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${selectedAgentId}/${newSessionId}?user_type=user&voice_id=${(customization as any).voice_id || 'default'}&stt_provider=${(customization as any).stt_provider || 'groq'}`;
       voiceWs.current = new WebSocket(voiceUrl);
 
       voiceWs.current.onmessage = async (event) => {
@@ -199,7 +199,7 @@ export const AdvancedChatPreview = () => {
       ws.current?.close();
       voiceWs.current?.close();
     };
-  }, [selectedAgentId, companyId, isExpanded, backendUrl, customization.welcome_message]);
+  }, [selectedAgentId, companyId, isExpanded, customization.welcome_message]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -286,7 +286,7 @@ export const AdvancedChatPreview = () => {
         if (response.ok) {
           const data = await response.json();
           const newSessionId = generateSessionId();
-          setCustomization({ ...initialCustomizationState, ...data, agent_id: selectedAgentId, backendUrl: backendUrl, companyId: user.company_id, sessionId: newSessionId });
+          setCustomization({ ...initialCustomizationState, ...data, agent_id: selectedAgentId, backendUrl: BACKEND_URL, companyId: user.company_id, sessionId: newSessionId });
         }
       } catch (error) {
         console.error("Failed to fetch widget settings:", error);
@@ -366,7 +366,7 @@ export const AdvancedChatPreview = () => {
 
   const generateEmbedCode = () => {
     if (!selectedAgentId || !companyId) return "";
-    const scriptSrc = `${backendUrl}/widget/widget.js`;
+    const scriptSrc = `${BACKEND_URL}/widget/widget.js`;
 
     return `<!-- AgentConnect Widget Container -->
 <div id="agentconnect-widget"></div>
@@ -377,7 +377,7 @@ export const AdvancedChatPreview = () => {
   src="${scriptSrc}"
   data-agent-id="${selectedAgentId}"
   data-company-id="${companyId}"
-  data-backend-url="${backendUrl}"
+  data-backend-url="${BACKEND_URL}"
   defer>
 </script>`;
   };
@@ -433,7 +433,7 @@ export const AdvancedChatPreview = () => {
                         <div className="text-white p-3 flex items-center justify-between" style={{ background: customization.primary_color, borderTopLeftRadius: `${customization.border_radius}px`, borderTopRightRadius: `${customization.border_radius}px` }}>
                           <div className="flex items-center space-x-3">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage key={customization.agent_avatar_url} src={`${backendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} alt="Agent" />
+                              <AvatarImage key={customization.agent_avatar_url} src={`${BACKEND_URL}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} alt="Agent" />
                               <AvatarFallback style={{ background: customization.primary_color.includes('gradient') ? customization.primary_color : `${customization.primary_color}20` }}>
                                 {customization.header_title.charAt(0)}
                               </AvatarFallback>
@@ -494,7 +494,7 @@ export const AdvancedChatPreview = () => {
                       style={{ background: customization.primary_color }}
                       onClick={() => setIsExpanded(true)}
                     >
-                      {customization.agent_avatar_url ? <img src={`${backendUrl}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} className="h-full w-full rounded-full object-contain"  /> : <MessageSquare className="h-8 w-8 text-white" />}
+                      {customization.agent_avatar_url ? <img src={`${BACKEND_URL}/api/v1/proxy/image-proxy?url=${encodeURIComponent(customization.agent_avatar_url)}`} className="h-full w-full rounded-full object-contain"  /> : <MessageSquare className="h-8 w-8 text-white" />}
                     </Button>
                   )}
                 </div>
@@ -504,7 +504,7 @@ export const AdvancedChatPreview = () => {
               {previewType === 'instagram' && <InstagramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
               {previewType === 'gmail' && <GmailPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
               {previewType === 'telegram' && <TelegramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-              {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={backendUrl}/>}
+              {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={BACKEND_URL}/>}
                 </div>
               </div>
             </div>
