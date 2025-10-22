@@ -48,7 +48,7 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
     }).then(res => { if (!res.ok) throw new Error('Failed to update contact'); return res.json() }),
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['contact', sessionId] });
-        toast({ title: 'Success', description: 'Contact updated successfully.' });
+        toast({ title: 'Success', variant: 'success', description: 'Contact updated successfully.' });
         setIsEditing(false);
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

@@ -115,7 +115,8 @@ const ConversationsPage: React.FC = () => {
         if (eventData.type === 'new_message') {
           toast({
             title: "New Message",
-            description: `New message in session: ${eventData.session.conversation_id}`,
+            description: `New message received in conversation`,
+            variant: "info",
           });
           // Invalidate queries to refetch session list and counts
           queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
@@ -233,7 +234,7 @@ const ConversationsPage: React.FC = () => {
   );
 
   const getAssigneeEmail = (assigneeId?: number) => {
-    if (!assigneeId || !users) return 'N/A';
+    if (!assigneeId || !users || !Array.isArray(users)) return 'N/A';
     const user = users.find(u => u.id === assigneeId);
     return user ? user.email : 'Unknown';
   };

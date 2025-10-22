@@ -123,7 +123,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to create user'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', companyId] });
-      toast({ title: 'Success', description: 'User created successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'User created successfully.' });
       setAddUserModalOpen(false);
       setNewUserEmail("");
       setNewUserPassword("");
@@ -139,7 +139,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to create team'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
-      toast({ title: 'Success', description: 'Team created successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'Team created successfully.' });
       setCreateTeamModalOpen(false);
       setNewTeamName("");
     },
@@ -164,7 +164,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to remove member'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
-      toast({ title: 'Success', description: 'Member removed successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'Member removed successfully.' });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -183,7 +183,7 @@ export const TeamManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles', companyId] });
-      toast({ title: 'Success', description: 'Role saved successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'Role saved successfully.' });
       setRoleModalOpen(false);
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -195,7 +195,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to delete role'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles', companyId] });
-      toast({ title: 'Success', description: 'Role deleted successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'Role deleted successfully.' });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -208,7 +208,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to update team'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
-      toast({ title: 'Success', description: 'Team updated successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'Team updated successfully.' });
       setEditTeamModalOpen(false);
       setEditTeamName("");
     },
@@ -221,7 +221,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to delete team'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
-      toast({ title: 'Success', description: 'Team deleted successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'Team deleted successfully.' });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -232,7 +232,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to delete user'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', companyId] });
-      toast({ title: 'Success', description: 'User deleted successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'User deleted successfully.' });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -245,7 +245,7 @@ export const TeamManagement = () => {
     }).then(res => { if (!res.ok) throw new Error('Failed to update user status'); return res.json() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', companyId] });
-      toast({ title: 'Success', description: 'User status updated successfully.' });
+      toast({ title: 'Success', variant: 'success', description: 'User status updated successfully.' });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -277,7 +277,7 @@ export const TeamManagement = () => {
       // Close modal and reset after all members are added
       setAddMemberModalOpen(false);
       setSelectedUserIds([]);
-      toast({ title: 'Success', description: `${selectedUserIds.length} member(s) added successfully.` });
+      toast({ title: 'Success', variant: 'success', description: `${selectedUserIds.length} member(s) added successfully.` });
     }
   };
 

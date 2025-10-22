@@ -66,7 +66,11 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
     onSuccess: (data) => {
       setIsAiEnabled(data.is_ai_enabled);
       queryClient.invalidateQueries({ queryKey: ['sessionDetails', sessionId] });
-      toast({ title: 'Success', description: `AI has been ${data.is_ai_enabled ? 'enabled' : 'disabled'}.` });
+      toast({
+        title: 'Success',
+        description: `AI has been ${data.is_ai_enabled ? 'enabled' : 'disabled'}.`,
+        variant: 'success'
+      });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -133,7 +137,11 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
       queryClient.invalidateQueries({ queryKey: ['sessions', agentId] });
       queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
       queryClient.invalidateQueries({ queryKey: ['sessionDetails', sessionId] });
-      toast({ title: 'Success', description: 'Conversation status updated.' });
+      toast({
+        title: 'Status Updated',
+        description: 'Conversation status has been updated successfully.',
+        variant: 'success'
+      });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -172,7 +180,11 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
       queryClient.invalidateQueries({ queryKey: ['sessions', agentId] });
       queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
       queryClient.invalidateQueries({ queryKey: ['sessionDetails', sessionId] });
-      toast({ title: 'Success', description: 'Conversation assigned.' });
+      toast({
+        title: 'Assignment Updated',
+        description: 'Conversation has been assigned successfully.',
+        variant: 'success'
+      });
     },
     onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -255,7 +267,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
                   <SelectValue placeholder="Assign to..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {users?.map(user => (
+                  {Array.isArray(users) && users.map(user => (
                     <SelectItem key={user.id} value={user.id.toString()}>
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center">
