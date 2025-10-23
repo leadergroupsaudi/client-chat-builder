@@ -71,7 +71,8 @@ const ConversationsPage: React.FC = () => {
       return { ...counts, mine: mineCount };
     },
     enabled: !!companyId && !!user?.id,
-    refetchInterval: 30000, // Refresh counts every 30 seconds
+    refetchOnWindowFocus: false, // Rely on WebSocket for real-time updates
+    // Removed refetchInterval - WebSocket events will trigger updates via invalidateQueries
   });
 
   // Fetch sessions based on active tab (server-side filtering)
@@ -100,6 +101,7 @@ const ConversationsPage: React.FC = () => {
       return response.json();
     },
     enabled: !!companyId,
+    refetchOnWindowFocus: false, // Rely on WebSocket for real-time updates
   });
 
   const wsUrl = companyId ? `${getWebSocketUrl()}/api/v1/ws/updates/ws/${companyId}?token=${token}` : null;
