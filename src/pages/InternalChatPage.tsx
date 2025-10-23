@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getChannels,
   createChannel,
@@ -74,6 +74,7 @@ const InternalChatPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
   const [inputValue, setInputValue] = useState('');
@@ -105,6 +106,18 @@ const InternalChatPage: React.FC = () => {
           ...prevPresences,
           [user_id]: status,
         }));
+      } else if (wsMessage.type === 'video_call_initiated') {
+        // When a video call is initiated, update the active call info for all users in the channel
+        const { room_name, livekit_token, livekit_url } = wsMessage;
+        console.log('Video call initiated via WebSocket:', { room_name, livekit_url });
+
+        // Invalidate the active video call query to fetch fresh data with user's own token
+        queryClient.invalidateQueries({ queryKey: ['activeVideoCall', selectedChannel?.id] });
+
+        toast({
+          title: 'Video Call Started',
+          description: 'A video call has been started in this channel. Click the video icon to join!',
+        });
       }
     },
     onError: (error) => {
@@ -129,6 +142,44 @@ const InternalChatPage: React.FC = () => {
     queryFn: () => getChannelMembers(selectedChannel!.id),
     enabled: !!selectedChannel?.id,
   });
+
+  // Check for active video call when channel is selected
+  const { data: activeCallData } = useQuery<ActiveVideoCall | null, Error>({
+    queryKey: ['activeVideoCall', selectedChannel?.id],
+    queryFn: async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const response = await axios.get(
+          `${API_BASE_URL}/api/v1/video-calls/channels/${selectedChannel!.id}/active`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Generate token for current user to join
+        const joinResponse = await axios.post(
+          `${API_BASE_URL}/api/v1/video-calls/channels/${selectedChannel!.id}/join`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return joinResponse.data;
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          // No active call
+          return null;
+        }
+        throw error;
+      }
+    },
+    enabled: !!selectedChannel?.id,
+    refetchInterval: 10000, // Check every 10 seconds
+  });
+
+  // Update activeVideoCallInfo when activeCallData changes
+  useEffect(() => {
+    if (activeCallData) {
+      setActiveVideoCallInfo(activeCallData);
+    } else {
+      setActiveVideoCallInfo(null);
+    }
+  }, [activeCallData]);
 
   // Fetch messages for selected channel
   const {
@@ -213,7 +264,7 @@ const InternalChatPage: React.FC = () => {
     onSuccess: (data) => {
       const { room_name, livekit_token, livekit_url } = data;
       navigate(
-        `/internal-video-call?roomName=${room_name}&livekitToken=${livekit_token}&livekitUrl=${livekit_url}&channelId=${selectedChannel?.id}`
+        `/internal-video-call?roomName=${encodeURIComponent(room_name)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekit_url)}&channelId=${selectedChannel?.id}`
       );
     },
     onError: (err) => {
@@ -236,7 +287,7 @@ const InternalChatPage: React.FC = () => {
   const handleVideoCallAction = () => {
     if (activeVideoCallInfo) {
       navigate(
-        `/internal-video-call?roomName=${activeVideoCallInfo.room_name}&livekitToken=${activeVideoCallInfo.livekit_token}&livekitUrl=${activeVideoCallInfo.livekit_url}&channelId=${selectedChannel?.id}`
+        `/internal-video-call?roomName=${encodeURIComponent(activeVideoCallInfo.room_name)}&livekitToken=${encodeURIComponent(activeVideoCallInfo.livekit_token)}&livekitUrl=${encodeURIComponent(activeVideoCallInfo.livekit_url)}&channelId=${selectedChannel?.id}`
       );
     } else if (selectedChannel?.id) {
       initiateVideoCallMutation.mutate(selectedChannel.id);
@@ -252,6 +303,17 @@ const InternalChatPage: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-select channel from URL params (e.g., when returning from video call)
+  useEffect(() => {
+    const channelIdParam = searchParams.get('channelId');
+    if (channelIdParam && channels) {
+      const channelToSelect = channels.find(ch => ch.id === Number(channelIdParam));
+      if (channelToSelect && (!selectedChannel || selectedChannel.id !== channelToSelect.id)) {
+        setSelectedChannel(channelToSelect);
+      }
+    }
+  }, [searchParams, channels, selectedChannel]);
 
   if (isLoadingChannels)
     return (
@@ -349,8 +411,8 @@ const InternalChatPage: React.FC = () => {
                       <CardTitle className="text-xl font-bold dark:text-white">{selectedChannel.name || 'Direct Message'}</CardTitle>
                       <div className="flex items-center mt-1 gap-2">
                         <div className="flex -space-x-2 overflow-hidden">
-                          {channelMembers?.slice(0, 5).map((member: any) => (
-                            <Avatar key={member.user?.id} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-800">
+                          {channelMembers?.slice(0, 5).map((member: any, index: number) => (
+                            <Avatar key={member.user?.id || `member-${index}`} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-800">
                               <AvatarImage src={member.user?.profile_picture_url} />
                               <AvatarFallback className="text-xs bg-gradient-to-br from-blue-400 to-purple-500 text-white">
                                 {member.user?.first_name?.[0] || 'U'}
