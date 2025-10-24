@@ -29,6 +29,7 @@ interface WidgetSettings {
   user_message_text_color: string;
   bot_message_color: string;
   bot_message_text_color: string;
+  time_color?: string;
   widget_size: 'small' | 'medium' | 'large';
   show_header: boolean;
   dark_mode: boolean;
@@ -40,6 +41,10 @@ interface WidgetSettings {
   voice_id?: string;
   stt_provider?: string;
   communication_mode: 'chat' | 'voice' | 'chat_and_voice';
+  meta?: {
+    z_index?: number;
+    [key: string]: any; // Allow any additional customizations
+  };
 }
 
 interface Message {
@@ -85,6 +90,14 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
   const audioPlaybackTimer = useRef<NodeJS.Timeout | null>(null);
   const incomingAudioChunks = useRef<Blob[]>([]);
 
+  // Reconnection state
+  const reconnectAttempts = useRef(0);
+  const reconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatTimer = useRef<NodeJS.Timeout | null>(null);
+  const shouldReconnect = useRef(true);
+  const currentSessionId = useRef<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
   // Fetch settings
   useEffect(() => {
     const fetchSettings = async () => {
@@ -121,11 +134,160 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Clear timers helper
+  const clearTimers = () => {
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+    if (heartbeatTimer.current) {
+      clearInterval(heartbeatTimer.current);
+      heartbeatTimer.current = null;
+    }
+  };
+
+  // Start heartbeat to keep connection alive
+  const startHeartbeat = () => {
+    clearTimers();
+    heartbeatTimer.current = setInterval(() => {
+      if (ws.current?.readyState === WebSocket.OPEN) {
+        ws.current.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000); // Send ping every 30 seconds
+  };
+
+  // Connect to main WebSocket with reconnection
+  const connectWebSocket = () => {
+    if (!currentSessionId.current || !isOpen) return;
+
+    const wsUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/${companyId}/${agentId}/${currentSessionId.current}?user_type=user`;
+
+    console.log('[Widget] Connecting to WebSocket:', wsUrl);
+    ws.current = new WebSocket(wsUrl);
+
+    ws.current.onopen = () => {
+      console.log('[Widget] WebSocket connected');
+      setIsConnected(true);
+      reconnectAttempts.current = 0;
+      startHeartbeat();
+
+      // Show welcome message only on first connection (not reconnection)
+      if (messages.length === 0) {
+        const initialMessageText = isProactiveSession.current ? settings?.proactive_message : settings?.welcome_message;
+        if (initialMessageText) {
+          setMessages([{ id: 'welcome', sender: 'agent', text: initialMessageText, type: 'message', timestamp: new Date().toISOString() }]);
+        }
+        isProactiveSession.current = false;
+      }
+    };
+
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // Handle pong response
+      if (data.type === 'pong') return;
+
+      if (data.message_type === 'typing') {
+        setIsTyping(data.is_typing);
+        return;
+      }
+
+      if (data.message_type === 'tool_use') {
+        setIsUsingTool(true);
+        return;
+      }
+
+      setIsTyping(false);
+      setIsUsingTool(false);
+
+      const newMessage: Message = {
+        id: data.id || `msg-${Date.now()}`,
+        sender: data.sender,
+        text: data.message,
+        type: data.message_type,
+        timestamp: data.timestamp || new Date().toISOString(),
+        options: data.options,
+        fields: data.fields,
+        videoCallUrl: data.message_type === 'video_call_invitation' ? `${settings?.frontend_url}/video-call?token=${data.token}&livekitUrl=${encodeURIComponent(settings?.livekit_url || '')}&sessionId=${currentSessionId.current}` : undefined
+      };
+
+      setMessages(prev => {
+        if (prev.find(msg => msg.id === newMessage.id)) return prev;
+        return [...prev, newMessage];
+      });
+
+      if (data.message_type === 'form') {
+        setActiveForm(data.fields);
+      }
+    };
+
+    ws.current.onclose = (event) => {
+      console.log('[Widget] WebSocket closed:', event.code, event.reason);
+      setIsConnected(false);
+      clearTimers();
+
+      // Attempt to reconnect if widget is still open and should reconnect
+      if (shouldReconnect.current && isOpen && reconnectAttempts.current < 10) {
+        const delay = Math.min(3000 * (reconnectAttempts.current + 1), 15000); // Max 15 seconds
+        console.log(`[Widget] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1}/10)`);
+
+        reconnectAttempts.current += 1;
+        reconnectTimer.current = setTimeout(() => {
+          connectWebSocket();
+        }, delay);
+      } else if (reconnectAttempts.current >= 10) {
+        console.error('[Widget] Max reconnection attempts reached');
+      }
+    };
+
+    ws.current.onerror = (error) => {
+      console.error('[Widget] WebSocket error:', error);
+    };
+  };
+
+  // Connect to voice WebSocket
+  const connectVoiceWebSocket = () => {
+    if (!currentSessionId.current || settings?.communication_mode !== 'chat_and_voice') return;
+
+    const voiceUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${agentId}/${currentSessionId.current}?user_type=user&voice_id=${settings?.voice_id || 'default'}&stt_provider=${settings?.stt_provider || 'groq'}`;
+    voiceWs.current = new WebSocket(voiceUrl);
+
+    voiceWs.current.onopen = () => {
+      console.log('[Widget] Voice WebSocket connected');
+    };
+
+    voiceWs.current.onmessage = async (event) => {
+      if (event.data instanceof Blob) {
+        incomingAudioChunks.current.push(event.data);
+        if (audioPlaybackTimer.current) clearTimeout(audioPlaybackTimer.current);
+        audioPlaybackTimer.current = setTimeout(() => {
+          if (incomingAudioChunks.current.length > 0) {
+            const fullAudioBlob = new Blob(incomingAudioChunks.current, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(fullAudioBlob);
+            new Audio(audioUrl).play();
+            incomingAudioChunks.current = [];
+          }
+        }, 300);
+      }
+    };
+
+    voiceWs.current.onclose = () => {
+      console.log('[Widget] Voice WebSocket closed');
+    };
+
+    voiceWs.current.onerror = (error) => {
+      console.error('[Widget] Voice WebSocket error:', error);
+    };
+  };
+
   // WebSocket connection management
   useEffect(() => {
     if (isOpen) {
       const newSessionId = generateSessionId();
       setSessionId(newSessionId);
+      currentSessionId.current = newSessionId;
+      shouldReconnect.current = true;
+      reconnectAttempts.current = 0;
 
       if (settings?.communication_mode === 'voice') {
         const fetchToken = async () => {
@@ -152,84 +314,26 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
         return;
       }
 
-      const wsUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/${companyId}/${agentId}/${newSessionId}?user_type=user`;
-      ws.current = new WebSocket(wsUrl);
+      // Connect WebSocket
+      connectWebSocket();
 
-      ws.current.onopen = () => {
-        const initialMessageText = isProactiveSession.current ? settings?.proactive_message : settings?.welcome_message;
-        if (initialMessageText) {
-          setMessages([{ id: 'welcome', sender: 'agent', text: initialMessageText, type: 'message', timestamp: new Date().toISOString() }]);
-        }
-        isProactiveSession.current = false;
-      };
-
-      ws.current.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        if (data.message_type === 'typing') {
-            setIsTyping(data.is_typing);
-            return;
-        }
-
-        if (data.message_type === 'tool_use') {
-            setIsUsingTool(true);
-            // Optionally, you can display which tool is being used
-            // const toolName = data.tool_call?.function?.name;
-            // console.log(`Agent is using tool: ${toolName}`);
-            return;
-        }
-        
-        setIsTyping(false);
-        setIsUsingTool(false); // A new message arrived, so the tool is no longer in use.
-
-        const newMessage: Message = {
-          id: data.id || `msg-${Date.now()}`,
-          sender: data.sender,
-          text: data.message,
-          type: data.message_type,
-          timestamp: data.timestamp || new Date().toISOString(),
-          options: data.options,
-          fields: data.fields,
-          videoCallUrl: data.message_type === 'video_call_invitation' ? `${settings?.frontend_url}/video-call?token=${data.token}&livekitUrl=${encodeURIComponent(settings?.livekit_url || '')}&sessionId=${newSessionId}` : undefined
-        };
-        
-        setMessages(prev => {
-            if (prev.find(msg => msg.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-        });
-
-        if (data.message_type === 'form') {
-          setActiveForm(data.fields);
-        }
-      };
-
+      // Connect voice WebSocket if needed
       if (settings?.communication_mode === 'chat_and_voice') {
-        const voiceUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${agentId}/${newSessionId}?user_type=user&voice_id=${settings?.voice_id || 'default'}&stt_provider=${settings?.stt_provider || 'groq'}`;
-        voiceWs.current = new WebSocket(voiceUrl);
-
-        voiceWs.current.onmessage = async (event) => {
-          if (event.data instanceof Blob) {
-            incomingAudioChunks.current.push(event.data);
-            if (audioPlaybackTimer.current) clearTimeout(audioPlaybackTimer.current);
-            audioPlaybackTimer.current = setTimeout(() => {
-              if (incomingAudioChunks.current.length > 0) {
-                const fullAudioBlob = new Blob(incomingAudioChunks.current, { type: 'audio/webm' });
-                const audioUrl = URL.createObjectURL(fullAudioBlob);
-                new Audio(audioUrl).play();
-                incomingAudioChunks.current = [];
-              }
-            }, 300);
-          }
-        };
+        connectVoiceWebSocket();
       }
 
     } else {
+      shouldReconnect.current = false;
+      clearTimers();
       ws.current?.close();
       voiceWs.current?.close();
       setLiveKitToken(null);
+      setIsConnected(false);
     }
 
     return () => {
+      shouldReconnect.current = false;
+      clearTimers();
       ws.current?.close();
       voiceWs.current?.close();
     };
@@ -281,12 +385,12 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
   };
 
   if (isLoading || !settings) return null;
-  const { position, primary_color, agent_avatar_url, widget_size, border_radius, dark_mode, header_title, show_header, input_placeholder, user_message_color, user_message_text_color, bot_message_color, bot_message_text_color } = settings;
+  const { position, primary_color, agent_avatar_url, widget_size, border_radius, dark_mode, header_title, show_header, input_placeholder, user_message_color, user_message_text_color, bot_message_color, bot_message_text_color, time_color } = settings;
   const [vertical, horizontal] = position.split('-');
   const size = widgetSizes[widget_size] || widgetSizes.medium;
 
   return (
-  <div style={{ position: 'fixed', zIndex: 9999, [vertical]: '20px', [horizontal]: '20px' }}>
+  <div style={{ position: 'fixed', zIndex: settings.meta?.z_index || 9999, [vertical]: '20px', [horizontal]: '20px' }}>
     {!isOpen && (
       <Button
         onClick={() => setIsOpen(true)}
@@ -400,7 +504,7 @@ const Widget = ({ agentId, companyId, backendUrl }: WidgetProps) => {
                     </Avatar>
                     <span className="text-xs font-semibold">{msg.sender === 'agent' ? 'Agent' : 'You'}</span>
                   </div>
-                  <span className={cn('text-xs', dark_mode ? 'text-gray-400' : 'text-gray-500', msg.sender === 'user' && 'text-opacity-80')}>
+                  <span className="text-xs" style={{ color: time_color || (dark_mode ? '#9CA3AF' : '#6B7280') }}>
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>

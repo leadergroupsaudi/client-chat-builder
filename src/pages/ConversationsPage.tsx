@@ -106,11 +106,9 @@ const ConversationsPage: React.FC = () => {
 
   const wsUrl = companyId ? `${getWebSocketUrl()}/api/v1/ws/updates/ws/${companyId}?token=${token}` : null;
 
-  // Connect to the company-wide WebSocket for real-time updates
-  useWebSocket(
-    wsUrl,
-    {
-      onMessage: (event) => {
+  // Memoize WebSocket options to prevent unnecessary reconnections
+  const wsOptions = useMemo(() => ({
+    onMessage: (event) => {
         const eventData = JSON.parse(event.data);
         console.log('[WebSocket] Received event:', eventData.type, eventData);
 
@@ -195,10 +193,15 @@ const ConversationsPage: React.FC = () => {
           }
         } else if (eventData.type === 'session_status_update') {
           // Handle real-time status updates (active/inactive/resolved) and connection status
-          console.log(`Session ${eventData.session_id} status changed to: ${eventData.status}, connected: ${eventData.is_client_connected}`);
+          console.log(`Session ${eventData.session_id} status changed to: ${eventData.status}, connected: ${eventData.is_client_connected}, assignee: ${eventData.assignee_id}`);
 
           // Invalidate counts immediately
           queryClient.invalidateQueries({ queryKey: ['sessionCounts', companyId] });
+
+          // If this is the currently selected session, invalidate its details to refresh assignee
+          if (selectedSessionId === eventData.session_id) {
+            queryClient.invalidateQueries({ queryKey: ['sessionDetails', selectedSessionId] });
+          }
 
           // Update the current tab's sessions list
           queryClient.setQueryData<Session[]>(['sessions', companyId, activeTab, user?.id], (oldSessions) => {
@@ -209,7 +212,7 @@ const ConversationsPage: React.FC = () => {
             if (sessionExists) {
               // Check if the session still belongs in the current tab after status change
               const isResolvedStatus = ['resolved', 'archived'].includes(eventData.status);
-              const isAssignedToMe = eventData.status === 'assigned' && oldSessions.find(s => s.session_id === eventData.session_id)?.assignee_id === user?.id;
+              const isAssignedToMe = eventData.status === 'assigned' && eventData.assignee_id === user?.id;
 
               const shouldStayInTab =
                 (activeTab === 'mine' && isAssignedToMe) ||
@@ -218,12 +221,13 @@ const ConversationsPage: React.FC = () => {
                 activeTab === 'all';
 
               if (shouldStayInTab) {
-                // Update the status and connection state
+                // Update the status, connection state, and assignee
                 return oldSessions.map(session =>
                   session.session_id === eventData.session_id
                     ? {
                         ...session,
                         status: eventData.status,
+                        assignee_id: eventData.assignee_id ?? session.assignee_id,
                         is_client_connected: eventData.is_client_connected ?? session.is_client_connected
                       }
                     : session
@@ -242,8 +246,10 @@ const ConversationsPage: React.FC = () => {
         }
       },
       enabled: !!wsUrl,
-    }
-  );
+    }), [companyId, queryClient, selectedSessionId, user?.id, activeTab, wsUrl]);
+
+  // Connect to the company-wide WebSocket for real-time updates
+  useWebSocket(wsUrl, wsOptions);
 
   const getAssigneeEmail = (assigneeId?: number) => {
     if (!assigneeId || !users || !Array.isArray(users)) return 'N/A';

@@ -51,11 +51,15 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
       if (!res.ok) throw new Error('Failed to fetch session details');
       return res.json();
     },
-    onSuccess: (data) => {
-      setIsAiEnabled(data.is_ai_enabled);
-    },
     enabled: !!sessionId,
   });
+
+  // Update isAiEnabled when sessionDetails changes
+  useEffect(() => {
+    if (sessionDetails?.is_ai_enabled !== undefined) {
+      setIsAiEnabled(sessionDetails.is_ai_enabled);
+    }
+  }, [sessionDetails?.is_ai_enabled]);
 
   const toggleAiMutation = useMutation({
     mutationFn: (enabled: boolean) => authFetch(`/api/v1/conversations/${sessionId}/toggle-ai`, {
@@ -249,6 +253,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
                 AI Replies
               </Label>
               <Switch
+                key={`ai-toggle-${sessionId}`}
                 id="ai-toggle"
                 checked={isAiEnabled}
                 onCheckedChange={toggleAiMutation.mutate}
@@ -260,6 +265,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 card-shadow">
               <Users className="h-4 w-4 text-muted-foreground" />
               <Select
+                key={`assignee-${sessionId}`}
                 value={sessionDetails?.assignee_id?.toString() || undefined}
                 onValueChange={(value) => assigneeMutation.mutate(parseInt(value))}
               >

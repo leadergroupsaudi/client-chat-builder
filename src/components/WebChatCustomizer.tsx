@@ -43,14 +43,15 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
   const [gradientColor1, setGradientColor1] = useState("#3B82F6");
   const [gradientColor2, setGradientColor2] = useState("#8B5CF6");
   const [gradientColor3, setGradientColor3] = useState("#EC4899");
-  const [activeGradientField, setActiveGradientField] = useState<'primary' | 'user_message' | null>(null);
+  const [activeGradientField, setActiveGradientField] = useState<'primary' | 'user_message' | 'user_text' | 'bot_message' | 'bot_text' | 'time' | null>(null);
 
   const defaultGradientColors = {
     primary_color: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #EC4899 100%)",
     user_message_color: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)",
     user_message_text_color: "#FFFFFF",
-    bot_message_color: "#EEF2FF",
+    bot_message_color: "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)",
     bot_message_text_color: "#1E293B",
+    time_color: "#9CA3AF",
   };
 
   const handleResetColors = () => {
@@ -64,13 +65,21 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
     if (!activeGradientField) return;
 
     const gradient = `linear-gradient(${gradientAngle}deg, ${gradientColor1} 0%, ${gradientColor2} 50%, ${gradientColor3} 100%)`;
-    updateCustomization(activeGradientField === 'primary' ? 'primary_color' : 'user_message_color', gradient);
+    const fieldMap = {
+      primary: 'primary_color',
+      user_message: 'user_message_color',
+      user_text: 'user_message_text_color',
+      bot_message: 'bot_message_color',
+      bot_text: 'bot_message_text_color',
+      time: 'time_color'
+    };
+    updateCustomization(fieldMap[activeGradientField], gradient);
     setShowGradientEditor(false);
     setActiveGradientField(null);
     toast({ title: "Gradient applied!" });
   };
 
-  const openGradientEditor = (field: 'primary' | 'user_message') => {
+  const openGradientEditor = (field: 'primary' | 'user_message' | 'user_text' | 'bot_message' | 'bot_text' | 'time') => {
     setActiveGradientField(field);
     setShowGradientEditor(true);
   };
@@ -151,9 +160,9 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
                   Reset
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <Label htmlFor="primary_color" className="text-xs dark:text-gray-300 mb-1.5 block">Primary</Label>
+                  <Label htmlFor="primary_color" className="text-xs dark:text-gray-300 mb-1.5 block">Primary Color</Label>
                   <div className="flex items-center gap-2">
                     <div
                       className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer"
@@ -170,46 +179,137 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
                       variant="ghost"
                       size="sm"
                       className="h-9 w-9 p-0"
+                      title="Gradient Editor"
                     >
                       <Palette className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="user_message_color" className="text-xs dark:text-gray-300 mb-1.5 block">User Message</Label>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer"
+                        style={{ background: customization.user_message_color }}
+                        onClick={() => {
+                          if (customization.user_message_color.includes('gradient')) {
+                            openGradientEditor('user_message');
+                          }
+                        }}
+                      />
+                      <Input value={customization.user_message_color} onChange={(e) => updateCustomization("user_message_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
+                      <Button
+                        onClick={() => openGradientEditor('user_message')}
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0"
+                        title="Gradient Editor"
+                      >
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="user_message_text_color" className="text-xs dark:text-gray-300 mb-1.5 block">User Text</Label>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer"
+                        style={{ background: customization.user_message_text_color }}
+                        onClick={() => {
+                          if (customization.user_message_text_color.includes('gradient')) {
+                            openGradientEditor('user_text');
+                          }
+                        }}
+                      />
+                      <Input value={customization.user_message_text_color} onChange={(e) => updateCustomization("user_message_text_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
+                      <Button
+                        onClick={() => openGradientEditor('user_text')}
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0"
+                        title="Gradient Editor"
+                      >
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="bot_message_color" className="text-xs dark:text-gray-300 mb-1.5 block">Bot Message</Label>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer"
+                        style={{ background: customization.bot_message_color }}
+                        onClick={() => {
+                          if (customization.bot_message_color.includes('gradient')) {
+                            openGradientEditor('bot_message');
+                          }
+                        }}
+                      />
+                      <Input value={customization.bot_message_color} onChange={(e) => updateCustomization("bot_message_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
+                      <Button
+                        onClick={() => openGradientEditor('bot_message')}
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0"
+                        title="Gradient Editor"
+                      >
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="bot_message_text_color" className="text-xs dark:text-gray-300 mb-1.5 block">Bot Text</Label>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer"
+                        style={{ background: customization.bot_message_text_color }}
+                        onClick={() => {
+                          if (customization.bot_message_text_color.includes('gradient')) {
+                            openGradientEditor('bot_text');
+                          }
+                        }}
+                      />
+                      <Input value={customization.bot_message_text_color} onChange={(e) => updateCustomization("bot_message_text_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
+                      <Button
+                        onClick={() => openGradientEditor('bot_text')}
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0"
+                        title="Gradient Editor"
+                      >
+                        <Palette className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <Label htmlFor="user_message_color" className="text-xs dark:text-gray-300 mb-1.5 block">User Message</Label>
+                  <Label htmlFor="time_color" className="text-xs dark:text-gray-300 mb-1.5 block">Time Color</Label>
                   <div className="flex items-center gap-2">
                     <div
                       className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer"
-                      style={{ background: customization.user_message_color }}
+                      style={{ background: customization.time_color || '#9CA3AF' }}
                       onClick={() => {
-                        if (customization.user_message_color.includes('gradient')) {
-                          openGradientEditor('user_message');
+                        if ((customization.time_color || '').includes('gradient')) {
+                          openGradientEditor('time');
                         }
                       }}
                     />
-                    <Input value={customization.user_message_color} onChange={(e) => updateCustomization("user_message_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
+                    <Input value={customization.time_color || '#9CA3AF'} onChange={(e) => updateCustomization("time_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
                     <Button
-                      onClick={() => openGradientEditor('user_message')}
+                      onClick={() => openGradientEditor('time')}
                       variant="ghost"
                       size="sm"
                       className="h-9 w-9 p-0"
+                      title="Gradient Editor"
                     >
                       <Palette className="h-4 w-4" />
                     </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="bot_message_color" className="text-xs dark:text-gray-300 mb-1.5 block">Bot Message</Label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" id="bot_message_color" value={customization.bot_message_color} onChange={(e) => updateCustomization("bot_message_color", e.target.value)} className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer" />
-                    <Input value={customization.bot_message_color} onChange={(e) => updateCustomization("bot_message_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="bot_message_text_color" className="text-xs dark:text-gray-300 mb-1.5 block">Bot Text</Label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" id="bot_message_text_color" value={customization.bot_message_text_color} onChange={(e) => updateCustomization("bot_message_text_color", e.target.value)} className="w-12 h-9 rounded border dark:border-slate-600 cursor-pointer" />
-                    <Input value={customization.bot_message_text_color} onChange={(e) => updateCustomization("bot_message_text_color", e.target.value)} className="text-xs dark:bg-slate-800 dark:border-slate-600 dark:text-white h-9" />
                   </div>
                 </div>
               </div>
@@ -315,6 +415,19 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
                 <div className="col-span-2">
                   <Label htmlFor="border_radius" className="text-xs dark:text-gray-300 mb-1.5 block">Border Radius: {customization.border_radius}px</Label>
                   <Input id="border_radius" type="range" min="0" max="30" value={customization.border_radius} onChange={(e) => updateCustomization("border_radius", parseInt(e.target.value))} className="w-full dark:bg-slate-700" />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="z_index" className="text-xs dark:text-gray-300 mb-1.5 block">Z-Index: {customization.meta?.z_index || 9999}</Label>
+                  <Input
+                    id="z_index"
+                    type="number"
+                    min="0"
+                    max="999999"
+                    value={customization.meta?.z_index || 9999}
+                    onChange={(e) => updateCustomization("meta", { ...customization.meta, z_index: parseInt(e.target.value) })}
+                    className="w-full text-sm dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                  />
+                  <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">Adjust if widget appears behind website elements (default: 9999)</p>
                 </div>
                 <div className="col-span-2">
                   <Label htmlFor="communication_mode" className="text-xs dark:text-gray-300 mb-1.5 block">Communication Mode</Label>

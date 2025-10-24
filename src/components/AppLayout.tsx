@@ -57,10 +57,10 @@ const AppLayout = () => {
 
     // Team & Communication
     { title: "Team Management", url: "/dashboard/team", icon: Users, permission: "user:read" },
-    { title: "Team Chat", url: "/dashboard/team-chat", icon: MessageSquare, permission: "user:read" },
+    { title: "Team Chat", url: "/dashboard/team-chat", icon: MessageSquare, permission: "chat:read" },
 
     // AI Features
-    { title: "AI Chat", url: "/dashboard/ai-chat", icon: MessageSquare, permission: "chat:read" },
+    { title: "AI Chat", url: "/dashboard/ai-chat", icon: MessageSquare, permission: "ai-chat:read" },
     { title: "AI Tools", url: "/dashboard/ai-tools", icon: Sparkles, permission: "ai-tool:read" },
     { title: "AI Image Generator", url: "/dashboard/ai-image-generator", icon: Sparkles, permission: "image:create" },
     { title: "AI Image Gallery", url: "/dashboard/ai-image-gallery", icon: FileText, permission: "image:read" },

@@ -31,6 +31,7 @@ const initialCustomizationState = {
   user_message_text_color: "#FFFFFF",
   bot_message_color: "#EEF2FF", // Lighter blue background for bot messages
   bot_message_text_color: "#1E293B", // Darker text for better contrast
+  time_color: "#9CA3AF", // Time/timestamp color
   widget_size: "medium",
   show_header: true,
   proactive_message_enabled: false,
@@ -43,6 +44,7 @@ const initialCustomizationState = {
   livekit_url: '',
   isPreConnectBufferEnabled: false,
   client_website_url: "",
+  meta: { z_index: 9999 }, // Flexible meta field for additional customizations
 };
 
 const widgetSizes = {
@@ -459,7 +461,7 @@ export const AdvancedChatPreview = () => {
                                   </Avatar>
                                   <span className="text-xs font-semibold">{msg.sender === 'agent' ? 'Agent' : 'You'}</span>
                                 </div>
-                                <span className={cn('text-xs', customization.dark_mode ? 'text-gray-400' : 'text-gray-500', msg.sender === 'user' && 'text-opacity-80')}>
+                                <span className="text-xs" style={{ color: customization.time_color || (customization.dark_mode ? '#9CA3AF' : '#6B7280') }}>
                                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
