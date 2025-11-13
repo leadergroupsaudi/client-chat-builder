@@ -9,6 +9,7 @@ import { Mail, Phone, User, Edit, Save, MapPin, Calendar, Tag, Activity } from '
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/hooks/useI18n';
 
@@ -20,6 +21,7 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const queryClient = useQueryClient();
+  const { playSuccessSound } = useNotifications();
   const companyId = 1; // Hardcoded company ID
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Contact>>({});
@@ -53,6 +55,7 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['contact', sessionId] });
         toast({ title: t('conversations.contact.toasts.success'), variant: 'success', description: t('conversations.contact.toasts.contactUpdated') });
+        playSuccessSound();
         setIsEditing(false);
     },
     onError: (e: Error) => toast({ title: t('conversations.contact.toasts.error'), description: e.message, variant: 'destructive' }),

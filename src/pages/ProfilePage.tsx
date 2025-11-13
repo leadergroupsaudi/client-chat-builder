@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const ProfilePage = () => {
   const { authFetch } = useAuth();
   const { toast } = useToast();
+  const { playSuccessSound } = useNotifications();
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,6 +66,7 @@ export const ProfilePage = () => {
       setJobTitle(data.job_title || "");
       setProfilePictureUrl(data.profile_picture_url || "");
       toast({ title: "Profile updated successfully" });
+      playSuccessSound(); // Play success sound
     } catch (error) {
       toast({ title: "Failed to update profile", variant: "destructive" });
     }

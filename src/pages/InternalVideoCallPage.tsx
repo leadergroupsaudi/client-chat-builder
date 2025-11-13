@@ -10,12 +10,14 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MessageSquare, PhoneOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useWebSocket } from '@/hooks/use-websocket';
-import { getWebSocketUrl } from '@/config/api';
+import { getWebSocketUrl, API_BASE_URL } from '@/config/api';
 import { BACKEND_URL } from '@/config/env';
+import axios from 'axios';
 
 interface ChatMessage {
   id: number;
@@ -38,20 +40,32 @@ const InternalVideoCallPage: React.FC = () => {
   const livekitUrl = queryParams.get('livekitUrl');
   const roomName = queryParams.get('roomName');
   const channelId = queryParams.get('channelId');
+  const callId = queryParams.get('callId');
 
   // Debug: Log the parameters
-  console.log('Video Call Page Parameters:', {
-    livekitToken,
+  console.log('=== [VIDEO CALL - PAGE LOADED] ===');
+  console.log('[Video Call] URL Parameters:', {
+    livekitToken: livekitToken ? livekitToken.substring(0, 20) + '...' : null,
     livekitUrl,
     roomName,
     channelId,
+    callId,
+    hasCallId: !!callId,
+    callIdType: typeof callId,
     fullSearch: location.search
   });
+
+  if (!callId) {
+    console.error('[Video Call] ⚠️⚠️⚠️ CRITICAL: callId is missing from URL!');
+    console.error('[Video Call] The call will NOT be ended when leaving!');
+    console.error('[Video Call] URL params received:', location.search);
+  }
 
   const [isChatOpen, setChatOpen] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const { playCallEndSound } = useNotifications();
   const queryClient = useQueryClient();
   const [isRoomReady, setIsRoomReady] = useState(false);
 
@@ -81,6 +95,14 @@ const InternalVideoCallPage: React.FC = () => {
           }
           return [...oldMessages, newMessage];
         });
+      } else if (wsMessage.type === 'call_ended') {
+        // Call ended - play sound and navigate back to chat
+        console.log('[Video Call] Call ended via WebSocket - navigating back to chat');
+        playCallEndSound();
+        navigate(`/dashboard/internal-chat${channelId ? `?channelId=${channelId}` : ''}`);
+      } else if (wsMessage.type === 'user_left_call') {
+        // Someone left the call (but call continues)
+        console.log('[Video Call] User left call:', wsMessage.left_by_name);
       }
     },
   });
@@ -106,7 +128,73 @@ const InternalVideoCallPage: React.FC = () => {
     }
   };
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
+    console.log('=== [VIDEO CALL - LEAVE] ===');
+    console.log('[Video Call] handleLeave called');
+    console.log('[Video Call] Parameters:', {
+      callId,
+      channelId,
+      roomName,
+      hasCallId: !!callId,
+      callIdType: typeof callId
+    });
+
+    // Play call end sound
+    playCallEndSound();
+
+    // End the call on the backend if we have a callId
+    if (callId) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const endpoint = `${API_BASE_URL}/api/v1/video-calls/${callId}/end`;
+
+        console.log('[Video Call] Making API request to:', endpoint);
+        console.log('[Video Call] With headers:', { hasToken: !!token });
+
+        const response = await axios.post(
+          endpoint,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        console.log('[Video Call] API response:', response.data);
+        console.log('[Video Call] Successfully ended call on backend');
+      } catch (error: any) {
+        console.error('[Video Call] Failed to end call on backend');
+        console.error('[Video Call] Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        // Still navigate even if the end call fails
+      }
+    } else {
+      console.warn('[Video Call] ⚠️ No callId available - cannot end call on backend');
+      console.warn('[Video Call] This means the call status will remain "active" in the database!');
+    }
+
+    // Restore previous presence status
+    const previousStatus = localStorage.getItem('previousPresenceStatus');
+    console.log('[Video Call] Restoring previous status:', previousStatus || 'none saved, defaulting to online');
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const statusToRestore = previousStatus || 'online'; // Default to online if no previous status
+
+      await axios.post(
+        `${API_BASE_URL}/api/v1/auth/presence?presence_status=${statusToRestore}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('[Video Call] Status restored to:', statusToRestore);
+
+      // Clear the saved status from localStorage
+      localStorage.removeItem('previousPresenceStatus');
+    } catch (statusError) {
+      console.error('[Video Call] Failed to restore previous status:', statusError);
+    }
+
+    console.log('[Video Call] Navigating back to chat...');
     // Navigate back to the internal chat page with the same channel selected
     navigate(`/dashboard/internal-chat${channelId ? `?channelId=${channelId}` : ''}`);
   };
@@ -145,17 +233,23 @@ const InternalVideoCallPage: React.FC = () => {
           serverUrl={livekitUrl}
           data-lk-theme="default"
           connectOptions={{ autoSubscribe: true }}
-          onDisconnected={handleLeave}
+          onDisconnected={() => {
+            console.log('[Video Call] LiveKitRoom onDisconnected event fired');
+            handleLeave();
+          }}
           onError={(error) => {
-            console.error('LiveKitRoom error:', error);
+            console.error('[Video Call] LiveKitRoom error:', error);
           }}
           onConnected={() => {
-            console.log('LiveKitRoom connected successfully!');
+            console.log('[Video Call] LiveKitRoom connected successfully!');
           }}
         >
           <VideoConference />
-          <Button 
-            onClick={handleLeave} 
+          <Button
+            onClick={() => {
+              console.log('[Video Call] Leave button clicked');
+              handleLeave();
+            }}
             className="absolute top-4 left-4 bg-red-500 hover:bg-red-600"
           >
             <PhoneOff className="h-5 w-5 mr-2" />

@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { IntegrationsList } from "./IntegrationsList";
 import { ApiKeys } from "./ApiKeys";
 import { ProactiveMessageTester } from "./ProactiveMessageTester";
@@ -38,6 +39,7 @@ export const Settings = () => {
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const { toast } = useToast();
+  const { playSuccessSound } = useNotifications();
   const { user, companyId, setCompanyIdGlobaly, authFetch } = useAuth();
 
   const [settings, setSettings] = useState({
@@ -172,6 +174,7 @@ export const Settings = () => {
           title: t('settings.success'),
           description: t('settings.settingsSaved'),
         });
+        playSuccessSound();
       } else {
         toast({
           title: t('settings.error'),

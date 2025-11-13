@@ -10,12 +10,14 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const PRESENCE_OPTIONS = [
   { value: "online", label: "Available", color: "bg-green-500", icon: "●" },
   { value: "busy", label: "Busy", color: "bg-red-500", icon: "●" },
   { value: "away", label: "Away", color: "bg-yellow-500", icon: "●" },
   { value: "do_not_disturb", label: "Do Not Disturb", color: "bg-red-600", icon: "⊖" },
+  { value: "in_call", label: "In Call", color: "bg-blue-500", icon: "📞", systemOnly: true },
   { value: "offline", label: "Appear Offline", color: "bg-gray-400", icon: "○" },
 ];
 
@@ -27,6 +29,7 @@ interface PresenceSelectorProps {
 export const PresenceSelector = ({ currentStatus = "offline", showLabel = true }: PresenceSelectorProps) => {
   const { authFetch } = useAuth();
   const queryClient = useQueryClient();
+  const { playSuccessSound } = useNotifications();
   const [selectedStatus, setSelectedStatus] = useState(currentStatus);
 
   const updatePresenceMutation = useMutation({
@@ -41,6 +44,7 @@ export const PresenceSelector = ({ currentStatus = "offline", showLabel = true }
       setSelectedStatus(data.presence_status);
       queryClient.invalidateQueries({ queryKey: ["users"] });
       toast({ title: "Status updated", description: "Your presence status has been updated." });
+      playSuccessSound(); // Play success sound
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -75,7 +79,7 @@ export const PresenceSelector = ({ currentStatus = "offline", showLabel = true }
         <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
           Set Status
         </div>
-        {PRESENCE_OPTIONS.map((option) => (
+        {PRESENCE_OPTIONS.filter((option) => !(option as any).systemOnly).map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => handleStatusChange(option.value)}

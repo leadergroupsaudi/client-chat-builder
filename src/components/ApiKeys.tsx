@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Key, Trash, PlusCircle } from "lucide-react";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { useI18n } from '@/hooks/useI18n';
@@ -18,6 +19,7 @@ interface ApiKey {
 export const ApiKeys = () => {
   const { t, isRTL } = useI18n();
   const { toast } = useToast();
+  const { playSuccessSound } = useNotifications();
   const { authFetch } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,6 +64,7 @@ export const ApiKeys = () => {
           title: t('apiKeys.success'),
           description: t('apiKeys.deletedSuccess'),
         });
+        playSuccessSound();
       } else {
         toast({
           title: t('apiKeys.error'),

@@ -3,9 +3,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { CircleUser, Moon, Sun, ChevronsLeft, ChevronsRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useState } from "react";
-import { Outlet, NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useWebSocket } from "@/hooks/use-websocket";
+import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import IncomingCallModal from "@/components/IncomingCallModal";
+import { BACKEND_URL } from "@/config/env";
+import { API_BASE_URL } from "@/config/api";
 import { 
   Plus, 
   MessageSquare, 
@@ -31,6 +39,7 @@ import { CreateAgentDialog } from "@/components/CreateAgentDialog";
 import { Permission } from "./Permission";
 import { PresenceSelector } from "@/components/PresenceSelector";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import NotificationBell from "@/components/NotificationBell";
 import { useTranslation } from "react-i18next";
 import { useI18n } from "@/hooks/useI18n";
 
@@ -38,11 +47,221 @@ const AppLayout = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, refetchUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   const { isRTL } = useI18n();
+  const { toast } = useToast();
+  const { soundEnabled, enableSound, showNotification } = useNotifications();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   console.log("Logged in user:", user);
+
+  // Global incoming call state
+  const [incomingCall, setIncomingCall] = useState<{
+    callId: number;
+    callerId: number;
+    callerName: string;
+    callerAvatar?: string;
+    channelId: number;
+    channelName: string;
+    roomName: string;
+    livekitToken: string;
+    livekitUrl: string;
+  } | null>(null);
+
+  // Global WebSocket connection for company-wide notifications
+  const companyWsUrl = user?.company_id
+    ? `${BACKEND_URL.replace('http', 'ws')}/ws/${user.company_id}?token=${localStorage.getItem('accessToken')}`
+    : null;
+
+  useWebSocket(companyWsUrl, {
+    onMessage: (event) => {
+      const wsMessage = JSON.parse(event.data);
+
+      if (wsMessage.type === 'video_call_initiated') {
+        const { call_id, room_name, livekit_token, livekit_url, channel_id, channel_member_ids, caller_id, caller_name, caller_avatar } = wsMessage;
+        console.log('[AppLayout] Global video call notification received:', { call_id, caller_id, channel_id, channel_member_ids });
+
+        // Check if current user is a member of this channel
+        const isChannelMember = channel_member_ids && user && channel_member_ids.includes(user.id);
+
+        // Only show notification if user is a channel member AND not the caller
+        if (user && caller_id !== user.id && isChannelMember) {
+          setIncomingCall({
+            callId: call_id,
+            callerId: caller_id,
+            callerName: caller_name || 'Unknown',
+            callerAvatar: caller_avatar,
+            channelId: channel_id,
+            channelName: `Channel ${channel_id}`, // We'll improve this later
+            roomName: room_name,
+            livekitToken: livekit_token,
+            livekitUrl: livekit_url,
+          });
+
+          // Show browser notification
+          showNotification({
+            title: 'Incoming Video Call',
+            body: `${caller_name} is calling...`,
+            tag: `call-${call_id}`,
+          });
+        } else if (user && !isChannelMember) {
+          console.log('[AppLayout] Ignoring call - user is not a member of channel', channel_id);
+        }
+      } else if (wsMessage.type === 'unread_count_update') {
+        const { user_id, unread_count } = wsMessage;
+        console.log('[AppLayout] Unread count update received:', { user_id, unread_count });
+
+        // Only update if this message is for the current user
+        if (user && user_id === user.id) {
+          const previousCount = queryClient.getQueryData<number>(['notificationUnreadCount']) || 0;
+          queryClient.setQueryData(['notificationUnreadCount'], unread_count);
+
+          // Play notification sound if count increased (new notification)
+          if (unread_count > previousCount) {
+            console.log('[AppLayout] New notification detected, playing sound');
+            showNotification({
+              title: 'New Notification',
+              body: 'You have a new notification',
+              tag: 'notification-update',
+            });
+          }
+        }
+      } else if (wsMessage.type === 'presence_update') {
+        const { user_id, status } = wsMessage.payload;
+        console.log('[AppLayout] Presence update received:', { user_id, status });
+
+        // If the presence update is for the current user, refetch their data
+        if (user && user_id === user.id) {
+          console.log('[AppLayout] Refetching current user data due to presence update');
+          refetchUser();
+        }
+
+        // Invalidate users query to update presence status in TeamManagement and other components
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+
+        // Also invalidate channel members if needed
+        queryClient.invalidateQueries({ queryKey: ['channelMembers'] });
+      }
+    },
+    enabled: !!user?.company_id,
+  });
+
+  // Handle accepting a call
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+
+      // Save current presence status before joining call
+      if (user?.presence_status && user.presence_status !== 'in_call') {
+        localStorage.setItem('previousPresenceStatus', user.presence_status);
+        console.log('[AppLayout Call] Saved previous status:', user.presence_status);
+      }
+
+      // Set status to in_call
+      try {
+        await axios.post(
+          `${API_BASE_URL}/api/v1/auth/presence?presence_status=in_call`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('[AppLayout Call] Status set to in_call');
+      } catch (statusError) {
+        console.error('[AppLayout Call] Failed to set in_call status:', statusError);
+      }
+
+      const endpoint = `${API_BASE_URL}/api/v1/video-calls/${incomingCall.callId}/accept`;
+      const response = await axios.post(endpoint, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const { room_name, livekit_token, livekit_url } = response.data;
+
+      // Clear incoming call state
+      setIncomingCall(null);
+
+      // Navigate to video call page
+      navigate(
+        `/internal-video-call?roomName=${encodeURIComponent(room_name)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekit_url)}&channelId=${incomingCall.channelId}&callId=${incomingCall.callId}`
+      );
+    } catch (error) {
+      console.error('Error accepting call:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to accept call',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle rejecting a call
+  const handleRejectCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      const endpoint = `${API_BASE_URL}/api/v1/video-calls/${incomingCall.callId}/reject`;
+      await axios.post(endpoint, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+      });
+
+      // Clear incoming call state
+      setIncomingCall(null);
+
+      toast({
+        title: 'Call declined',
+        description: 'You declined the call',
+      });
+    } catch (error) {
+      console.error('Error rejecting call:', error);
+      setIncomingCall(null);
+    }
+  };
+
+  // Show prompt to enable notification sounds on first load
+  useEffect(() => {
+    // Check if user has been prompted for sound before
+    const soundPromptDismissed = localStorage.getItem('notificationSoundPromptDismissed');
+
+    // Show prompt to enable notification sounds if not enabled and not previously dismissed
+    if (!soundEnabled && soundPromptDismissed !== 'true') {
+      // Delay the toast slightly so it doesn't appear immediately on page load
+      const timer = setTimeout(() => {
+        toast({
+          title: "Enable Notification Sounds?",
+          description: "Get audio alerts for mentions, replies, reactions, and calls",
+          action: (
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  console.log('[AppLayout] Enable sound button clicked');
+                  enableSound();
+                  // Auto-dismiss after enabling
+                }}
+                className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700"
+              >
+                Enable
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[AppLayout] Dismiss sound prompt button clicked');
+                  localStorage.setItem('notificationSoundPromptDismissed', 'true');
+                }}
+                className="px-3 py-1.5 bg-slate-200 text-slate-700 text-sm rounded-md hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              >
+                Dismiss
+              </button>
+            </div>
+          ),
+          duration: 10000, // Show for 10 seconds
+        });
+      }, 2000); // Wait 2 seconds after page load
+
+      return () => clearTimeout(timer);
+    }
+  }, [soundEnabled]);
 
   const sidebarItems = [
     // Core Operations
@@ -102,6 +321,9 @@ const AppLayout = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <NotificationBell />
+              
               {/* Language Switcher */}
               <LanguageSwitcher />
 
@@ -266,10 +488,22 @@ const AppLayout = () => {
         </main>
       </div>
 
-      <CreateAgentDialog 
-        open={isCreateDialogOpen} 
-        onOpenChange={setIsCreateDialogOpen} 
+      <CreateAgentDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
       />
+
+      {/* Global Incoming Call Modal */}
+      {incomingCall && (
+        <IncomingCallModal
+          isOpen={true}
+          callerName={incomingCall.callerName}
+          callerAvatar={incomingCall.callerAvatar}
+          channelName={incomingCall.channelName}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+        />
+      )}
     </div>
   );
 };

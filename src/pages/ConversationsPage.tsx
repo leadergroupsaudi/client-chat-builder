@@ -110,7 +110,7 @@ const ConversationsPage: React.FC = () => {
     refetchOnWindowFocus: false, // Rely on WebSocket for real-time updates
   });
 
-  const wsUrl = companyId ? `${getWebSocketUrl()}/api/v1/ws/updates/ws/${companyId}?token=${token}` : null;
+  const wsUrl = companyId ? `${getWebSocketUrl()}/ws/${companyId}?token=${token}` : null;
 
   // Memoize WebSocket options to prevent unnecessary reconnections
   const wsOptions = useMemo(() => ({

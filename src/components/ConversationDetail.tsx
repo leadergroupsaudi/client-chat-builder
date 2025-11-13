@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { VideoCallModal } from './VideoCallModal';
 import { ConversationSidebar } from './ConversationSidebar';
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Label } from './ui/label';
 import { useVoiceConnection } from '@/hooks/use-voice-connection';
 import { getWebSocketUrl } from '@/config/api';
@@ -75,6 +76,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const queryClient = useQueryClient();
+  const { playSuccessSound } = useNotifications();
   const companyId = 1; // Hardcoded company ID
   const [message, setMessage] = useState('');
   const [note, setNote] = useState('');
@@ -130,6 +132,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
         description: data.is_ai_enabled ? t('conversations.detail.toasts.aiEnabled') : t('conversations.detail.toasts.aiDisabled'),
         variant: 'success'
       });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
   });
@@ -319,6 +322,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
         description: t('conversations.detail.toasts.statusUpdatedDesc'),
         variant: 'success'
       });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
   });
@@ -362,6 +366,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
         description: t('conversations.detail.toasts.assignmentUpdatedDesc'),
         variant: 'success'
       });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
   });

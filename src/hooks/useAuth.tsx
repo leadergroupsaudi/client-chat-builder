@@ -13,6 +13,7 @@ interface AuthContextType {
   logout: () => void;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
   setCompanyIdGlobaly: (companyId: number | null) => void;
+  refetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -121,7 +122,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     logout,
     authFetch,
-    setCompanyIdGlobaly
+    setCompanyIdGlobaly,
+    refetchUser: fetchAndSetUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
