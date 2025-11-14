@@ -70,6 +70,18 @@ const AppLayout = () => {
     livekitUrl: string;
   } | null>(null);
 
+  // Handoff call state (customer -> agent)
+  const [handoffCall, setHandoffCall] = useState<{
+    sessionId: string;
+    customerName: string;
+    summary: string;
+    priority: string;
+    roomName: string;
+    livekitUrl: string;
+    agentToken: string;
+    userToken: string;
+  } | null>(null);
+
   // Global WebSocket connection for company-wide notifications
   const companyWsUrl = user?.company_id
     ? `${BACKEND_URL.replace('http', 'ws')}/ws/${user.company_id}?token=${localStorage.getItem('accessToken')}`
@@ -79,7 +91,35 @@ const AppLayout = () => {
     onMessage: (event) => {
       const wsMessage = JSON.parse(event.data);
 
-      if (wsMessage.type === 'video_call_initiated') {
+      if (wsMessage.type === 'incoming_call') {
+        // Handoff call from customer to agent
+        const { agent_id, session_id, customer_name, summary, priority, room_name, livekit_url, agent_token, user_token } = wsMessage;
+        console.log('[AppLayout] Handoff call notification received:', { agent_id, session_id, customer_name });
+
+        // Only show notification if this call is for the current user
+        if (user && agent_id === user.id) {
+          console.log('[AppLayout] Showing handoff call notification for agent:', user.id);
+          setHandoffCall({
+            sessionId: session_id,
+            customerName: customer_name || 'Customer',
+            summary: summary || 'Customer requested human support',
+            priority: priority || 'normal',
+            roomName: room_name,
+            livekitUrl: livekit_url,
+            agentToken: agent_token,
+            userToken: user_token,
+          });
+
+          // Show browser notification
+          showNotification({
+            title: 'Incoming Support Call',
+            body: `${customer_name} needs assistance`,
+            tag: `handoff-${session_id}`,
+          });
+        } else {
+          console.log('[AppLayout] Ignoring handoff call - not for this agent. Target:', agent_id, 'Current:', user?.id);
+        }
+      } else if (wsMessage.type === 'video_call_initiated') {
         const { call_id, room_name, livekit_token, livekit_url, channel_id, channel_member_ids, caller_id, caller_name, caller_avatar } = wsMessage;
         console.log('[AppLayout] Global video call notification received:', { call_id, caller_id, channel_id, channel_member_ids });
 
@@ -201,7 +241,7 @@ const AppLayout = () => {
   const handleRejectCall = async () => {
     if (!incomingCall) return;
 
-    try {
+    try{
       const endpoint = `${API_BASE_URL}/api/v1/video-calls/${incomingCall.callId}/reject`;
       await axios.post(endpoint, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
@@ -217,6 +257,73 @@ const AppLayout = () => {
     } catch (error) {
       console.error('Error rejecting call:', error);
       setIncomingCall(null);
+    }
+  };
+
+  // Handle accepting a handoff call (customer support)
+  const handleAcceptHandoffCall = async () => {
+    if (!handoffCall) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+
+      // Call the accept endpoint
+      const endpoint = `${API_BASE_URL}/api/v1/calls/accept`;
+      await axios.post(endpoint, {
+        session_id: handoffCall.sessionId,
+        room_name: handoffCall.roomName,
+        livekit_url: handoffCall.livekitUrl,
+        user_token: handoffCall.userToken,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Clear handoff call state
+      setHandoffCall(null);
+
+      // Navigate to LiveKit call page with agent token
+      navigate(
+        `/internal-video-call?roomName=${encodeURIComponent(handoffCall.roomName)}&livekitToken=${encodeURIComponent(handoffCall.agentToken)}&livekitUrl=${encodeURIComponent(handoffCall.livekitUrl)}&sessionId=${handoffCall.sessionId}`
+      );
+
+      toast({
+        title: 'Call accepted',
+        description: `Connected to ${handoffCall.customerName}`,
+      });
+    } catch (error) {
+      console.error('Error accepting handoff call:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to accept call',
+        variant: 'destructive',
+      });
+      setHandoffCall(null);
+    }
+  };
+
+  // Handle rejecting a handoff call
+  const handleRejectHandoffCall = async () => {
+    if (!handoffCall) return;
+
+    try {
+      const endpoint = `${API_BASE_URL}/api/v1/calls/reject`;
+      await axios.post(endpoint, {
+        session_id: handoffCall.sessionId,
+        reason: 'Agent declined',
+      }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+      });
+
+      // Clear handoff call state
+      setHandoffCall(null);
+
+      toast({
+        title: 'Call declined',
+        description: 'Customer will be notified',
+      });
+    } catch (error) {
+      console.error('Error rejecting handoff call:', error);
+      setHandoffCall(null);
     }
   };
 
@@ -502,6 +609,18 @@ const AppLayout = () => {
           channelName={incomingCall.channelName}
           onAccept={handleAcceptCall}
           onReject={handleRejectCall}
+        />
+      )}
+
+      {/* Handoff Call Modal (Customer Support) */}
+      {handoffCall && (
+        <IncomingCallModal
+          isOpen={true}
+          callerName={handoffCall.customerName}
+          channelName={`Support Request - ${handoffCall.summary}`}
+          onAccept={handleAcceptHandoffCall}
+          onReject={handleRejectHandoffCall}
+          callType="audio"
         />
       )}
     </div>

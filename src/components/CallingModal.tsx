@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PhoneOff, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface CallingModalProps {
   isOpen: boolean;
@@ -66,15 +67,21 @@ const CallingModal: React.FC<CallingModalProps> = ({
 
   return (
     <>
-      {/* Outgoing call ringtone - Microsoft Teams ringtone */}
+      {/* Outgoing call ringtone */}
       <audio
         ref={audioRef}
-        src="/microsoft_teams_default.mp3"
+        src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
         loop
       />
 
       <Dialog open={isOpen} onOpenChange={onCancel}>
         <DialogContent className="sm:max-w-md" hideClose>
+          <VisuallyHidden>
+            <DialogTitle>Outgoing Call</DialogTitle>
+            <DialogDescription>
+              Calling {recipientName}. Please wait for them to answer.
+            </DialogDescription>
+          </VisuallyHidden>
         <div className="flex flex-col items-center justify-center py-8">
           {/* Pulsing Avatar */}
           <div className="relative mb-6">

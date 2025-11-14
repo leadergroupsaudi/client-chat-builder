@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { VoiceAgentPreview } from './components/previews/VoiceAgentPreview';
 import { TypingIndicator } from '@/components/TypingIndicator';
+import CallingModal from '@/components/CallingModal';
 
 // Type definitions
 interface WidgetProps {
@@ -154,7 +155,17 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   const [activeForm, setActiveForm] = useState<any[] | null>(null);
   const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  
+
+  // Call state management
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [callStatus, setCallStatus] = useState<'calling' | 'connecting' | 'connected' | null>(null);
+  const [callData, setCallData] = useState<{
+    agentName: string;
+    roomName: string;
+    livekitUrl: string;
+    userToken: string;
+  } | null>(null);
+
   const isProactiveSession = useRef(false);
   const ws = useRef<WebSocket | null>(null);
   const voiceWs = useRef<WebSocket | null>(null);
@@ -289,6 +300,81 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         return;
       }
 
+      // Handle call events
+      if (data.type === 'call_accepted') {
+        console.log('[Widget] Call accepted by agent:', data);
+        setCallStatus('connecting');
+        setCallData({
+          agentName: data.agent_name,
+          roomName: data.room_name,
+          livekitUrl: data.livekit_url,
+          userToken: data.user_token
+        });
+        setIsCallActive(true);
+        setIsUsingTool(false);
+        setIsTyping(false);
+
+        // Open LiveKit call in new window
+        const callUrl = `${settings?.frontend_url || window.location.origin}/video-call?token=${encodeURIComponent(data.user_token)}&livekitUrl=${encodeURIComponent(data.livekit_url)}&sessionId=${currentSessionId.current}`;
+        console.log('[Widget] Opening call window:', callUrl);
+
+        const callWindow = window.open(
+          callUrl,
+          'AgentConnect Voice Call',
+          'width=800,height=600,resizable=yes,scrollbars=yes'
+        );
+
+        if (!callWindow) {
+          console.error('[Widget] Failed to open call window - popup blocked?');
+          setCallStatus(null);
+          setIsCallActive(false);
+
+          // Show message to user with clickable link
+          setMessages(prev => [...prev, {
+            id: `system-${Date.now()}`,
+            sender: 'system',
+            text: `Call accepted by ${data.agent_name}! Please allow popups to join the voice call, or click this link to open it manually: ${callUrl}`,
+            type: 'message',
+            timestamp: new Date().toISOString()
+          }]);
+        } else {
+          // Show success message and close the calling modal
+          setMessages(prev => [...prev, {
+            id: `system-${Date.now()}`,
+            sender: 'system',
+            text: `Call accepted by ${data.agent_name}! Opening call window...`,
+            type: 'message',
+            timestamp: new Date().toISOString()
+          }]);
+
+          // Close the calling modal after a short delay
+          setTimeout(() => {
+            setIsCallActive(false);
+            setCallStatus(null);
+          }, 1500);
+        }
+
+        return;
+      }
+
+      if (data.type === 'call_rejected') {
+        console.log('[Widget] Call rejected by agent:', data);
+        setIsCallActive(false);
+        setCallStatus(null);
+        setCallData(null);
+        setIsUsingTool(false);
+        setIsTyping(false);
+        // Show message to user
+        setMessages(prev => [...prev, {
+          id: `system-${Date.now()}`,
+          sender: 'system',
+          text: data.message || 'The agent is currently unavailable. Please continue chatting.',
+          type: 'message',
+          timestamp: new Date().toISOString()
+        }]);
+        return;
+      }
+
       setIsTyping(false);
       setIsUsingTool(false);
 
@@ -334,6 +420,19 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         // Add new message (agent messages, or user message if no temp found)
         return [...prev, newMessage];
       });
+
+      // Check if message contains call initiation info (from handoff tool)
+      if (data.sender === 'agent' && data.call_initiated) {
+        console.log('[Widget] Call initiated:', data);
+        setCallStatus('calling');
+        setIsCallActive(true);
+        setCallData({
+          agentName: data.agent_name || 'Agent',
+          roomName: data.room_name || '',
+          livekitUrl: data.livekit_url || '',
+          userToken: data.user_token || ''
+        });
+      }
 
       if (data.message_type === 'form') {
         setActiveForm(data.fields);
@@ -843,6 +942,21 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
           </div>
         )}
       </div>
+    )}
+
+    {/* Calling Modal - Show when voice call is initiated or connecting */}
+    {isCallActive && (callStatus === 'calling' || callStatus === 'connecting') && callData && (
+      <CallingModal
+        isOpen={true}
+        recipientName={callData.agentName}
+        status={callStatus}
+        onCancel={() => {
+          setIsCallActive(false);
+          setCallStatus(null);
+          setCallData(null);
+          // TODO: Send cancel call request to backend
+        }}
+      />
     )}
   </div>
 );

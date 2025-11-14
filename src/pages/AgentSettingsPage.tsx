@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Agent } from "@/types";
+import { Agent, Team } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,15 @@ export const AgentSettingsPage = () => {
     },
   });
 
+  const { data: teams = [] } = useQuery<Team[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const response = await authFetch('/api/v1/teams/');
+      if (!response.ok) throw new Error('Failed to fetch teams');
+      return response.json();
+    },
+  });
+
   const [agentConfig, setAgentConfig] = useState({
     name: "",
     personality: "helpful",
@@ -38,6 +47,7 @@ export const AgentSettingsPage = () => {
     llm_provider: "groq",
     embedding_model: "gemini",
     model_name: "llama-3.1-8b-instant",
+    handoff_team_id: null as number | null,
   });
 
   useEffect(() => {
@@ -53,6 +63,7 @@ export const AgentSettingsPage = () => {
         llm_provider: agent.llm_provider || "groq",
         embedding_model: agent.embedding_model || "gemini",
         model_name: agent.model_name || "llama-3.1-8b-instant",
+        handoff_team_id: agent.handoff_team_id || null,
       });
     }
   }, [agent]);
@@ -195,6 +206,21 @@ export const AgentSettingsPage = () => {
                       <option value="America/Chicago">{t("agents.settingsPage.timezones.central")}</option>
                       <option value="America/Los_Angeles">{t("agents.settingsPage.timezones.pacific")}</option>
                     </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="handoffTeam" className="text-sm font-medium dark:text-gray-300">Handoff Team</Label>
+                    <select
+                      id="handoffTeam"
+                      value={agentConfig.handoff_team_id || ""}
+                      onChange={(e) => setAgentConfig({ ...agentConfig, handoff_team_id: e.target.value ? parseInt(e.target.value) : null })}
+                      className="w-full mt-1.5 p-2 border rounded-md bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-green-500 transition-all"
+                    >
+                      <option value="">None (Use default)</option>
+                      {teams.map((team) => (
+                        <option key={team.id} value={team.id}>{team.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Select the team to handle human support requests for this agent</p>
                   </div>
                 </div>
               </div>

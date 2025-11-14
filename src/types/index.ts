@@ -34,6 +34,7 @@ export interface Agent {
   default_assignee_id?: number;
   default_team_id?: number;
   default_contact_id?: number;
+  handoff_team_id?: number;
   auto_suggest_tools?: boolean;
   auto_suggest_knowledge_bases?: boolean;
   auto_suggest_contacts?: boolean;
