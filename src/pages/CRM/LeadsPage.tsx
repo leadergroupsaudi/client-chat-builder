@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from '@hello-pangea/dnd';
 import {
   Users,
   Plus,
-  Filter,
   Search,
   Download,
   Upload,
@@ -11,15 +17,18 @@ import {
   Star,
   DollarSign,
   TrendingUp,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Target,
-  ArrowUpDown,
+  TrendingDown,
   Check,
   ChevronsUpDown,
   AlertCircle,
   X,
+  GripVertical,
+  Target,
+  UserCheck,
+  CircleDollarSign,
+  Percent,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,16 +125,26 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 const STAGE_COLORS: Record<string, string> = {
-  lead: 'bg-gray-100 text-gray-800',
-  mql: 'bg-blue-100 text-blue-800',
-  sql: 'bg-purple-100 text-purple-800',
-  opportunity: 'bg-yellow-100 text-yellow-800',
-  customer: 'bg-green-100 text-green-800',
-  lost: 'bg-red-100 text-red-800',
+  lead: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  mql: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+  sql: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+  opportunity: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
+  customer: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+  lost: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+};
+
+const STAGE_GRADIENTS: Record<string, string> = {
+  lead: 'from-slate-500 to-slate-600',
+  mql: 'from-blue-500 to-blue-600',
+  sql: 'from-purple-500 to-purple-600',
+  opportunity: 'from-amber-500 to-amber-600',
+  customer: 'from-green-500 to-green-600',
+  lost: 'from-red-500 to-red-600',
 };
 
 export default function LeadsPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [stats, setStats] = useState<LeadStats | null>(null);
@@ -164,10 +183,7 @@ export default function LeadsPage() {
   const fetchLeads = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
-
+      const headers = { Authorization: `Bearer ${token}` };
       const params: any = {};
       if (selectedStage !== 'all') {
         params.stage = selectedStage;
@@ -189,10 +205,7 @@ export default function LeadsPage() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
-
+      const headers = { Authorization: `Bearer ${token}` };
       const response = await axios.get('/api/v1/leads/stats', { headers });
       setStats(response.data);
     } catch (error) {
@@ -203,10 +216,7 @@ export default function LeadsPage() {
   const fetchAvailableContacts = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
-
+      const headers = { Authorization: `Bearer ${token}` };
       const response = await axios.get('/api/v1/leads/available-contacts', { headers });
       setAvailableContacts(response.data);
       setContactsWithoutLeads(response.data.length);
@@ -223,10 +233,7 @@ export default function LeadsPage() {
   const handleQualifyLead = async (leadId: number) => {
     try {
       const token = localStorage.getItem('accessToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
-
+      const headers = { Authorization: `Bearer ${token}` };
       await axios.post(`/api/v1/leads/${leadId}/qualify`, {}, { headers });
       toast({
         title: 'Success',
@@ -247,12 +254,9 @@ export default function LeadsPage() {
   const handleCreateLead = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
+      const headers = { Authorization: `Bearer ${token}` };
 
       if (createMode === 'existing') {
-        // Create lead from existing contact
         if (!selectedContactId) {
           toast({
             title: 'Validation Error',
@@ -261,17 +265,14 @@ export default function LeadsPage() {
           });
           return;
         }
-
         const leadData = {
           contact_id: parseInt(selectedContactId),
           deal_value: newLead.deal_value ? parseFloat(newLead.deal_value) : null,
           source: newLead.source || null,
           notes: newLead.notes || null,
         };
-
         await axios.post('/api/v1/leads/', leadData, { headers });
       } else {
-        // Create new contact + lead
         if (!newLead.name || !newLead.email) {
           toast({
             title: 'Validation Error',
@@ -280,7 +281,6 @@ export default function LeadsPage() {
           });
           return;
         }
-
         const leadData = {
           contact: {
             name: newLead.name,
@@ -292,28 +292,12 @@ export default function LeadsPage() {
           source: newLead.source || null,
           notes: newLead.notes || null,
         };
-
         await axios.post('/api/v1/leads/with-contact', leadData, { headers });
       }
 
-      toast({
-        title: 'Success',
-        description: 'Lead created successfully',
-      });
-
-      // Reset form
+      toast({ title: 'Success', description: 'Lead created successfully' });
       setSelectedContactId('');
-      setNewLead({
-        name: '',
-        email: '',
-        phone_number: '',
-        company: '',
-        deal_value: '',
-        source: '',
-        notes: '',
-      });
-
-      // Close dialog and refresh
+      setNewLead({ name: '', email: '', phone_number: '', company: '', deal_value: '', source: '', notes: '' });
       setCreateDialogOpen(false);
       fetchLeads();
       fetchStats();
@@ -337,58 +321,131 @@ export default function LeadsPage() {
     return acc;
   }, {} as Record<string, Lead[]>);
 
+  const handleDragEnd = useCallback(async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const leadId = parseInt(draggableId.replace('lead-', ''));
+    const newStage = destination.droppableId;
+
+    setLeads((prevLeads) =>
+      prevLeads.map((lead) => (lead.id === leadId ? { ...lead, stage: newStage } : lead))
+    );
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`/api/v1/leads/${leadId}/stage`, { stage: newStage }, { headers });
+      toast({ title: 'Success', description: `Lead moved to ${STAGE_LABELS[newStage]}` });
+      fetchStats();
+    } catch (error) {
+      console.error('Error updating lead stage:', error);
+      fetchLeads();
+      toast({ title: 'Error', description: 'Failed to update lead stage', variant: 'destructive' });
+    }
+  }, [toast]);
+
+  const metrics = [
+    {
+      title: t('crm.dashboard.stats.totalLeads'),
+      value: stats?.total_leads || 0,
+      subtext: `${stats?.qualified_count || 0} ${t('crm.leads.qualification.qualified').toLowerCase()}`,
+      icon: Users,
+      gradient: 'from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      trend: '+12%',
+      trendUp: true,
+    },
+    {
+      title: t('crm.dashboard.stats.pipelineValue'),
+      value: `$${(stats?.total_pipeline_value || 0).toLocaleString()}`,
+      subtext: `${stats?.opportunity_count || 0} ${t('crm.leads.stages.opportunity').toLowerCase()}`,
+      icon: CircleDollarSign,
+      gradient: 'from-green-100 to-green-200 dark:from-green-900/50 dark:to-green-800/50',
+      iconColor: 'text-green-600 dark:text-green-400',
+      trend: '+8%',
+      trendUp: true,
+    },
+    {
+      title: t('crm.leads.stats.avgScore'),
+      value: `${stats?.avg_score ? stats.avg_score.toFixed(0) : 0}/100`,
+      subtext: t('crm.leads.fields.score'),
+      icon: Star,
+      gradient: 'from-yellow-100 to-yellow-200 dark:from-yellow-900/50 dark:to-yellow-800/50',
+      iconColor: 'text-yellow-600 dark:text-yellow-400',
+      trend: '+5',
+      trendUp: true,
+    },
+    {
+      title: t('crm.dashboard.stats.conversionRate'),
+      value: `${stats?.total_leads ? (((stats?.customer_count || 0) / stats.total_leads) * 100).toFixed(1) : 0}%`,
+      subtext: `${stats?.customer_count || 0} ${t('crm.leads.stages.customer').toLowerCase()}`,
+      icon: Percent,
+      gradient: 'from-purple-100 to-purple-200 dark:from-purple-900/50 dark:to-purple-800/50',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      trend: '+2.3%',
+      trendUp: true,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6 p-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            Leads Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Track and qualify your leads through the sales pipeline
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">
+            {t('crm.leads.title')}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            {t('crm.leads.subtitle')}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700">
             <Upload className="h-4 w-4 mr-2" />
-            Import
+            {t('crm.common.import')}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" className="dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            {t('crm.common.export')}
           </Button>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button
+            onClick={() => setCreateDialogOpen(true)}
+            className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white"
+          >
             <Plus className="h-4 w-4 mr-2" />
-            New Lead
+            {t('crm.leads.addLead')}
           </Button>
         </div>
       </div>
 
       {/* Banner for Contacts Without Leads */}
       {showBanner && contactsWithoutLeads > 0 && (
-        <Alert className="bg-orange-50 border-orange-200">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
+        <Alert className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border-orange-200 dark:border-orange-800">
+          <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <AlertDescription className="flex items-center justify-between">
-            <span className="text-orange-900">
-              You have <strong>{contactsWithoutLeads} contact{contactsWithoutLeads !== 1 ? 's' : ''}</strong> without leads.
-              Convert them to leads to start tracking opportunities.
+            <span className="text-orange-900 dark:text-orange-100">
+              {t('crm.leads.contactsWithoutLeads', { count: contactsWithoutLeads })}
             </span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                className="border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/30"
                 onClick={() => navigate('/dashboard/crm/contacts')}
               >
-                View Contacts
+                {t('crm.contacts.title')}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowBanner(false)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowBanner(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -397,227 +454,270 @@ export default function LeadsPage() {
       )}
 
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total_leads || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.qualified_count || 0} qualified
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${(stats.total_pipeline_value || 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.opportunity_count || 0} opportunities
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Score</CardTitle>
-              <Star className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.avg_score ? stats.avg_score.toFixed(0) : 0}/100</div>
-              <p className="text-xs text-muted-foreground">Lead quality score</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.total_leads > 0
-                  ? (((stats.customer_count || 0) / stats.total_leads) * 100).toFixed(1)
-                  : 0}
-                %
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.customer_count || 0} customers
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {metrics.map((metric) => {
+          const IconComponent = metric.icon;
+          return (
+            <Card key={metric.title} className="card-shadow-lg border-slate-200 dark:border-slate-700 dark:bg-slate-800 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${metric.gradient} flex items-center justify-center shadow-sm`}>
+                    <IconComponent className={`h-6 w-6 ${metric.iconColor}`} />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {metric.trendUp ? (
+                      <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+                    )}
+                    <span className={`text-xs font-medium ${metric.trendUp ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {metric.trend}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                    {metric.title}
+                  </p>
+                  <p className="text-2xl font-bold dark:text-white mb-1">{metric.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{metric.subtext}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
       {/* Filters and View Toggle */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search leads..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={selectedStage} onValueChange={setSelectedStage}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by stage" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Stages</SelectItem>
-            {Object.entries(STAGE_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-          <TabsList>
-            <TabsTrigger value="kanban">Kanban</TabsTrigger>
-            <TabsTrigger value="table">Table</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder={t('crm.leads.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 dark:bg-slate-900 dark:border-slate-600"
+              />
+            </div>
+            <Select value={selectedStage} onValueChange={setSelectedStage}>
+              <SelectTrigger className="w-[180px] dark:bg-slate-900 dark:border-slate-600">
+                <SelectValue placeholder={t('crm.leads.filters.byStage')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('crm.leads.filters.all')}</SelectItem>
+                {Object.entries(STAGE_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{t(`crm.leads.stages.${value}`, label)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
+              <Button
+                variant={view === 'kanban' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setView('kanban')}
+                className={view === 'kanban' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                {t('crm.leads.views.kanban')}
+              </Button>
+              <Button
+                variant={view === 'table' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setView('table')}
+                className={view === 'table' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''}
+              >
+                <List className="h-4 w-4 mr-1" />
+                {t('crm.leads.views.list')}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Kanban View */}
       {view === 'kanban' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {Object.entries(STAGE_LABELS).map(([stage, label]) => (
-            <div key={stage} className="space-y-2">
-              <div className="flex items-center justify-between px-2">
-                <h3 className="font-semibold text-sm">{label}</h3>
-                <Badge variant="secondary">{leadsByStage[stage]?.length || 0}</Badge>
-              </div>
-              <div className="space-y-2 min-h-[200px] bg-muted/20 rounded-lg p-2">
-                {leadsByStage[stage]?.map((lead) => (
-                  <Card
-                    key={lead.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => navigate(`/dashboard/crm/leads/${lead.id}`)}
-                  >
-                    <CardHeader className="p-3 space-y-1">
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-sm">{lead.contact?.name}</CardTitle>
-                        <Badge variant="outline" className="text-xs">
-                          {lead.score}
-                        </Badge>
-                      </div>
-                      <CardDescription className="text-xs">
-                        {lead.contact?.email}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0 space-y-2">
-                      {lead.deal_value && (
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <DollarSign className="h-3 w-3 mr-1" />
-                          ${lead.deal_value.toLocaleString()}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Object.entries(STAGE_LABELS).map(([stage, label]) => (
+              <div key={stage} className="space-y-3">
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${STAGE_GRADIENTS[stage]}`} />
+                    <h3 className="font-semibold text-sm dark:text-white">{t(`crm.leads.stages.${stage}`, label)}</h3>
+                  </div>
+                  <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    {leadsByStage[stage]?.length || 0}
+                  </Badge>
+                </div>
+                <Droppable droppableId={stage}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        "space-y-2 min-h-[300px] rounded-xl p-2 transition-all duration-200",
+                        snapshot.isDraggingOver
+                          ? "bg-gradient-to-b from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-2 border-dashed border-orange-400"
+                          : "bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700"
+                      )}
+                    >
+                      {leadsByStage[stage]?.map((lead, index) => (
+                        <Draggable key={lead.id} draggableId={`lead-${lead.id}`} index={index}>
+                          {(provided, snapshot) => (
+                            <Card
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={cn(
+                                "cursor-pointer transition-all duration-200 border-slate-200 dark:border-slate-700 dark:bg-slate-800",
+                                snapshot.isDragging
+                                  ? "shadow-xl ring-2 ring-orange-400 rotate-2"
+                                  : "hover:shadow-lg hover:-translate-y-0.5"
+                              )}
+                              onClick={() => navigate(`/dashboard/crm/leads/${lead.id}`)}
+                            >
+                              <CardHeader className="p-3 space-y-1">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <div
+                                      {...provided.dragHandleProps}
+                                      className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <GripVertical className="h-3.5 w-3.5 text-slate-400" />
+                                    </div>
+                                    <CardTitle className="text-sm font-medium dark:text-white">
+                                      {lead.contact?.name || 'Unknown'}
+                                    </CardTitle>
+                                  </div>
+                                  <div className="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded">
+                                    <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                    <span className="text-xs font-medium text-yellow-700 dark:text-yellow-400">{lead.score}</span>
+                                  </div>
+                                </div>
+                                <CardDescription className="text-xs pl-5 dark:text-gray-400">
+                                  {lead.contact?.email}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="p-3 pt-0 space-y-2 pl-6">
+                                {lead.deal_value && (
+                                  <div className="flex items-center text-xs text-green-600 dark:text-green-400 font-medium">
+                                    <DollarSign className="h-3 w-3 mr-0.5" />
+                                    {lead.deal_value.toLocaleString()}
+                                  </div>
+                                )}
+                                {lead.source && (
+                                  <Badge variant="outline" className="text-xs border-slate-300 dark:border-slate-600">
+                                    {lead.source}
+                                  </Badge>
+                                )}
+                              </CardContent>
+                            </Card>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                      {leadsByStage[stage]?.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center mb-2">
+                            <Target className="h-5 w-5 text-slate-400" />
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{t('crm.leads.noLeadsInStage', { stage: t(`crm.leads.stages.${stage}`, label) })}</p>
                         </div>
                       )}
-                      {lead.source && (
-                        <Badge variant="secondary" className="text-xs">
-                          {lead.source}
-                        </Badge>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </DragDropContext>
       )}
 
       {/* Table View */}
       {view === 'table' && (
-        <Card>
+        <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Deal Value</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Status</TableHead>
+              <TableRow className="bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700">
+                <TableHead className="font-semibold">{t('crm.leads.fields.name')}</TableHead>
+                <TableHead className="font-semibold">{t('crm.leads.fields.email')}</TableHead>
+                <TableHead className="font-semibold">{t('crm.leads.fields.stage')}</TableHead>
+                <TableHead className="font-semibold">{t('crm.leads.fields.score')}</TableHead>
+                <TableHead className="font-semibold">{t('crm.leads.fields.dealValue')}</TableHead>
+                <TableHead className="font-semibold">{t('crm.leads.fields.source')}</TableHead>
+                <TableHead className="font-semibold">{t('crm.common.status')}</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLeads.map((lead) => (
-                <TableRow
-                  key={lead.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/dashboard/crm/leads/${lead.id}`)}
-                >
-                  <TableCell className="font-medium">{lead.contact?.name}</TableCell>
-                  <TableCell>{lead.contact?.email}</TableCell>
-                  <TableCell>
-                    <Badge className={STAGE_COLORS[lead.stage]}>
-                      {STAGE_LABELS[lead.stage]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      {lead.score}/100
+              {filteredLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-12">
+                    <div className="flex flex-col items-center">
+                      <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
+                        <Users className="h-8 w-8 text-slate-400" />
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400">{t('crm.leads.noLeads')}</p>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    {lead.deal_value ? `$${lead.deal_value.toLocaleString()}` : '-'}
-                  </TableCell>
-                  <TableCell>{lead.source || '-'}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        lead.qualification_status === 'qualified' ? 'default' : 'secondary'
-                      }
-                    >
-                      {lead.qualification_status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard/crm/leads/${lead.id}`);
-                          }}
-                        >
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQualifyLead(lead.id);
-                          }}
-                        >
-                          Auto-Qualify
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          Delete Lead
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredLeads.map((lead) => (
+                  <TableRow
+                    key={lead.id}
+                    className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
+                    onClick={() => navigate(`/dashboard/crm/leads/${lead.id}`)}
+                  >
+                    <TableCell className="font-medium dark:text-white">{lead.contact?.name}</TableCell>
+                    <TableCell className="dark:text-gray-300">{lead.contact?.email}</TableCell>
+                    <TableCell>
+                      <Badge className={cn("font-medium", STAGE_COLORS[lead.stage])}>
+                        {STAGE_LABELS[lead.stage]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                        <span className="dark:text-white">{lead.score}/100</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-green-600 dark:text-green-400 font-medium">
+                      {lead.deal_value ? `$${lead.deal_value.toLocaleString()}` : '-'}
+                    </TableCell>
+                    <TableCell className="dark:text-gray-300">{lead.source || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={lead.qualification_status === 'qualified' ? 'default' : 'secondary'}
+                        className={lead.qualification_status === 'qualified'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : ''}>
+                        {lead.qualification_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="dark:bg-slate-800 dark:border-slate-700">
+                          <DropdownMenuLabel>{t('crm.common.actions')}</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/crm/leads/${lead.id}`); }}>
+                            {t('crm.common.view')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleQualifyLead(lead.id); }}>
+                            {t('crm.leads.actions.qualify')}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600 dark:text-red-400">{t('crm.leads.deleteLead')}</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </Card>
@@ -625,73 +725,56 @@ export default function LeadsPage() {
 
       {/* Create Lead Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-slate-800 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle>Create New Lead</DialogTitle>
-            <DialogDescription>
-              Create a lead from an existing contact or add a new contact with lead information.
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              {t('crm.leads.addLead')}
+            </DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
+              {t('crm.leads.createLeadDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <Tabs value={createMode} onValueChange={(v) => setCreateMode(v as 'existing' | 'new')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="existing">From Existing Contact</TabsTrigger>
-              <TabsTrigger value="new">New Contact</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-slate-100 dark:bg-slate-900">
+              <TabsTrigger value="existing" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">
+                {t('crm.leads.fromExistingContact')}
+              </TabsTrigger>
+              <TabsTrigger value="new" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700">
+                {t('crm.leads.newContact')}
+              </TabsTrigger>
             </TabsList>
 
-            {/* From Existing Contact Tab */}
             <TabsContent value="existing" className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="contact">
-                  Select Contact <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="contact">{t('crm.leads.selectContact')} <span className="text-red-500">*</span></Label>
                 <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openCombobox}
-                      className="w-full justify-between"
-                    >
+                    <Button variant="outline" role="combobox" aria-expanded={openCombobox} className="w-full justify-between dark:bg-slate-900 dark:border-slate-600">
                       {selectedContactId
                         ? availableContacts.find((c) => c.id.toString() === selectedContactId)?.name
-                        : 'Search contacts...'}
+                        : t('crm.leads.searchContacts')}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
+                  <PopoverContent className="w-full p-0 dark:bg-slate-800 dark:border-slate-700" align="start">
                     <Command>
-                      <CommandInput placeholder="Search by name or email..." />
+                      <CommandInput placeholder={t('crm.leads.searchByNameOrEmail')} />
                       <CommandList>
                         <CommandEmpty>
-                          {availableContacts.length === 0
-                            ? 'No available contacts. All contacts have leads.'
-                            : 'No contacts found.'}
+                          {availableContacts.length === 0 ? t('crm.contacts.noContacts') : t('crm.contacts.noContactsFound')}
                         </CommandEmpty>
                         <CommandGroup>
                           {availableContacts.map((contact) => (
                             <CommandItem
                               key={contact.id}
                               value={`${contact.name} ${contact.email}`}
-                              onSelect={() => {
-                                setSelectedContactId(contact.id.toString());
-                                setOpenCombobox(false);
-                              }}
+                              onSelect={() => { setSelectedContactId(contact.id.toString()); setOpenCombobox(false); }}
                             >
-                              <Check
-                                className={cn(
-                                  'mr-2 h-4 w-4',
-                                  selectedContactId === contact.id.toString()
-                                    ? 'opacity-100'
-                                    : 'opacity-0'
-                                )}
-                              />
+                              <Check className={cn('mr-2 h-4 w-4', selectedContactId === contact.id.toString() ? 'opacity-100' : 'opacity-0')} />
                               <div className="flex flex-col">
                                 <span className="font-medium">{contact.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {contact.email}
-                                  {contact.company && ` • ${contact.company}`}
-                                </span>
+                                <span className="text-xs text-muted-foreground">{contact.email}</span>
                               </div>
                             </CommandItem>
                           ))}
@@ -700,203 +783,117 @@ export default function LeadsPage() {
                     </Command>
                   </PopoverContent>
                 </Popover>
-                {availableContacts.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    All contacts already have leads. Create a new contact instead.
-                  </p>
-                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="deal_value_existing">Deal Value ($)</Label>
-                  <Input
-                    id="deal_value_existing"
-                    type="number"
-                    placeholder="10000"
-                    value={newLead.deal_value}
+                  <Label htmlFor="deal_value_existing">{t('crm.leads.fields.dealValue')} ($)</Label>
+                  <Input id="deal_value_existing" type="number" placeholder="10000" value={newLead.deal_value}
                     onChange={(e) => setNewLead({ ...newLead, deal_value: e.target.value })}
-                  />
+                    className="dark:bg-slate-900 dark:border-slate-600" />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="source_existing">Source</Label>
-                  <Select
-                    value={newLead.source}
-                    onValueChange={(value) => setNewLead({ ...newLead, source: value })}
-                  >
-                    <SelectTrigger id="source_existing">
-                      <SelectValue placeholder="Select source" />
-                    </SelectTrigger>
+                  <Label htmlFor="source_existing">{t('crm.leads.fields.source')}</Label>
+                  <Select value={newLead.source} onValueChange={(value) => setNewLead({ ...newLead, source: value })}>
+                    <SelectTrigger className="dark:bg-slate-900 dark:border-slate-600"><SelectValue placeholder={t('crm.leads.selectSource')} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="website">Website</SelectItem>
-                      <SelectItem value="referral">Referral</SelectItem>
-                      <SelectItem value="social_media">Social Media</SelectItem>
-                      <SelectItem value="email_campaign">Email Campaign</SelectItem>
-                      <SelectItem value="cold_call">Cold Call</SelectItem>
-                      <SelectItem value="event">Event</SelectItem>
-                      <SelectItem value="partner">Partner</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="website">{t('crm.leads.sources.website')}</SelectItem>
+                      <SelectItem value="referral">{t('crm.leads.sources.referral')}</SelectItem>
+                      <SelectItem value="social_media">{t('crm.leads.sources.social')}</SelectItem>
+                      <SelectItem value="email_campaign">{t('crm.leads.sources.email')}</SelectItem>
+                      <SelectItem value="cold_call">{t('crm.leads.sources.phone')}</SelectItem>
+                      <SelectItem value="event">{t('crm.campaigns.types.event')}</SelectItem>
+                      <SelectItem value="partner">{t('crm.leads.sources.referral')}</SelectItem>
+                      <SelectItem value="other">{t('crm.leads.sources.other')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes_existing">Notes</Label>
-                <Textarea
-                  id="notes_existing"
-                  placeholder="Additional notes about this lead..."
-                  value={newLead.notes}
-                  onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
-                  rows={3}
-                />
+                <Label htmlFor="notes_existing">{t('crm.leads.fields.notes')}</Label>
+                <Textarea id="notes_existing" placeholder={t('crm.leads.notesPlaceholder')} value={newLead.notes}
+                  onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} rows={3}
+                  className="dark:bg-slate-900 dark:border-slate-600" />
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setCreateDialogOpen(false);
-                    setSelectedContactId('');
-                    setNewLead({
-                      name: '',
-                      email: '',
-                      phone_number: '',
-                      company: '',
-                      deal_value: '',
-                      source: '',
-                      notes: '',
-                    });
-                  }}
-                >
-                  Cancel
+                <Button variant="outline" onClick={() => { setCreateDialogOpen(false); setSelectedContactId(''); setNewLead({ name: '', email: '', phone_number: '', company: '', deal_value: '', source: '', notes: '' }); }}
+                  className="dark:bg-slate-700 dark:border-slate-600">
+                  {t('crm.common.cancel')}
                 </Button>
-                <Button onClick={handleCreateLead} disabled={!selectedContactId}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Lead
+                <Button onClick={handleCreateLead} disabled={!selectedContactId}
+                  className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white">
+                  <Plus className="h-4 w-4 mr-2" />{t('crm.leads.addLead')}
                 </Button>
               </div>
             </TabsContent>
 
-            {/* New Contact Tab */}
             <TabsContent value="new" className="space-y-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Contact Information */}
                 <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    value={newLead.name}
+                  <Label htmlFor="name">{t('crm.leads.fields.name')} <span className="text-red-500">*</span></Label>
+                  <Input id="name" placeholder="John Doe" value={newLead.name}
                     onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
-                  />
+                    className="dark:bg-slate-900 dark:border-slate-600" />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="email">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={newLead.email}
+                  <Label htmlFor="email">{t('crm.leads.fields.email')} <span className="text-red-500">*</span></Label>
+                  <Input id="email" type="email" placeholder="john@example.com" value={newLead.email}
                     onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
-                  />
+                    className="dark:bg-slate-900 dark:border-slate-600" />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    placeholder="+1 234 567 8900"
-                    value={newLead.phone_number}
+                  <Label htmlFor="phone">{t('crm.leads.fields.phone')}</Label>
+                  <Input id="phone" placeholder="+1 234 567 8900" value={newLead.phone_number}
                     onChange={(e) => setNewLead({ ...newLead, phone_number: e.target.value })}
-                  />
+                    className="dark:bg-slate-900 dark:border-slate-600" />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    placeholder="Acme Inc."
-                    value={newLead.company}
+                  <Label htmlFor="company">{t('crm.leads.fields.company')}</Label>
+                  <Input id="company" placeholder="Acme Inc." value={newLead.company}
                     onChange={(e) => setNewLead({ ...newLead, company: e.target.value })}
-                  />
+                    className="dark:bg-slate-900 dark:border-slate-600" />
                 </div>
-
-                {/* Lead Information */}
                 <div className="space-y-2">
-                  <Label htmlFor="deal_value">Deal Value ($)</Label>
-                  <Input
-                    id="deal_value"
-                    type="number"
-                    placeholder="10000"
-                    value={newLead.deal_value}
+                  <Label htmlFor="deal_value">{t('crm.leads.fields.dealValue')} ($)</Label>
+                  <Input id="deal_value" type="number" placeholder="10000" value={newLead.deal_value}
                     onChange={(e) => setNewLead({ ...newLead, deal_value: e.target.value })}
-                  />
+                    className="dark:bg-slate-900 dark:border-slate-600" />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="source">Source</Label>
-                  <Select
-                    value={newLead.source}
-                    onValueChange={(value) => setNewLead({ ...newLead, source: value })}
-                  >
-                    <SelectTrigger id="source">
-                      <SelectValue placeholder="Select source" />
-                    </SelectTrigger>
+                  <Label htmlFor="source">{t('crm.leads.fields.source')}</Label>
+                  <Select value={newLead.source} onValueChange={(value) => setNewLead({ ...newLead, source: value })}>
+                    <SelectTrigger className="dark:bg-slate-900 dark:border-slate-600"><SelectValue placeholder={t('crm.leads.selectSource')} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="website">Website</SelectItem>
-                      <SelectItem value="referral">Referral</SelectItem>
-                      <SelectItem value="social_media">Social Media</SelectItem>
-                      <SelectItem value="email_campaign">Email Campaign</SelectItem>
-                      <SelectItem value="cold_call">Cold Call</SelectItem>
-                      <SelectItem value="event">Event</SelectItem>
-                      <SelectItem value="partner">Partner</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="website">{t('crm.leads.sources.website')}</SelectItem>
+                      <SelectItem value="referral">{t('crm.leads.sources.referral')}</SelectItem>
+                      <SelectItem value="social_media">{t('crm.leads.sources.social')}</SelectItem>
+                      <SelectItem value="email_campaign">{t('crm.leads.sources.email')}</SelectItem>
+                      <SelectItem value="cold_call">{t('crm.leads.sources.phone')}</SelectItem>
+                      <SelectItem value="event">{t('crm.campaigns.types.event')}</SelectItem>
+                      <SelectItem value="partner">{t('crm.leads.sources.referral')}</SelectItem>
+                      <SelectItem value="other">{t('crm.leads.sources.other')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* Notes */}
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Additional notes about this lead..."
-                  value={newLead.notes}
-                  onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
-                  rows={3}
-                />
+                <Label htmlFor="notes">{t('crm.leads.fields.notes')}</Label>
+                <Textarea id="notes" placeholder={t('crm.leads.notesPlaceholder')} value={newLead.notes}
+                  onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} rows={3}
+                  className="dark:bg-slate-900 dark:border-slate-600" />
               </div>
 
-              {/* Action Buttons */}
               <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setCreateDialogOpen(false);
-                    setNewLead({
-                      name: '',
-                      email: '',
-                      phone_number: '',
-                      company: '',
-                      deal_value: '',
-                      source: '',
-                      notes: '',
-                    });
-                  }}
-                >
-                  Cancel
+                <Button variant="outline" onClick={() => { setCreateDialogOpen(false); setNewLead({ name: '', email: '', phone_number: '', company: '', deal_value: '', source: '', notes: '' }); }}
+                  className="dark:bg-slate-700 dark:border-slate-600">
+                  {t('crm.common.cancel')}
                 </Button>
-                <Button onClick={handleCreateLead}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Lead
+                <Button onClick={handleCreateLead}
+                  className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white">
+                  <Plus className="h-4 w-4 mr-2" />{t('crm.leads.addLead')}
                 </Button>
               </div>
             </TabsContent>

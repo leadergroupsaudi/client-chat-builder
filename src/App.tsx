@@ -60,8 +60,10 @@ import ErrorBoundary from "./components/ErrorBoundary";
 // CRM Pages
 import CRMDashboard from "./pages/CRM/CRMDashboard";
 import LeadsPage from "./pages/CRM/LeadsPage";
+import LeadDetailPage from "./pages/CRM/LeadDetailPage";
 import ContactsPage from "./pages/CRM/ContactsPage";
 import CampaignsPage from "./pages/CRM/CampaignsPage";
+import CampaignCreatePage from "./pages/CRM/CampaignCreatePage";
 import AnalyticsPage from "./pages/CRM/AnalyticsPage";
 
 const queryClient = new QueryClient({
@@ -136,8 +138,10 @@ const AppRoutes = () => {
           {/* CRM Routes */}
           <Route path="crm" element={<CRMDashboard />} />
           <Route path="crm/leads" element={<LeadsPage />} />
+          <Route path="crm/leads/:id" element={<LeadDetailPage />} />
           <Route path="crm/contacts" element={<ContactsPage />} />
           <Route path="crm/campaigns" element={<CampaignsPage />} />
+          <Route path="crm/campaigns/new" element={<CampaignCreatePage />} />
           <Route path="crm/analytics" element={<AnalyticsPage />} />
         </Route>
       </Route>
