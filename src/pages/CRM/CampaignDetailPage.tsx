@@ -21,6 +21,8 @@ import {
   Clock,
   Send,
   MoreVertical,
+  FileText,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,6 +56,29 @@ interface Segment {
   segment_type: string;
   contact_count: number;
   lead_count: number;
+}
+
+interface CampaignMessage {
+  id: number;
+  campaign_id: number;
+  sequence_order: number;
+  name?: string;
+  message_type: string;
+  template_id?: number;
+  subject?: string;
+  body?: string;
+  html_body?: string;
+  voice_script?: string;
+  template?: {
+    id: number;
+    name: string;
+    description?: string;
+    template_type: string;
+    is_ai_generated?: boolean;
+    subject?: string;
+    body?: string;
+    personalization_tokens?: string[];
+  };
 }
 
 interface Campaign {
@@ -104,6 +129,7 @@ export default function CampaignDetailPage() {
   const { toast } = useToast();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [segment, setSegment] = useState<Segment | null>(null);
+  const [campaignMessages, setCampaignMessages] = useState<CampaignMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -132,6 +158,14 @@ export default function CampaignDetailPage() {
         } catch (segmentError) {
           console.error('Error fetching segment:', segmentError);
         }
+      }
+
+      // Fetch campaign messages
+      try {
+        const messagesResponse = await axios.get(`/api/v1/campaigns/${id}/messages`, { headers });
+        setCampaignMessages(messagesResponse.data || []);
+      } catch (messagesError) {
+        console.error('Error fetching campaign messages:', messagesError);
       }
     } catch (error) {
       console.error('Error fetching campaign:', error);
@@ -550,6 +584,84 @@ export default function CampaignDetailPage() {
                 <div className="text-center py-6 text-gray-500 dark:text-gray-400">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">{t('crm.campaigns.detail.noAudience', 'No audience selected')}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Message Template Card */}
+          <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {t('crm.campaigns.create.messageTemplate', 'Message Template')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {campaignMessages.length > 0 ? (
+                <div className="space-y-4">
+                  {campaignMessages.map((message) => (
+                    <div
+                      key={message.id}
+                      className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-900 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium dark:text-white">
+                            {message.name || `Message ${message.sequence_order}`}
+                          </h4>
+                          {message.template_id && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              {t('crm.templates.usingTemplate', 'Template')}
+                            </Badge>
+                          )}
+                        </div>
+                        <Badge variant="outline">{message.message_type}</Badge>
+                      </div>
+
+                      {message.subject && (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t('crm.templates.subject', 'Subject')}
+                          </p>
+                          <p className="text-sm dark:text-gray-300">{message.subject}</p>
+                        </div>
+                      )}
+
+                      {message.body && (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t('crm.templates.body', 'Body')}
+                          </p>
+                          <p className="text-sm dark:text-gray-300 line-clamp-3">{message.body}</p>
+                        </div>
+                      )}
+
+                      {message.voice_script && (
+                        <div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            {t('crm.templates.voiceScript', 'Voice Script')}
+                          </p>
+                          <p className="text-sm dark:text-gray-300 line-clamp-3">{message.voice_script}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">{t('crm.campaigns.detail.noTemplate', 'No message template configured')}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => navigate(`/dashboard/crm/campaigns/${id}/edit`)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    {t('crm.campaigns.detail.addTemplate', 'Add Template')}
+                  </Button>
                 </div>
               )}
             </CardContent>

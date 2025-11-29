@@ -69,6 +69,8 @@ import CampaignEditPage from "./pages/CRM/CampaignEditPage";
 import AnalyticsPage from "./pages/CRM/AnalyticsPage";
 import TagsPage from "./pages/CRM/TagsPage";
 import SegmentsPage from "./pages/CRM/SegmentsPage";
+import TemplatesPage from "./pages/CRM/TemplatesPage";
+import TemplateEditorPage from "./pages/CRM/TemplateEditorPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -150,6 +152,8 @@ const AppRoutes = () => {
           <Route path="crm/campaigns/:id/edit" element={<CampaignEditPage />} />
           <Route path="crm/tags" element={<TagsPage />} />
           <Route path="crm/segments" element={<SegmentsPage />} />
+          <Route path="crm/templates" element={<TemplatesPage />} />
+          <Route path="crm/templates/:id" element={<TemplateEditorPage />} />
           <Route path="crm/analytics" element={<AnalyticsPage />} />
         </Route>
       </Route>

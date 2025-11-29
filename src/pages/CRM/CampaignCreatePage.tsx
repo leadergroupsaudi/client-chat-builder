@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Send,
@@ -13,6 +14,9 @@ import {
   Users,
   Target,
   Save,
+  FileText,
+  Plus,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,10 +30,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignAudienceSelector } from '@/components/CampaignAudienceSelector';
+import { getTemplates, Template } from '@/services/templateService';
 
 interface AudienceSelection {
   type: 'segment' | 'filter' | 'manual';
@@ -65,6 +71,36 @@ export default function CampaignCreatePage() {
   const [audienceSelection, setAudienceSelection] = useState<AudienceSelection>({
     type: 'segment',
   });
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+
+  // Fetch templates based on campaign type
+  const { data: templatesData } = useQuery({
+    queryKey: ['templates', formData.campaign_type],
+    queryFn: () => getTemplates({
+      template_type: formData.campaign_type !== 'multi_channel' ? formData.campaign_type : undefined,
+      page_size: 100
+    }),
+    enabled: !!formData.campaign_type && formData.campaign_type !== 'multi_channel',
+  });
+
+  const templates = templatesData?.templates || [];
+
+  // Update selected template when selection changes
+  useEffect(() => {
+    if (selectedTemplateId) {
+      const template = templates.find(t => t.id === selectedTemplateId);
+      setSelectedTemplate(template || null);
+    } else {
+      setSelectedTemplate(null);
+    }
+  }, [selectedTemplateId, templates]);
+
+  // Reset template when campaign type changes
+  useEffect(() => {
+    setSelectedTemplateId(null);
+    setSelectedTemplate(null);
+  }, [formData.campaign_type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,13 +146,31 @@ export default function CampaignCreatePage() {
       }
 
       const response = await axios.post('/api/v1/campaigns/', payload, { headers });
+      const campaignId = response.data.id;
+
+      // Create initial campaign message with template if selected
+      if (selectedTemplateId && selectedTemplate) {
+        await axios.post(`/api/v1/campaigns/${campaignId}/messages`, {
+          campaign_id: campaignId,
+          sequence_order: 1,
+          name: selectedTemplate.name,
+          message_type: formData.campaign_type,
+          template_id: selectedTemplateId,
+          subject: selectedTemplate.subject,
+          body: selectedTemplate.body,
+          html_body: selectedTemplate.html_body,
+          voice_script: selectedTemplate.voice_script,
+          tts_voice_id: selectedTemplate.tts_voice_id,
+          personalization_tokens: selectedTemplate.personalization_tokens,
+        }, { headers });
+      }
 
       toast({
         title: t('crm.common.success'),
         description: 'Campaign created successfully',
       });
 
-      navigate(`/dashboard/crm/campaigns/${response.data.id}`);
+      navigate(`/dashboard/crm/campaigns/${campaignId}`);
     } catch (error: any) {
       console.error('Error creating campaign:', error);
       toast({
@@ -255,6 +309,102 @@ export default function CampaignCreatePage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Message Template Selection */}
+        {formData.campaign_type && formData.campaign_type !== 'multi_channel' && (
+          <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-orange-500" />
+                {t('crm.campaigns.create.messageTemplate', 'Message Template')}
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                {t('crm.campaigns.create.selectTemplate', 'Select a template for your campaign message')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {templates.length > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>{t('crm.templates.title', 'Template')}</Label>
+                    <Select
+                      value={selectedTemplateId?.toString() || ''}
+                      onValueChange={(val) => setSelectedTemplateId(val ? parseInt(val) : null)}
+                    >
+                      <SelectTrigger className="dark:bg-slate-900 dark:border-slate-600">
+                        <SelectValue placeholder={t('crm.campaigns.create.selectTemplatePlaceholder', 'Choose a template...')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <span>{template.name}</span>
+                              {template.is_ai_generated && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  AI
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Template Preview */}
+                  {selectedTemplate && (
+                    <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-900 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium dark:text-white">{selectedTemplate.name}</h4>
+                        <Badge variant="outline">{selectedTemplate.template_type}</Badge>
+                      </div>
+                      {selectedTemplate.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{selectedTemplate.description}</p>
+                      )}
+                      {selectedTemplate.subject && (
+                        <div>
+                          <Label className="text-xs text-gray-500">{t('crm.templates.subject', 'Subject')}</Label>
+                          <p className="text-sm dark:text-gray-300">{selectedTemplate.subject}</p>
+                        </div>
+                      )}
+                      {selectedTemplate.body && (
+                        <div>
+                          <Label className="text-xs text-gray-500">{t('crm.templates.body', 'Body')}</Label>
+                          <p className="text-sm dark:text-gray-300 line-clamp-3">{selectedTemplate.body}</p>
+                        </div>
+                      )}
+                      {selectedTemplate.personalization_tokens && selectedTemplate.personalization_tokens.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedTemplate.personalization_tokens.map((token) => (
+                            <Badge key={token} variant="secondary" className="text-xs">
+                              {token}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-6 border-2 border-dashed rounded-lg dark:border-slate-600">
+                  <FileText className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                  <p className="text-gray-600 dark:text-gray-400 mb-3">
+                    {t('crm.campaigns.create.noTemplates', 'No templates available for this channel')}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/dashboard/crm/templates/new')}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t('crm.templates.create', 'Create Template')}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Audience Targeting */}
         <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">

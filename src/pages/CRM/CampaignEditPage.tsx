@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Mail,
@@ -10,12 +11,16 @@ import {
   Calendar,
   Save,
   Users,
+  FileText,
+  Plus,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -27,6 +32,7 @@ import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignAudienceSelector } from '@/components/CampaignAudienceSelector';
+import { getTemplates, Template } from '@/services/templateService';
 
 interface AudienceSelection {
   type: 'segment' | 'filter' | 'manual';
@@ -64,11 +70,36 @@ export default function CampaignEditPage() {
   const [audienceSelection, setAudienceSelection] = useState<AudienceSelection>({
     type: 'segment',
   });
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [existingMessageId, setExistingMessageId] = useState<number | null>(null);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('accessToken');
     return { Authorization: `Bearer ${token}` };
   };
+
+  // Fetch templates based on campaign type
+  const { data: templatesData } = useQuery({
+    queryKey: ['templates', formData.campaign_type],
+    queryFn: () => getTemplates({
+      template_type: formData.campaign_type !== 'multi_channel' ? formData.campaign_type : undefined,
+      page_size: 100
+    }),
+    enabled: !!formData.campaign_type && formData.campaign_type !== 'multi_channel',
+  });
+
+  const templates = templatesData?.templates || [];
+
+  // Update selected template when selection changes
+  useEffect(() => {
+    if (selectedTemplateId) {
+      const template = templates.find(t => t.id === selectedTemplateId);
+      setSelectedTemplate(template || null);
+    } else {
+      setSelectedTemplate(null);
+    }
+  }, [selectedTemplateId, templates.length]);
 
   useEffect(() => {
     fetchCampaign();
@@ -118,6 +149,21 @@ export default function CampaignEditPage() {
             criteria: criteria,
           });
         }
+      }
+
+      // Fetch existing campaign messages to load template
+      try {
+        const messagesResponse = await axios.get(`/api/v1/campaigns/${id}/messages`, { headers });
+        const messages = messagesResponse.data;
+        if (messages && messages.length > 0) {
+          const firstMessage = messages[0];
+          setExistingMessageId(firstMessage.id);
+          if (firstMessage.template_id) {
+            setSelectedTemplateId(firstMessage.template_id);
+          }
+        }
+      } catch (msgError) {
+        console.log('No existing messages found:', msgError);
       }
     } catch (error) {
       console.error('Error fetching campaign:', error);
@@ -177,6 +223,31 @@ export default function CampaignEditPage() {
       }
 
       await axios.put(`/api/v1/campaigns/${id}`, payload, { headers });
+
+      // Handle template/message update
+      if (selectedTemplateId && selectedTemplate) {
+        const messagePayload = {
+          campaign_id: parseInt(id!),
+          sequence_order: 1,
+          name: selectedTemplate.name,
+          message_type: formData.campaign_type,
+          template_id: selectedTemplateId,
+          subject: selectedTemplate.subject,
+          body: selectedTemplate.body,
+          html_body: selectedTemplate.html_body,
+          voice_script: selectedTemplate.voice_script,
+          tts_voice_id: selectedTemplate.tts_voice_id,
+          personalization_tokens: selectedTemplate.personalization_tokens,
+        };
+
+        if (existingMessageId) {
+          // Update existing message
+          await axios.put(`/api/v1/campaigns/${id}/messages/${existingMessageId}`, messagePayload, { headers });
+        } else {
+          // Create new message
+          await axios.post(`/api/v1/campaigns/${id}/messages`, messagePayload, { headers });
+        }
+      }
 
       toast({
         title: t('crm.common.success'),
@@ -334,6 +405,102 @@ export default function CampaignEditPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Message Template Selection */}
+        {formData.campaign_type && formData.campaign_type !== 'multi_channel' && (
+          <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-orange-500" />
+                {t('crm.campaigns.create.messageTemplate', 'Message Template')}
+              </CardTitle>
+              <CardDescription className="dark:text-gray-400">
+                {t('crm.campaigns.create.selectTemplate', 'Select a template for your campaign message')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {templates.length > 0 ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>{t('crm.templates.title', 'Template')}</Label>
+                    <Select
+                      value={selectedTemplateId?.toString() || ''}
+                      onValueChange={(val) => setSelectedTemplateId(val ? parseInt(val) : null)}
+                    >
+                      <SelectTrigger className="dark:bg-slate-900 dark:border-slate-600">
+                        <SelectValue placeholder={t('crm.campaigns.create.selectTemplatePlaceholder', 'Choose a template...')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <span>{template.name}</span>
+                              {template.is_ai_generated && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Sparkles className="h-3 w-3 mr-1" />
+                                  AI
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Template Preview */}
+                  {selectedTemplate && (
+                    <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-900 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium dark:text-white">{selectedTemplate.name}</h4>
+                        <Badge variant="outline">{selectedTemplate.template_type}</Badge>
+                      </div>
+                      {selectedTemplate.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{selectedTemplate.description}</p>
+                      )}
+                      {selectedTemplate.subject && (
+                        <div>
+                          <Label className="text-xs text-gray-500">{t('crm.templates.subject', 'Subject')}</Label>
+                          <p className="text-sm dark:text-gray-300">{selectedTemplate.subject}</p>
+                        </div>
+                      )}
+                      {selectedTemplate.body && (
+                        <div>
+                          <Label className="text-xs text-gray-500">{t('crm.templates.body', 'Body')}</Label>
+                          <p className="text-sm dark:text-gray-300 line-clamp-3">{selectedTemplate.body}</p>
+                        </div>
+                      )}
+                      {selectedTemplate.personalization_tokens && selectedTemplate.personalization_tokens.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {selectedTemplate.personalization_tokens.map((token) => (
+                            <Badge key={token} variant="secondary" className="text-xs">
+                              {token}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-6 border-2 border-dashed rounded-lg dark:border-slate-600">
+                  <FileText className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                  <p className="text-gray-600 dark:text-gray-400 mb-3">
+                    {t('crm.campaigns.create.noTemplates', 'No templates available for this channel')}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/dashboard/crm/templates/new')}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t('crm.templates.create', 'Create Template')}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Audience Targeting */}
         <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
