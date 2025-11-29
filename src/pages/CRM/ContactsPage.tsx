@@ -56,6 +56,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { TagSelector } from '@/components/TagSelector';
 
 interface Contact {
   id: number;
@@ -67,6 +68,8 @@ interface Contact {
   lead_source?: string;
   lifecycle_stage?: string;
   has_lead?: boolean;
+  tags?: Array<{ id: number; name: string; color: string }>;
+  tag_ids?: number[];
 }
 
 interface ContactStats {
@@ -95,6 +98,7 @@ export default function ContactsPage() {
   const [editData, setEditData] = useState({ name: '', email: '', phone_number: '', company: '' });
   const [newContact, setNewContact] = useState({ name: '', email: '', phone_number: '', company: '' });
   const [leadData, setLeadData] = useState({ deal_value: '', source: '', notes: '' });
+  const [viewingContactTagIds, setViewingContactTagIds] = useState<number[]>([]);
 
   useEffect(() => {
     fetchContacts();
@@ -144,7 +148,56 @@ export default function ContactsPage() {
 
   const handleViewDetails = (contact: Contact) => {
     setViewingContact(contact);
+    // Set tag IDs from either tag_ids array or from tags objects
+    const tagIds = contact.tag_ids || contact.tags?.map((t) => t.id) || [];
+    setViewingContactTagIds(tagIds);
     setViewDialogOpen(true);
+  };
+
+  const handleContactTagsChange = async (tagIds: number[]) => {
+    if (!viewingContact) return;
+
+    const previousTagIds = [...viewingContactTagIds];
+    setViewingContactTagIds(tagIds);
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Determine which tags to add/remove
+      const tagsToAdd = tagIds.filter(id => !previousTagIds.includes(id));
+      const tagsToRemove = previousTagIds.filter(id => !tagIds.includes(id));
+
+      // Add new tags
+      for (const tagId of tagsToAdd) {
+        await axios.post(`/api/v1/tags/${tagId}/assign`, {
+          entity_type: 'contact',
+          entity_ids: [viewingContact.id]
+        }, { headers });
+      }
+
+      // Remove tags
+      for (const tagId of tagsToRemove) {
+        await axios.post(`/api/v1/tags/${tagId}/unassign`, {
+          entity_type: 'contact',
+          entity_ids: [viewingContact.id]
+        }, { headers });
+      }
+
+      toast({
+        title: t('crm.common.success'),
+        description: t('crm.tags.updated'),
+      });
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      toast({
+        title: t('crm.common.error'),
+        description: t('crm.tags.saveError'),
+        variant: 'destructive',
+      });
+      // Revert on error
+      setViewingContactTagIds(previousTagIds);
+    }
   };
 
   const handleEditContact = (contact: Contact) => {
@@ -667,6 +720,15 @@ export default function ContactsPage() {
                 ) : (
                   <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">{t('crm.contacts.noLead')}</Badge>
                 )}
+              </div>
+              {/* Tags Section */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                <Label className="text-sm text-gray-500 dark:text-gray-400 mb-2 block">{t('crm.tags.title')}:</Label>
+                <TagSelector
+                  entityType="contact"
+                  selectedTagIds={viewingContactTagIds}
+                  onTagsChange={handleContactTagsChange}
+                />
               </div>
             </div>
           </div>

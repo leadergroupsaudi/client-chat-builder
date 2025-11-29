@@ -47,6 +47,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 
+interface Segment {
+  id: number;
+  name: string;
+  description?: string;
+  segment_type: string;
+  contact_count: number;
+  lead_count: number;
+}
+
 interface Campaign {
   id: number;
   name: string;
@@ -59,6 +68,8 @@ interface Campaign {
   actual_cost?: number;
   goal_type?: string;
   goal_value?: number;
+  segment_id?: number;
+  target_criteria?: Record<string, any>;
   total_contacts: number;
   contacts_reached: number;
   contacts_engaged: number;
@@ -92,6 +103,7 @@ export default function CampaignDetailPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [segment, setSegment] = useState<Segment | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -111,6 +123,16 @@ export default function CampaignDetailPage() {
       const headers = getAuthHeaders();
       const response = await axios.get(`/api/v1/campaigns/${id}`, { headers });
       setCampaign(response.data);
+
+      // If campaign has a segment_id, fetch segment details
+      if (response.data.segment_id) {
+        try {
+          const segmentResponse = await axios.get(`/api/v1/segments/${response.data.segment_id}`, { headers });
+          setSegment(segmentResponse.data);
+        } catch (segmentError) {
+          console.error('Error fetching segment:', segmentError);
+        }
+      }
     } catch (error) {
       console.error('Error fetching campaign:', error);
       toast({
@@ -459,6 +481,79 @@ export default function CampaignDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Target Audience Card */}
+          <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-lg dark:text-white flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                {t('crm.campaigns.create.audience', 'Target Audience')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {segment ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                      <Layers className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium dark:text-white">{segment.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {segment.segment_type === 'dynamic'
+                          ? t('crm.segments.dynamic', 'Dynamic Segment')
+                          : t('crm.segments.static', 'Static Segment')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium dark:text-white">
+                        {segment.contact_count + segment.lead_count} {t('crm.campaigns.detail.members', 'members')}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {segment.contact_count} {t('crm.contacts.title', 'contacts')}, {segment.lead_count} {t('crm.leads.title', 'leads')}
+                      </p>
+                    </div>
+                  </div>
+                  {segment.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{segment.description}</p>
+                  )}
+                </div>
+              ) : campaign.target_criteria && Object.keys(campaign.target_criteria).length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    {t('crm.campaigns.detail.filterCriteria', 'Custom filter criteria applied')}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {campaign.target_criteria.lifecycle_stages && (
+                      <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20">
+                        {t('crm.segments.criteria.lifecycleStages', 'Lifecycle')}: {campaign.target_criteria.lifecycle_stages.join(', ')}
+                      </Badge>
+                    )}
+                    {campaign.target_criteria.lead_stages && (
+                      <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20">
+                        {t('crm.segments.criteria.leadStages', 'Lead Stage')}: {campaign.target_criteria.lead_stages.join(', ')}
+                      </Badge>
+                    )}
+                    {campaign.target_criteria.tag_ids && (
+                      <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20">
+                        {t('crm.segments.criteria.tags', 'Tags')}: {campaign.target_criteria.tag_ids.length} {t('crm.common.selected', 'selected')}
+                      </Badge>
+                    )}
+                    {(campaign.target_criteria.score_min || campaign.target_criteria.score_max) && (
+                      <Badge variant="outline" className="bg-orange-50 dark:bg-orange-900/20">
+                        {t('crm.segments.criteria.score', 'Score')}: {campaign.target_criteria.score_min || 0} - {campaign.target_criteria.score_max || 100}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">{t('crm.campaigns.detail.noAudience', 'No audience selected')}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="analytics">

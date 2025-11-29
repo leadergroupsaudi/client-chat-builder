@@ -83,7 +83,9 @@
     "crm": "إدارة علاقات العملاء",
     "contacts": "جهات الاتصال",
     "leads": "العملاء المحتملون",
-    "campaigns": "الحملات"
+    "campaigns": "الحملات",
+    "tags": "العلامات",
+    "segments": "الشرائح"
   },
   "agents": {
     "title": "وكلاء الذكاء الاصطناعي الخاصة بك",
@@ -273,6 +275,11 @@
       "clientOffline": "العميل غير متصل"
     },
     "notifications": {
+      "title": "الإشعارات",
+      "markAllRead": "تحديد الكل كمقروء",
+      "empty": "لا توجد إشعارات",
+      "enableSound": "تفعيل أصوات الإشعارات",
+      "disableSound": "إيقاف أصوات الإشعارات",
       "newConversation": "محادثة جديدة",
       "newConversationDesc": "بدأت محادثة جديدة",
       "newMessage": "رسالة جديدة",
@@ -2287,7 +2294,10 @@
         "lastRun": "آخر تشغيل",
         "created": "تاريخ الإنشاء",
         "analyticsComingSoon": "تحليلات الحملة قريباً",
-        "contactsComingSoon": "قائمة جهات اتصال الحملة قريباً"
+        "contactsComingSoon": "قائمة جهات اتصال الحملة قريباً",
+        "members": "أعضاء",
+        "filterCriteria": "تطبيق معايير تصفية مخصصة",
+        "noAudience": "لم يتم تحديد جمهور"
       },
       "views": {
         "list": "قائمة",
@@ -2350,6 +2360,115 @@
       "average": "المتوسط",
       "min": "الحد الأدنى",
       "max": "الحد الأقصى"
+    },
+    "tags": {
+      "title": "العلامات",
+      "subtitle": "إنشاء وإدارة علامات العملاء المحتملين وجهات الاتصال",
+      "create": "إنشاء علامة",
+      "editTag": "تعديل العلامة",
+      "delete": "حذف العلامة",
+      "searchPlaceholder": "بحث في العلامات...",
+      "noTags": "لا توجد علامات",
+      "noTagsMessage": "أنشئ أول علامة لتنظيم العملاء المحتملين وجهات الاتصال",
+      "addTag": "إضافة علامة",
+      "searchTags": "بحث في العلامات...",
+      "noTagsFound": "لم يتم العثور على علامات",
+      "createTag": "إنشاء علامة جديدة",
+      "createFirst": "أنشئ أول علامة",
+      "newTagName": "اسم العلامة",
+      "namePlaceholder": "مثال: عميل VIP",
+      "descriptionPlaceholder": "صف ما تمثله هذه العلامة...",
+      "fields": {
+        "name": "الاسم",
+        "color": "اللون",
+        "description": "الوصف",
+        "entityType": "تطبيق على"
+      },
+      "entityTypes": {
+        "lead": "العملاء المحتملون فقط",
+        "contact": "جهات الاتصال فقط",
+        "both": "كلاهما"
+      },
+      "stats": {
+        "total": "إجمالي العلامات",
+        "taggedLeads": "العملاء المحتملون الموسومون",
+        "taggedContacts": "جهات الاتصال الموسومة"
+      },
+      "leads": "عملاء محتملون",
+      "contacts": "جهات اتصال",
+      "deleteConfirmTitle": "حذف العلامة",
+      "deleteConfirmDesc": "هل أنت متأكد من حذف \"{{name}}\"؟ سيتم إزالتها من جميع العملاء المحتملين وجهات الاتصال.",
+      "created": "تم إنشاء العلامة بنجاح",
+      "updated": "تم تحديث العلامة بنجاح",
+      "deleted": "تم حذف العلامة بنجاح",
+      "fetchError": "فشل في تحميل العلامات",
+      "saveError": "فشل في حفظ العلامة",
+      "nameRequired": "اسم العلامة مطلوب",
+      "usedIn": "مستخدمة في"
+    },
+    "segments": {
+      "title": "الشرائح",
+      "description": "إنشاء وإدارة شرائح الجمهور للحملات المستهدفة",
+      "create": "إنشاء شريحة",
+      "createSegment": "إنشاء شريحة",
+      "editSegment": "تعديل الشريحة",
+      "deleteSegment": "حذف الشريحة",
+      "searchPlaceholder": "بحث في الشرائح...",
+      "noSegments": "لا توجد شرائح",
+      "noSegmentsMessage": "أنشئ أول شريحة لتنظيم جمهورك",
+      "filterByType": "تصفية حسب النوع",
+      "name": "الاسم",
+      "namePlaceholder": "مثال: عملاء ذوو قيمة عالية",
+      "descriptionPlaceholder": "صف هذه الشريحة...",
+      "dialogDescription": "حدد معايير شريحة الجمهور",
+      "type": "النوع",
+      "dynamic": "ديناميكية",
+      "dynamicDescription": "تحديث تلقائي بناءً على المعايير",
+      "static": "ثابتة",
+      "staticDescription": "قائمة أعضاء ثابتة",
+      "staticInfo": "الشرائح الثابتة تحتوي على قائمة ثابتة من جهات الاتصال والعملاء المحتملين. يمكنك إضافة أعضاء بعد إنشاء الشريحة.",
+      "criteria": "معايير الشريحة",
+      "members": "الأعضاء",
+      "noMembers": "لا يوجد أعضاء في هذه الشريحة",
+      "matchingRecords": "سجل مطابق",
+      "lastRefreshed": "آخر تحديث",
+      "totalSegments": "إجمالي الشرائح",
+      "dynamicSegments": "ديناميكية",
+      "staticSegments": "ثابتة",
+      "totalReach": "إجمالي الوصول",
+      "deleteTitle": "حذف الشريحة",
+      "deleteDescription": "هل أنت متأكد من حذف هذه الشريحة؟ لا يمكن التراجع عن هذا الإجراء.",
+      "includeTypes": "تضمين الأنواع",
+      "lifecycleStage": "مرحلة دورة الحياة",
+      "leadStage": "مرحلة العميل المحتمل",
+      "leadScore": "نطاق تقييم العميل المحتمل",
+      "minScore": "الحد الأدنى",
+      "maxScore": "الحد الأقصى",
+      "leadSource": "مصدر العميل المحتمل",
+      "optInStatus": "حالة الاشتراك",
+      "tags": "العلامات",
+      "stage": "المرحلة",
+      "score": "التقييم"
+    }
+  },
+  "campaigns": {
+    "audience": {
+      "title": "الجمهور المستهدف",
+      "description": "اختر من سيتلقى هذه الحملة",
+      "selectType": "اختر نوع الجمهور",
+      "typeDescription": "اختر كيفية استهداف جمهور حملتك",
+      "useSegment": "استخدام شريحة",
+      "segmentDescription": "اختر من الشرائح المحفوظة",
+      "useFilters": "استخدام الفلاتر",
+      "filterDescription": "بناء معايير مخصصة لهذه الحملة",
+      "manualSelect": "اختيار يدوي",
+      "manualDescription": "اختر جهات اتصال وعملاء محتملين محددين يدوياً",
+      "selectSegment": "اختر شريحة",
+      "noSegments": "لا توجد شرائح متاحة",
+      "buildFilters": "بناء فلاتر الجمهور",
+      "selectRecipients": "اختر المستلمين",
+      "selected": "محدد",
+      "totalRecipients": "إجمالي المستلمين"
     }
   }
 }

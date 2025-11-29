@@ -67,6 +67,8 @@ import CampaignCreatePage from "./pages/CRM/CampaignCreatePage";
 import CampaignDetailPage from "./pages/CRM/CampaignDetailPage";
 import CampaignEditPage from "./pages/CRM/CampaignEditPage";
 import AnalyticsPage from "./pages/CRM/AnalyticsPage";
+import TagsPage from "./pages/CRM/TagsPage";
+import SegmentsPage from "./pages/CRM/SegmentsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -146,6 +148,8 @@ const AppRoutes = () => {
           <Route path="crm/campaigns/new" element={<CampaignCreatePage />} />
           <Route path="crm/campaigns/:id" element={<CampaignDetailPage />} />
           <Route path="crm/campaigns/:id/edit" element={<CampaignEditPage />} />
+          <Route path="crm/tags" element={<TagsPage />} />
+          <Route path="crm/segments" element={<SegmentsPage />} />
           <Route path="crm/analytics" element={<AnalyticsPage />} />
         </Route>
       </Route>

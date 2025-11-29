@@ -56,6 +56,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { TagSelector } from '@/components/TagSelector';
 
 interface Lead {
   id: number;
@@ -87,7 +88,8 @@ interface Lead {
   won_reason?: string;
   lost_reason?: string;
   notes?: string;
-  tags?: string[];
+  tags?: Array<{ id: number; name: string; color: string }>;
+  tag_ids?: number[];
   custom_fields?: Record<string, any>;
   stage_changed_at?: string;
   last_scored_at?: string;
@@ -142,6 +144,7 @@ export default function LeadDetailPage() {
     notes: '',
     expected_close_date: '',
   });
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -162,6 +165,9 @@ export default function LeadDetailPage() {
         notes: response.data.notes || '',
         expected_close_date: response.data.expected_close_date?.split('T')[0] || '',
       });
+      // Set tag IDs from either tag_ids array or from tags objects
+      const tagIds = response.data.tag_ids || response.data.tags?.map((t: any) => t.id) || [];
+      setSelectedTagIds(tagIds);
     } catch (error) {
       console.error('Error fetching lead:', error);
       toast({
@@ -282,6 +288,49 @@ export default function LeadDetailPage() {
         description: 'Failed to delete lead',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleTagsChange = async (tagIds: number[]) => {
+    setSelectedTagIds(tagIds);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Get current tags and determine which to add/remove
+      const currentTagIds = selectedTagIds;
+      const tagsToAdd = tagIds.filter(id => !currentTagIds.includes(id));
+      const tagsToRemove = currentTagIds.filter(id => !tagIds.includes(id));
+
+      // Add new tags
+      for (const tagId of tagsToAdd) {
+        await axios.post(`/api/v1/tags/${tagId}/assign`, {
+          entity_type: 'lead',
+          entity_ids: [parseInt(id!)]
+        }, { headers });
+      }
+
+      // Remove tags
+      for (const tagId of tagsToRemove) {
+        await axios.post(`/api/v1/tags/${tagId}/unassign`, {
+          entity_type: 'lead',
+          entity_ids: [parseInt(id!)]
+        }, { headers });
+      }
+
+      toast({
+        title: 'Success',
+        description: 'Tags updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update tags',
+        variant: 'destructive',
+      });
+      // Revert on error
+      fetchLead();
     }
   };
 
@@ -698,22 +747,18 @@ export default function LeadDetailPage() {
           </Card>
 
           {/* Tags */}
-          {lead.tags && lead.tags.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Tags</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {lead.tags.map((tag, index) => (
-                    <Badge key={index} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Tags</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TagSelector
+                entityType="lead"
+                selectedTagIds={selectedTagIds}
+                onTagsChange={handleTagsChange}
+              />
+            </CardContent>
+          </Card>
 
           {/* Custom Fields */}
           {lead.custom_fields && Object.keys(lead.custom_fields).length > 0 && (

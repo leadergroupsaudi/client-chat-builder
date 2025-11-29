@@ -18,7 +18,9 @@ import {
   Notification,
 } from '@/services/notificationService';
 import { format } from 'date-fns';
+import { ar } from 'date-fns/locale';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useTranslation } from 'react-i18next';
 
 interface NotificationBellProps {
   className?: string;
@@ -32,6 +34,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
   const { soundEnabled, enableSound, disableSound } = useNotifications();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
 
   // Fetch unread count (no polling - updated via WebSocket)
   const { data: unreadCount = 0 } = useQuery<number>({
@@ -119,10 +123,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 p-0" align="end">
+      <PopoverContent className="w-96 p-0" align={isRTL ? "start" : "end"} dir={isRTL ? "rtl" : "ltr"}>
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg">Notifications</h3>
+            <h3 className="font-semibold text-lg">{t('conversations.notifications.title', 'Notifications')}</h3>
             <Button
               variant="ghost"
               size="sm"
@@ -131,7 +135,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                 soundEnabled ? disableSound() : enableSound();
               }}
               className="p-1 h-8 w-8"
-              title={soundEnabled ? 'Disable notification sounds' : 'Enable notification sounds'}
+              title={soundEnabled ? t('conversations.notifications.disableSound', 'Disable notification sounds') : t('conversations.notifications.enableSound', 'Enable notification sounds')}
             >
               {soundEnabled ? (
                 <Volume2 className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -148,8 +152,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
               disabled={markAllAsReadMutation.isLoading}
               className="text-xs"
             >
-              <CheckCheck className="h-4 w-4 mr-1" />
-              Mark all read
+              <CheckCheck className={`h-4 w-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+              {t('conversations.notifications.markAllRead', 'Mark all read')}
             </Button>
           )}
         </div>
@@ -162,7 +166,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-slate-500 dark:text-slate-400">
               <Bell className="h-12 w-12 mb-4 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm">No notifications</p>
+              <p className="text-sm">{t('conversations.notifications.empty', 'No notifications')}</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -187,7 +191,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                         {notification.message}
                       </p>
                       <p className="text-xs text-slate-400 dark:text-slate-500">
-                        {format(new Date(notification.created_at), 'MMM d, h:mm a')}
+                        {format(new Date(notification.created_at), 'MMM d, h:mm a', { locale: isRTL ? ar : undefined })}
                       </p>
                     </div>
                     {!notification.is_read && (
@@ -201,7 +205,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
                       e.stopPropagation();
                       deleteNotificationMutation.mutate(notification.id);
                     }}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                    className={cn(
+                      "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700",
+                      isRTL ? "left-2" : "right-2"
+                    )}
                   >
                     <X className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                   </button>

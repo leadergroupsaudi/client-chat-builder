@@ -9,6 +9,7 @@ import {
   Layers,
   Calendar,
   Save,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,15 @@ import {
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { CampaignAudienceSelector } from '@/components/CampaignAudienceSelector';
+
+interface AudienceSelection {
+  type: 'segment' | 'filter' | 'manual';
+  segment_id?: number;
+  criteria?: Record<string, any>;
+  contact_ids?: number[];
+  lead_ids?: number[];
+}
 
 const CAMPAIGN_TYPES = [
   { value: 'email', labelKey: 'email', icon: Mail, descKey: 'emailDesc' },
@@ -50,6 +60,9 @@ export default function CampaignEditPage() {
     budget: '',
     start_date: '',
     end_date: '',
+  });
+  const [audienceSelection, setAudienceSelection] = useState<AudienceSelection>({
+    type: 'segment',
   });
 
   const getAuthHeaders = () => {
@@ -84,6 +97,28 @@ export default function CampaignEditPage() {
         start_date: formatDateForInput(campaign.start_date),
         end_date: formatDateForInput(campaign.end_date),
       });
+
+      // Load audience selection
+      if (campaign.segment_id) {
+        setAudienceSelection({
+          type: 'segment',
+          segment_id: campaign.segment_id,
+        });
+      } else if (campaign.target_criteria) {
+        const criteria = campaign.target_criteria;
+        if (criteria.manual_selection) {
+          setAudienceSelection({
+            type: 'manual',
+            contact_ids: criteria.contact_ids || [],
+            lead_ids: criteria.lead_ids || [],
+          });
+        } else {
+          setAudienceSelection({
+            type: 'filter',
+            criteria: criteria,
+          });
+        }
+      }
     } catch (error) {
       console.error('Error fetching campaign:', error);
       toast({
@@ -125,7 +160,23 @@ export default function CampaignEditPage() {
       if (formData.start_date) payload.start_date = new Date(formData.start_date).toISOString();
       if (formData.end_date) payload.end_date = new Date(formData.end_date).toISOString();
 
-      await axios.patch(`/api/v1/campaigns/${id}`, payload, { headers });
+      // Add audience targeting
+      if (audienceSelection.type === 'segment' && audienceSelection.segment_id) {
+        payload.segment_id = audienceSelection.segment_id;
+        payload.target_criteria = null; // Clear criteria when using segment
+      } else if (audienceSelection.type === 'filter' && audienceSelection.criteria) {
+        payload.segment_id = null; // Clear segment when using criteria
+        payload.target_criteria = audienceSelection.criteria;
+      } else if (audienceSelection.type === 'manual') {
+        payload.segment_id = null;
+        payload.target_criteria = {
+          manual_selection: true,
+          contact_ids: audienceSelection.contact_ids || [],
+          lead_ids: audienceSelection.lead_ids || [],
+        };
+      }
+
+      await axios.put(`/api/v1/campaigns/${id}`, payload, { headers });
 
       toast({
         title: t('crm.common.success'),
@@ -281,6 +332,25 @@ export default function CampaignEditPage() {
                 className="dark:bg-slate-900 dark:border-slate-600"
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Audience Targeting */}
+        <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold dark:text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-orange-500" />
+              {t('campaigns.audience.title', 'Target Audience')}
+            </CardTitle>
+            <CardDescription className="dark:text-gray-400">
+              {t('campaigns.audience.description', 'Select who will receive this campaign')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CampaignAudienceSelector
+              value={audienceSelection}
+              onChange={setAudienceSelection}
+            />
           </CardContent>
         </Card>
 

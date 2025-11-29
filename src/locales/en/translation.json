@@ -83,7 +83,9 @@
     "crm": "CRM",
     "contacts": "Contacts",
     "leads": "Leads",
-    "campaigns": "Campaigns"
+    "campaigns": "Campaigns",
+    "tags": "Tags",
+    "segments": "Segments"
   },
   "agents": {
     "title": "Your AI Agents",
@@ -277,6 +279,11 @@
       "clientOffline": "Client disconnected"
     },
     "notifications": {
+      "title": "Notifications",
+      "markAllRead": "Mark all read",
+      "empty": "No notifications",
+      "enableSound": "Enable notification sounds",
+      "disableSound": "Disable notification sounds",
       "newConversation": "New Conversation",
       "newConversationDesc": "A new conversation has started",
       "newMessage": "New Message",
@@ -2299,7 +2306,10 @@
         "lastRun": "Last Run",
         "created": "Created",
         "analyticsComingSoon": "Campaign analytics coming soon",
-        "contactsComingSoon": "Campaign contacts list coming soon"
+        "contactsComingSoon": "Campaign contacts list coming soon",
+        "members": "members",
+        "filterCriteria": "Custom filter criteria applied",
+        "noAudience": "No audience selected"
       },
       "views": {
         "list": "List",
@@ -2362,6 +2372,115 @@
       "average": "Average",
       "min": "Min",
       "max": "Max"
+    },
+    "tags": {
+      "title": "Tags",
+      "subtitle": "Create and manage tags for leads and contacts",
+      "create": "Create Tag",
+      "editTag": "Edit Tag",
+      "delete": "Delete Tag",
+      "searchPlaceholder": "Search tags...",
+      "noTags": "No tags found",
+      "noTagsMessage": "Create your first tag to organize your leads and contacts",
+      "addTag": "Add Tag",
+      "searchTags": "Search tags...",
+      "noTagsFound": "No tags found",
+      "createTag": "Create new tag",
+      "createFirst": "Create your first tag",
+      "newTagName": "Tag name",
+      "namePlaceholder": "e.g., VIP Customer",
+      "descriptionPlaceholder": "Describe what this tag represents...",
+      "fields": {
+        "name": "Name",
+        "color": "Color",
+        "description": "Description",
+        "entityType": "Apply to"
+      },
+      "entityTypes": {
+        "lead": "Leads only",
+        "contact": "Contacts only",
+        "both": "Both leads and contacts"
+      },
+      "stats": {
+        "total": "Total Tags",
+        "taggedLeads": "Tagged Leads",
+        "taggedContacts": "Tagged Contacts"
+      },
+      "leads": "leads",
+      "contacts": "contacts",
+      "deleteConfirmTitle": "Delete Tag",
+      "deleteConfirmDesc": "Are you sure you want to delete \"{{name}}\"? This will remove the tag from all leads and contacts.",
+      "created": "Tag created successfully",
+      "updated": "Tag updated successfully",
+      "deleted": "Tag deleted successfully",
+      "fetchError": "Failed to load tags",
+      "saveError": "Failed to save tag",
+      "nameRequired": "Tag name is required",
+      "usedIn": "Used in"
+    },
+    "segments": {
+      "title": "Segments",
+      "description": "Create and manage audience segments for targeted campaigns",
+      "create": "Create Segment",
+      "createSegment": "Create Segment",
+      "editSegment": "Edit Segment",
+      "deleteSegment": "Delete Segment",
+      "searchPlaceholder": "Search segments...",
+      "noSegments": "No segments found",
+      "noSegmentsMessage": "Create your first segment to organize your audience",
+      "filterByType": "Filter by type",
+      "name": "Name",
+      "namePlaceholder": "e.g., High-value leads",
+      "descriptionPlaceholder": "Describe this segment...",
+      "dialogDescription": "Define your audience segment criteria",
+      "type": "Type",
+      "dynamic": "Dynamic",
+      "dynamicDescription": "Auto-updates based on criteria",
+      "static": "Static",
+      "staticDescription": "Fixed list of members",
+      "staticInfo": "Static segments contain a fixed list of contacts and leads. You can add members after creating the segment.",
+      "criteria": "Segment Criteria",
+      "members": "Members",
+      "noMembers": "No members in this segment",
+      "matchingRecords": "matching records",
+      "lastRefreshed": "Last Refreshed",
+      "totalSegments": "Total Segments",
+      "dynamicSegments": "Dynamic",
+      "staticSegments": "Static",
+      "totalReach": "Total Reach",
+      "deleteTitle": "Delete Segment",
+      "deleteDescription": "Are you sure you want to delete this segment? This action cannot be undone.",
+      "includeTypes": "Include Types",
+      "lifecycleStage": "Lifecycle Stage",
+      "leadStage": "Lead Stage",
+      "leadScore": "Lead Score Range",
+      "minScore": "Min",
+      "maxScore": "Max",
+      "leadSource": "Lead Source",
+      "optInStatus": "Opt-In Status",
+      "tags": "Tags",
+      "stage": "Stage",
+      "score": "Score"
+    }
+  },
+  "campaigns": {
+    "audience": {
+      "title": "Target Audience",
+      "description": "Select who will receive this campaign",
+      "selectType": "Select Audience Type",
+      "typeDescription": "Choose how to target your campaign audience",
+      "useSegment": "Use Segment",
+      "segmentDescription": "Select from saved audience segments",
+      "useFilters": "Use Filters",
+      "filterDescription": "Build custom criteria for this campaign",
+      "manualSelect": "Manual Selection",
+      "manualDescription": "Hand-pick specific contacts and leads",
+      "selectSegment": "Select Segment",
+      "noSegments": "No segments available",
+      "buildFilters": "Build Audience Filters",
+      "selectRecipients": "Select Recipients",
+      "selected": "selected",
+      "totalRecipients": "total recipients"
     }
   }
 }

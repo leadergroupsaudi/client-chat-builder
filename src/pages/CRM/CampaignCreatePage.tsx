@@ -29,6 +29,15 @@ import {
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { CampaignAudienceSelector } from '@/components/CampaignAudienceSelector';
+
+interface AudienceSelection {
+  type: 'segment' | 'filter' | 'manual';
+  segment_id?: number;
+  criteria?: Record<string, any>;
+  contact_ids?: number[];
+  lead_ids?: number[];
+}
 
 const CAMPAIGN_TYPES = [
   { value: 'email', labelKey: 'email', icon: Mail, descKey: 'emailDesc' },
@@ -52,6 +61,9 @@ export default function CampaignCreatePage() {
     budget: '',
     start_date: '',
     end_date: '',
+  });
+  const [audienceSelection, setAudienceSelection] = useState<AudienceSelection>({
+    type: 'segment',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,6 +95,19 @@ export default function CampaignCreatePage() {
       if (formData.budget) payload.budget = parseFloat(formData.budget);
       if (formData.start_date) payload.start_date = new Date(formData.start_date).toISOString();
       if (formData.end_date) payload.end_date = new Date(formData.end_date).toISOString();
+
+      // Add audience targeting
+      if (audienceSelection.type === 'segment' && audienceSelection.segment_id) {
+        payload.segment_id = audienceSelection.segment_id;
+      } else if (audienceSelection.type === 'filter' && audienceSelection.criteria) {
+        payload.target_criteria = audienceSelection.criteria;
+      } else if (audienceSelection.type === 'manual') {
+        payload.target_criteria = {
+          manual_selection: true,
+          contact_ids: audienceSelection.contact_ids || [],
+          lead_ids: audienceSelection.lead_ids || [],
+        };
+      }
 
       const response = await axios.post('/api/v1/campaigns/', payload, { headers });
 
@@ -228,6 +253,25 @@ export default function CampaignCreatePage() {
                 className="dark:bg-slate-900 dark:border-slate-600"
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Audience Targeting */}
+        <Card className="border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold dark:text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-orange-500" />
+              {t('campaigns.audience.title', 'Target Audience')}
+            </CardTitle>
+            <CardDescription className="dark:text-gray-400">
+              {t('campaigns.audience.description', 'Select who will receive this campaign')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CampaignAudienceSelector
+              value={audienceSelection}
+              onChange={setAudienceSelection}
+            />
           </CardContent>
         </Card>
 

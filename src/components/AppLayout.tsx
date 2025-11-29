@@ -36,7 +36,9 @@ import {
   Building,
   Target,
   Send,
-  TrendingUp
+  TrendingUp,
+  Tag,
+  Layers
 } from "lucide-react";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
 import { Permission } from "./Permission";
@@ -388,6 +390,8 @@ const AppLayout = () => {
     { titleKey: "navigation.contacts", url: "/dashboard/crm/contacts", icon: Users, permission: "crm:read" },
     { titleKey: "navigation.leads", url: "/dashboard/crm/leads", icon: Target, permission: "crm:read" },
     { titleKey: "navigation.campaigns", url: "/dashboard/crm/campaigns", icon: Send, permission: "crm:read" },
+    { titleKey: "navigation.tags", url: "/dashboard/crm/tags", icon: Tag, permission: "crm:read" },
+    { titleKey: "navigation.segments", url: "/dashboard/crm/segments", icon: Layers, permission: "crm:read" },
 
     // Configuration & Resources
     { titleKey: "navigation.knowledgeBases", url: "/dashboard/knowledge-base/manage", icon: BookOpen, permission: "knowledgebase:read" },
