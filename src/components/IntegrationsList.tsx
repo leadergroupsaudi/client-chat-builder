@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Integration } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { IntegrationDialog } from './IntegrationDialog';
 import { Zap, Trash2, Edit } from 'lucide-react';
 import GoogleAuth from './GoogleAuth';
@@ -12,6 +13,7 @@ import { useI18n } from '@/hooks/useI18n';
 
 export const IntegrationsList: React.FC = () => {
   const { t, isRTL } = useI18n();
+  const { playSuccessSound } = useNotifications();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const { authFetch } = useAuth();
@@ -25,6 +27,7 @@ export const IntegrationsList: React.FC = () => {
       if (event.data === 'linkedin-success' || event.data === 'google-success') {
         queryClient.invalidateQueries({ queryKey: ['integrations'] });
         toast({ title: t('integrations.success'), variant: 'success', description: t('integrations.connectedSuccess') });
+        playSuccessSound();
       }
     };
 
@@ -52,6 +55,7 @@ export const IntegrationsList: React.FC = () => {
     },
     onSuccess: () => {
       toast({ title: t('integrations.success'), variant: 'success', description: t('integrations.deletedSuccess') });
+      playSuccessSound();
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
     },
     onError: () => {

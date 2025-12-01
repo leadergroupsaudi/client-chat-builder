@@ -41,12 +41,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { TableHeader, TableRow, TableHead, TableBody, TableCell, Table } from "@/components/ui/table";
 import { useI18n } from '@/hooks/useI18n';
+import { useNotifications } from "@/hooks/useNotifications";
 
 export const TeamManagement = () => {
   const { t, isRTL } = useI18n();
   const queryClient = useQueryClient();
   const companyId = 1; // Hardcoded company ID
   const { authFetch } = useAuth();
+  const { playSuccessSound } = useNotifications();
   
 
   // State
@@ -127,6 +129,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.userCreated') });
+      playSuccessSound();
       setAddUserModalOpen(false);
       setNewUserEmail("");
       setNewUserPassword("");
@@ -143,6 +146,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.teamCreated') });
+      playSuccessSound();
       setCreateTeamModalOpen(false);
       setNewTeamName("");
     },
@@ -168,6 +172,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.memberRemoved') });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
@@ -187,6 +192,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.roleSaved') });
+      playSuccessSound();
       setRoleModalOpen(false);
     },
     onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
@@ -199,6 +205,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.roleDeleted') });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
@@ -212,6 +219,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.teamUpdated') });
+      playSuccessSound();
       setEditTeamModalOpen(false);
       setEditTeamName("");
     },
@@ -225,6 +233,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.teamDeleted') });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
@@ -236,6 +245,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.userDeleted') });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
@@ -249,6 +259,7 @@ export const TeamManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users', companyId] });
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.userStatusUpdated') });
+      playSuccessSound();
     },
     onError: (e: Error) => toast({ title: t('common.error'), description: e.message, variant: 'destructive' }),
   });
@@ -281,6 +292,7 @@ export const TeamManagement = () => {
       setAddMemberModalOpen(false);
       setSelectedUserIds([]);
       toast({ title: t('common.success'), variant: 'success', description: t('teamManagement.toasts.membersAdded', { count: selectedUserIds.length }) });
+      playSuccessSound();
     }
   };
 
@@ -611,6 +623,8 @@ export const TeamManagement = () => {
                                             ? 'bg-green-500'
                                             : user.presence_status === 'busy'
                                             ? 'bg-yellow-500'
+                                            : user.presence_status === 'in_call'
+                                            ? 'bg-blue-500'
                                             : 'bg-gray-400'
                                         }`}
                                         title={user.presence_status}
@@ -1019,6 +1033,8 @@ export const TeamManagement = () => {
                                   ? 'bg-green-500'
                                   : user.presence_status === 'busy'
                                   ? 'bg-yellow-500'
+                                  : user.presence_status === 'in_call'
+                                  ? 'bg-blue-500'
                                   : 'bg-gray-400'
                               }`}
                             />

@@ -61,18 +61,31 @@ export const useWebSocket = (url: string | null, options: WebSocketOptions = {})
     const currentUrl = urlRef.current;
     const currentOptions = optionsRef.current;
 
-    if (!currentUrl || !enabled) return;
+    if (!currentUrl || !enabled) {
+      console.log('[WebSocket] Not connecting - url:', currentUrl, 'enabled:', enabled);
+      return;
+    }
 
     // Close existing connection if any
     if (ws.current) {
-      if (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING) {
+      const readyState = ws.current.readyState;
+      console.log('[WebSocket] Existing connection state:', {
+        CONNECTING: readyState === WebSocket.CONNECTING,
+        OPEN: readyState === WebSocket.OPEN,
+        CLOSING: readyState === WebSocket.CLOSING,
+        CLOSED: readyState === WebSocket.CLOSED
+      });
+
+      if (readyState === WebSocket.OPEN || readyState === WebSocket.CONNECTING) {
         console.log('[WebSocket] Closing existing connection before creating new one');
         ws.current.close();
+        // Wait a bit for the close to complete
+        ws.current = null;
       }
     }
 
     try {
-      console.log('[WebSocket] Connecting to:', currentUrl);
+      console.log('[WebSocket] Creating new connection to:', currentUrl);
       ws.current = new WebSocket(currentUrl);
 
       ws.current.onopen = () => {
@@ -129,22 +142,36 @@ export const useWebSocket = (url: string | null, options: WebSocketOptions = {})
   }, [enabled, maxReconnectAttempts, reconnectInterval, startHeartbeat, clearTimers]);
 
   useEffect(() => {
+    console.log('[WebSocket] useEffect triggered - url:', url, 'enabled:', enabled);
+
     if (url && enabled) {
       shouldReconnect.current = true;
       isManualClose.current = false;
       reconnectAttempts.current = 0;
-      connect();
+
+      // Small delay to ensure previous connection is fully closed
+      const connectTimer = setTimeout(() => {
+        connect();
+      }, 100);
+
+      return () => {
+        console.log('[WebSocket] Cleanup triggered for url:', url);
+        clearTimeout(connectTimer);
+        shouldReconnect.current = false;
+        isManualClose.current = true;
+        clearTimers();
+        if (ws.current) {
+          console.log('[WebSocket] Closing connection in cleanup');
+          ws.current.close();
+          ws.current = null;
+        }
+      };
     }
 
     return () => {
-      shouldReconnect.current = false;
-      isManualClose.current = true;
-      clearTimers();
-      if (ws.current) {
-        ws.current.close();
-      }
+      console.log('[WebSocket] Empty cleanup (url or enabled is falsy)');
     };
-  }, [url, enabled]); // Removed 'connect' from dependencies to prevent loop
+  }, [url, enabled]); // Keep minimal dependencies to prevent infinite loop
 
   const sendMessage = useCallback((message: string) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {

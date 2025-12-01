@@ -7,6 +7,11 @@ import {
   getChannelMessages,
   getChannelMembers,
   createChannelMessage,
+  uploadFile,
+  downloadFile,
+  createMessageReply,
+  addReaction,
+  removeReaction,
 } from '@/services/chatService';
 import {
   Card,
@@ -18,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bot, User, Send, Loader2, Video, Plus, Users } from 'lucide-react';
+import { Bot, User, Send, Loader2, Video, Plus, Users, MessageSquare, Search, History, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -27,8 +32,22 @@ import axios from 'axios';
 import { useToast } from '@/components/ui/use-toast';
 import CreateChannelModal from '@/components/CreateChannelModal';
 import ManageChannelMembersModal from '@/components/ManageChannelMembersModal';
+import FileUpload from '@/components/FileUpload';
+import FileAttachment from '@/components/FileAttachment';
+import MessageThreadModal from '@/components/MessageThreadModal';
+import MessageReactions from '@/components/MessageReactions';
+import MentionInput from '@/components/MentionInput';
+import MentionText from '@/components/MentionText';
+import SearchModal from '@/components/SearchModal';
+import IncomingCallModal from '@/components/IncomingCallModal';
+import CallingModal from '@/components/CallingModal';
+import CallHistory from '@/components/CallHistory';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { convertMentionsToApiFormat } from '@/utils/mentions';
+import { getChannelDisplayName, getChannelAvatar, getChannelDescription } from '@/utils/channelUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWebSocket } from '@/hooks/use-websocket';
+import { useNotifications } from '@/hooks/useNotifications';
 import { BACKEND_URL } from '@/config/env';
 import { API_BASE_URL } from '@/config/api';
 import { useI18n } from '@/hooks/useI18n';
@@ -46,11 +65,28 @@ interface ChatChannel {
   messages: ChatMessage[];
 }
 
+interface ChatAttachment {
+  id: number;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+}
+
+interface MessageReaction {
+  id: number;
+  emoji: string;
+  user_id: number;
+  message_id: number;
+  created_at: string;
+}
+
 interface ChatMessage {
   id: number;
   sender_id: number;
   content: string;
   created_at: string;
+  parent_message_id?: number | null;
   sender: {
     id: number;
     email: string;
@@ -59,6 +95,9 @@ interface ChatMessage {
     profile_picture_url?: string;
     presence_status: string;
   };
+  attachments?: ChatAttachment[];
+  reactions?: MessageReaction[];
+  reply_count?: number;
 }
 
 interface UserPresence {
@@ -76,7 +115,7 @@ const InternalChatPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
   const [inputValue, setInputValue] = useState('');
@@ -84,7 +123,42 @@ const InternalChatPage: React.FC = () => {
   const [isCreateChannelModalOpen, setCreateChannelModalOpen] = useState(false);
   const [isManageMembersModalOpen, setManageMembersModalOpen] = useState(false);
   const [userPresences, setUserPresences] = useState<UserPresence>({});
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [threadParentMessage, setThreadParentMessage] = useState<ChatMessage | null>(null);
+  const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<{
+    callId: number;
+    callerId: number;
+    callerName: string;
+    callerAvatar?: string;
+    channelId: number;
+    channelName: string;
+    roomName: string;
+    livekitToken: string;
+    livekitUrl: string;
+  } | null>(null);
+  const [outgoingCall, setOutgoingCall] = useState<{
+    callId: number;
+    channelId: number;
+    channelName: string;
+    roomName: string;
+    livekitToken: string;
+    livekitUrl: string;
+    status: 'calling' | 'ringing' | 'connecting';
+  } | null>(null);
+  const [isCallHistoryOpen, setIsCallHistoryOpen] = useState(false);
+  const [channelSidebarCollapsed, setChannelSidebarCollapsed] = useState(false);
   const { toast } = useToast();
+  const { showNotification, requestPermission, permission, playCallEndSound } = useNotifications();
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if (permission === 'default') {
+      requestPermission();
+    }
+  }, []);
 
   const wsUrl = selectedChannel?.id
     ? `${BACKEND_URL.replace('http', 'ws')}/api/v1/ws/wschat/${selectedChannel.id}?token=${localStorage.getItem('accessToken')}`
@@ -101,24 +175,291 @@ const InternalChatPage: React.FC = () => {
           }
           return [...oldMessages, newMessage];
         });
+
+        // Show notification if message mentions current user or is a reply to their message
+        if (user && newMessage.sender_id !== user.id) {
+          const senderName = newMessage.sender?.first_name || newMessage.sender?.email || 'Someone';
+
+          // Check if current user is mentioned
+          const mentionPattern = new RegExp(`@user:${user.id}\\b`);
+          if (mentionPattern.test(newMessage.content)) {
+            showNotification({
+              title: `${senderName} mentioned you`,
+              body: newMessage.content.substring(0, 100),
+              tag: `mention-${newMessage.id}`,
+            });
+            // Invalidate notifications to update badge count
+            queryClient.invalidateQueries({ queryKey: ['notificationUnreadCount'] });
+          }
+
+          // Check if it's a reply to current user's message
+          if (newMessage.parent_message_id) {
+            const oldMessages = queryClient.getQueryData<ChatMessage[]>(['channelMessages', selectedChannel!.id]) || [];
+            const parentMessage = oldMessages.find(msg => msg.id === newMessage.parent_message_id);
+            if (parentMessage && parentMessage.sender_id === user.id) {
+              showNotification({
+                title: `${senderName} replied to your message`,
+                body: newMessage.content.substring(0, 100),
+                tag: `reply-${newMessage.id}`,
+              });
+              // Invalidate notifications to update badge count
+              queryClient.invalidateQueries({ queryKey: ['notificationUnreadCount'] });
+            }
+          }
+        }
       } else if (wsMessage.type === 'presence_update') {
         const { user_id, status } = wsMessage.payload;
         setUserPresences(prevPresences => ({
           ...prevPresences,
           [user_id]: status,
         }));
+      } else if (wsMessage.type === 'reaction_added') {
+        const { message_id, reaction } = wsMessage.payload;
+        queryClient.setQueryData<ChatMessage[]>(['channelMessages', selectedChannel!.id], (oldMessages = []) => {
+          return oldMessages.map(msg => {
+            if (msg.id === message_id) {
+              const existingReactions = msg.reactions || [];
+              // Check if reaction already exists
+              if (!existingReactions.some(r => r.id === reaction.id)) {
+                // Show notification if someone reacted to current user's message
+                if (user && msg.sender_id === user.id && reaction.user_id !== user.id) {
+                  showNotification({
+                    title: 'New reaction',
+                    body: `Someone reacted ${reaction.emoji} to your message`,
+                    tag: `reaction-${message_id}`,
+                  });
+                }
+                return { ...msg, reactions: [...existingReactions, reaction] };
+              }
+            }
+            return msg;
+          });
+        });
+      } else if (wsMessage.type === 'reaction_removed') {
+        const { message_id, user_id, emoji } = wsMessage.payload;
+        queryClient.setQueryData<ChatMessage[]>(['channelMessages', selectedChannel!.id], (oldMessages = []) => {
+          return oldMessages.map(msg => {
+            if (msg.id === message_id) {
+              const filteredReactions = (msg.reactions || []).filter(
+                r => !(r.user_id === user_id && r.emoji === emoji)
+              );
+              return { ...msg, reactions: filteredReactions };
+            }
+            return msg;
+          });
+        });
       } else if (wsMessage.type === 'video_call_initiated') {
-        // When a video call is initiated, update the active call info for all users in the channel
-        const { room_name, livekit_token, livekit_url } = wsMessage;
-        console.log('Video call initiated via WebSocket:', { room_name, livekit_url });
+        // When a video call is initiated, show incoming call modal
+        const { call_id, room_name, livekit_token, livekit_url, channel_id, channel_member_ids, caller_id, caller_name, caller_avatar } = wsMessage;
+        console.log('Video call initiated via WebSocket:', { call_id, room_name, livekit_url, caller_id, channel_id, channel_member_ids });
+
+        // Check if current user is a member of this channel
+        const isChannelMember = channel_member_ids && user && channel_member_ids.includes(user.id);
+
+        // Only show notification if user is a channel member AND not the caller
+        if (user && caller_id !== user.id && isChannelMember) {
+          // Look up the actual channel using channel_id from the WebSocket message
+          const actualChannel = channels?.find(ch => ch.id === channel_id);
+          const channelName = actualChannel ? getChannelDisplayName(actualChannel, user.id) : `Channel ${channel_id}`;
+
+          setIncomingCall({
+            callId: call_id,
+            callerId: caller_id,
+            callerName: caller_name || 'Unknown',
+            callerAvatar: caller_avatar,
+            channelId: channel_id,
+            channelName,
+            roomName: room_name,
+            livekitToken: livekit_token,
+            livekitUrl: livekit_url,
+          });
+
+          // Show desktop notification too
+          showNotification({
+            title: `${caller_name || 'Someone'} is calling`,
+            body: `Incoming video call in ${channelName}`,
+            tag: `video-call-${channel_id}`,
+          });
+        } else if (user && !isChannelMember) {
+          console.log('[InternalChatPage] Ignoring call - user is not a member of channel', channel_id);
+        }
 
         // Invalidate the active video call query to fetch fresh data with user's own token
-        queryClient.invalidateQueries({ queryKey: ['activeVideoCall', selectedChannel?.id] });
-
-        toast({
-          title: t('teamChat.toasts.videoCallStarted'),
-          description: t('teamChat.toasts.videoCallStartedDesc'),
+        queryClient.invalidateQueries({ queryKey: ['activeVideoCall', channel_id] });
+        // Invalidate call history to show latest call
+        queryClient.invalidateQueries({ queryKey: ['callHistory', channel_id] });
+      } else if (wsMessage.type === 'call_accepted') {
+        // Call was accepted by someone
+        const { call_id, accepted_by_id, accepted_by_name, room_name, livekit_url, caller_id, channel_id } = wsMessage;
+        console.log('Call accepted:', {
+          call_id,
+          accepted_by_id,
+          accepted_by_name,
+          room_name,
+          livekit_url,
+          caller_id,
+          outgoingCall,
+          currentUserId: user?.id,
+          isUserCaller: user?.id === caller_id
         });
+
+        // Check if current user is the caller (either by outgoingCall state or caller_id from event)
+        const isUserCaller = (outgoingCall && outgoingCall.callId === call_id) || (user?.id === caller_id);
+
+        if (isUserCaller) {
+          console.log('[Call Flow] Caller detected - navigating to video room');
+
+          toast({
+            title: 'Call accepted',
+            description: `${accepted_by_name} joined the call`,
+          });
+
+          // If we have outgoingCall state, use it (has the token already)
+          if (outgoingCall && outgoingCall.callId === call_id) {
+            console.log('[Call Flow] Using existing outgoingCall state');
+            navigate(
+              `/internal-video-call?roomName=${encodeURIComponent(outgoingCall.roomName)}&livekitToken=${encodeURIComponent(outgoingCall.livekitToken)}&livekitUrl=${encodeURIComponent(outgoingCall.livekitUrl)}&channelId=${outgoingCall.channelId}&callId=${call_id}`
+            );
+            setOutgoingCall(null);
+          } else {
+            // State was lost, but we can recover by joining the call with a new token
+            console.log('[Call Flow] outgoingCall state lost - requesting new token via join endpoint');
+
+            const token = localStorage.getItem('accessToken');
+            axios.post(
+              `${API_BASE_URL}/api/v1/video-calls/channels/${channel_id}/join`,
+              {},
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then(response => {
+              const { room_name: roomName, livekit_token, livekit_url: livekitUrl } = response.data;
+              console.log('[Call Flow] Got new token - navigating to video room');
+              navigate(
+                `/internal-video-call?roomName=${encodeURIComponent(roomName)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekitUrl)}&channelId=${channel_id}&callId=${call_id}`
+              );
+              setOutgoingCall(null);
+            })
+            .catch(error => {
+              console.error('[Call Flow] Failed to get new token:', error);
+              toast({
+                title: 'Error',
+                description: 'Failed to join call',
+                variant: 'destructive'
+              });
+            });
+          }
+        } else {
+          console.log('[Call Flow] NOT the caller - ignoring accept event');
+        }
+
+        // Invalidate active call query
+        queryClient.invalidateQueries({ queryKey: ['activeVideoCall', selectedChannel?.id] });
+        // Invalidate call history to show latest status
+        queryClient.invalidateQueries({ queryKey: ['callHistory', selectedChannel?.id] });
+      } else if (wsMessage.type === 'call_rejected') {
+        // Call was rejected
+        const { call_id, rejected_by_name } = wsMessage;
+        console.log('Call rejected:', { call_id, rejected_by_name });
+
+        // If current user is the caller, show notification
+        if (outgoingCall && outgoingCall.callId === call_id) {
+          toast({
+            title: 'Call declined',
+            description: `${rejected_by_name} declined the call`,
+            variant: 'destructive',
+          });
+
+          // Clear outgoing call state
+          setOutgoingCall(null);
+        }
+
+        // If current user had incoming call, clear it
+        if (incomingCall && incomingCall.callId === call_id) {
+          setIncomingCall(null);
+        }
+
+        // Invalidate call history to show latest status
+        queryClient.invalidateQueries({ queryKey: ['callHistory', selectedChannel?.id] });
+      } else if (wsMessage.type === 'call_missed') {
+        // Call timed out
+        const { call_id } = wsMessage;
+        console.log('Call missed (timeout):', { call_id });
+
+        // If current user is the caller, show notification
+        if (outgoingCall && outgoingCall.callId === call_id) {
+          toast({
+            title: 'No answer',
+            description: 'The call was not answered',
+          });
+
+          // Clear outgoing call state
+          setOutgoingCall(null);
+        }
+
+        // If current user had incoming call, clear it
+        if (incomingCall && incomingCall.callId === call_id) {
+          setIncomingCall(null);
+        }
+
+        // Invalidate call history to show latest status
+        queryClient.invalidateQueries({ queryKey: ['callHistory', selectedChannel?.id] });
+      } else if (wsMessage.type === 'call_ended') {
+        // Call ended
+        const { call_id, duration_seconds } = wsMessage;
+        console.log('Call ended:', { call_id, duration_seconds });
+
+        // Play call end sound
+        playCallEndSound();
+
+        // Clear any call states
+        if (outgoingCall && outgoingCall.callId === call_id) {
+          setOutgoingCall(null);
+        }
+        if (incomingCall && incomingCall.callId === call_id) {
+          setIncomingCall(null);
+        }
+
+        // Invalidate active call query
+        queryClient.invalidateQueries({ queryKey: ['activeVideoCall', selectedChannel?.id] });
+        // Invalidate call history to show latest status
+        queryClient.invalidateQueries({ queryKey: ['callHistory', selectedChannel?.id] });
+      } else if (wsMessage.type === 'user_joined_call') {
+        // Additional user joined an active call
+        const { call_id, accepted_by_name, participant_count } = wsMessage;
+        console.log('User joined call:', { call_id, accepted_by_name, participant_count });
+
+        // Show toast notification (but not if current user is the one who joined)
+        if (wsMessage.accepted_by_id !== user?.id) {
+          toast({
+            title: 'User joined',
+            description: `${accepted_by_name} joined the call`,
+          });
+        }
+
+        // If current user has an incoming call for this call_id, dismiss it since call is now active
+        // (other users already started the call)
+        if (incomingCall && incomingCall.callId === call_id) {
+          console.log('[User Joined] Dismissing incoming call modal - call is now active');
+          setIncomingCall(null);
+        }
+
+        // Invalidate call history to show updated participant info
+        queryClient.invalidateQueries({ queryKey: ['callHistory', selectedChannel?.id] });
+      } else if (wsMessage.type === 'user_left_call') {
+        // User left an active call (but call continues)
+        const { call_id, left_by_name, participant_count } = wsMessage;
+        console.log('User left call:', { call_id, left_by_name, participant_count });
+
+        // Show toast notification (but not if current user is the one who left)
+        if (wsMessage.left_by_id !== user?.id) {
+          toast({
+            title: 'User left',
+            description: `${left_by_name} left the call`,
+          });
+        }
+
+        // Invalidate call history to show updated participant info
+        queryClient.invalidateQueries({ queryKey: ['callHistory', selectedChannel?.id] });
       }
     },
     onError: (error) => {
@@ -148,25 +489,34 @@ const InternalChatPage: React.FC = () => {
   const { data: activeCallExists } = useQuery<boolean, Error>({
     queryKey: ['activeVideoCall', selectedChannel?.id],
     queryFn: async () => {
+      console.log('[Active Call Query] Fetching active call status for channel:', selectedChannel?.id);
       try {
         const token = localStorage.getItem('accessToken');
-        await axios.get(
+        const response = await axios.get(
           `${API_BASE_URL}/api/v1/video-calls/channels/${selectedChannel!.id}/active`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        console.log('[Active Call Query] Active call found:', response.data);
         // If no error, active call exists
         return true;
       } catch (error: any) {
         if (error.response?.status === 404) {
+          console.log('[Active Call Query] No active call (404) - returning false');
           // No active call
           return false;
         }
+        console.error('[Active Call Query] Error checking active call:', error);
         throw error;
       }
     },
     enabled: !!selectedChannel?.id,
     // No refetchInterval - rely on WebSocket events to invalidate this query
   });
+
+  // Debug: Log activeCallExists value
+  useEffect(() => {
+    console.log('[Active Call State] activeCallExists changed to:', activeCallExists);
+  }, [activeCallExists]);
 
   // Fetch messages for selected channel
   const {
@@ -248,11 +598,47 @@ const InternalChatPage: React.FC = () => {
       );
       return response.data;
     },
-    onSuccess: (data) => {
-      const { room_name, livekit_token, livekit_url } = data;
-      navigate(
-        `/internal-video-call?roomName=${encodeURIComponent(room_name)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekit_url)}&channelId=${selectedChannel?.id}`
-      );
+    onSuccess: async (data) => {
+      // Save current presence status before initiating call
+      if (user?.presence_status && user.presence_status !== 'in_call') {
+        localStorage.setItem('previousPresenceStatus', user.presence_status);
+        console.log('[Call] Saved previous status:', user.presence_status);
+      }
+
+      // Set status to in_call
+      try {
+        const token = localStorage.getItem('accessToken');
+        await axios.post(
+          `${API_BASE_URL}/api/v1/auth/presence?presence_status=in_call`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('[Call] Status set to in_call');
+      } catch (statusError) {
+        console.error('[Call] Failed to set in_call status:', statusError);
+      }
+
+      // Don't navigate immediately - show calling modal first
+      const { room_name, livekit_token, livekit_url, call_id } = data;
+      const channelName = selectedChannel ? getChannelDisplayName(selectedChannel, user?.id) : 'Unknown';
+
+      console.log('[Call Flow] Initiating call - setting outgoingCall state:', {
+        call_id,
+        room_name,
+        channelId: selectedChannel?.id,
+        hasToken: !!livekit_token,
+        hasUrl: !!livekit_url
+      });
+
+      setOutgoingCall({
+        callId: call_id,
+        channelId: selectedChannel?.id || 0,
+        channelName,
+        roomName: room_name,
+        livekitToken: livekit_token,
+        livekitUrl: livekit_url,
+        status: 'ringing',
+      });
     },
     onError: (err) => {
       console.error('Failed to initiate video call:', err);
@@ -282,10 +668,29 @@ const InternalChatPage: React.FC = () => {
       );
       return response.data;
     },
-    onSuccess: (data) => {
-      const { room_name, livekit_token, livekit_url } = data;
+    onSuccess: async (data) => {
+      // Save current presence status before joining call
+      if (user?.presence_status && user.presence_status !== 'in_call') {
+        localStorage.setItem('previousPresenceStatus', user.presence_status);
+        console.log('[Call] Saved previous status:', user.presence_status);
+      }
+
+      // Set status to in_call
+      try {
+        const token = localStorage.getItem('accessToken');
+        await axios.post(
+          `${API_BASE_URL}/api/v1/auth/presence?presence_status=in_call`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('[Call] Status set to in_call');
+      } catch (statusError) {
+        console.error('[Call] Failed to set in_call status:', statusError);
+      }
+
+      const { call_id, room_name, livekit_token, livekit_url } = data;
       navigate(
-        `/internal-video-call?roomName=${encodeURIComponent(room_name)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekit_url)}&channelId=${selectedChannel?.id}`
+        `/internal-video-call?roomName=${encodeURIComponent(room_name)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekit_url)}&channelId=${selectedChannel?.id}&callId=${call_id}`
       );
     },
     onError: (err) => {
@@ -298,10 +703,134 @@ const InternalChatPage: React.FC = () => {
     },
   });
 
-  const handleSendMessage = () => {
-    if (inputValue.trim() && selectedChannel?.id) {
-      createMessageMutation.mutate({ channelId: selectedChannel.id, content: inputValue.trim() });
+  const handleSendMessage = async () => {
+    if (!selectedChannel?.id) return;
+    if (!inputValue.trim() && selectedFiles.length === 0) return;
+
+    let messageContent = inputValue.trim() || '📎 File attachment';
+
+    // Convert mentions from display format (@FirstName) to API format (@user:123)
+    if (channelMembers && channelMembers.length > 0) {
+      messageContent = convertMentionsToApiFormat(messageContent, channelMembers);
+    }
+
+    try {
+      // First, create the message
+      const newMessage = await createChannelMessage(selectedChannel.id, messageContent);
+
+      // If there are files, upload them and attach to the message
+      if (selectedFiles.length > 0) {
+        setIsUploadingFiles(true);
+
+        for (const file of selectedFiles) {
+          try {
+            await uploadFile(file, newMessage.id, selectedChannel.id);
+          } catch (error) {
+            console.error('Failed to upload file:', error);
+            toast({
+              title: 'Upload failed',
+              description: `Failed to upload ${file.name}`,
+              variant: 'destructive',
+            });
+          }
+        }
+
+        setIsUploadingFiles(false);
+        setSelectedFiles([]);
+      }
+
+      // Clear input and refresh messages
       setInputValue('');
+      queryClient.invalidateQueries({ queryKey: ['channelMessages', selectedChannel.id] });
+
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send message',
+        variant: 'destructive',
+      });
+      setIsUploadingFiles(false);
+    }
+  };
+
+  const handleFileSelect = (files: File[]) => {
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
+
+  const handleFileRemove = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDownloadFile = async (attachment: ChatAttachment) => {
+    try {
+      const fileKey = attachment.file_url.replace('s3://', '').split('/').slice(1).join('/');
+      const blob = await downloadFile(fileKey);
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      toast({
+        title: 'Download failed',
+        description: 'Failed to download file',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleOpenThread = (message: ChatMessage) => {
+    setThreadParentMessage(message);
+    setIsThreadModalOpen(true);
+  };
+
+  const handleSendReply = async (content: string, parentMessageId: number) => {
+    if (!selectedChannel?.id) return;
+
+    try {
+      await createMessageReply(parentMessageId, content, selectedChannel.id);
+      // Refresh messages to update reply count
+      queryClient.invalidateQueries({ queryKey: ['channelMessages', selectedChannel.id] });
+    } catch (error) {
+      console.error('Failed to send reply:', error);
+      throw error;
+    }
+  };
+
+  const handleAddReaction = async (messageId: number, emoji: string) => {
+    try {
+      await addReaction(messageId, emoji);
+      // Real-time update via WebSocket, but also refresh to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['channelMessages', selectedChannel?.id] });
+    } catch (error) {
+      console.error('Failed to add reaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add reaction',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveReaction = async (messageId: number, emoji: string) => {
+    try {
+      await removeReaction(messageId, emoji);
+      // Real-time update via WebSocket, but also refresh to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['channelMessages', selectedChannel?.id] });
+    } catch (error) {
+      console.error('Failed to remove reaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove reaction',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -321,6 +850,128 @@ const InternalChatPage: React.FC = () => {
     }
   };
 
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      const token = localStorage.getItem('accessToken');
+
+      // Save current presence status before joining call
+      if (user?.presence_status && user.presence_status !== 'in_call') {
+        localStorage.setItem('previousPresenceStatus', user.presence_status);
+        console.log('[Call] Saved previous status:', user.presence_status);
+      }
+
+      // Set status to in_call
+      try {
+        await axios.post(
+          `${API_BASE_URL}/api/v1/auth/presence?presence_status=in_call`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('[Call] Status set to in_call');
+      } catch (statusError) {
+        console.error('[Call] Failed to set in_call status:', statusError);
+      }
+
+      const endpoint = `${API_BASE_URL}/api/v1/video-calls/${incomingCall.callId}/accept`;
+
+      const response = await axios.post(
+        endpoint,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const { room_name, livekit_token, livekit_url } = response.data;
+
+      // Navigate to video call page
+      navigate(
+        `/internal-video-call?roomName=${encodeURIComponent(room_name)}&livekitToken=${encodeURIComponent(livekit_token)}&livekitUrl=${encodeURIComponent(livekit_url)}&channelId=${incomingCall.channelId}&callId=${incomingCall.callId}`
+      );
+
+      // Clear incoming call state
+      setIncomingCall(null);
+    } catch (error) {
+      console.error('Failed to accept call:', error);
+      toast({
+        title: t('common.error'),
+        description: 'Failed to accept call',
+        variant: 'destructive',
+      });
+      setIncomingCall(null);
+    }
+  };
+
+  const handleRejectCall = async () => {
+    if (!incomingCall) return;
+
+    // Play call end sound
+    playCallEndSound();
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const endpoint = `${API_BASE_URL}/api/v1/video-calls/${incomingCall.callId}/reject`;
+
+      await axios.post(
+        endpoint,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Clear incoming call state
+      setIncomingCall(null);
+    } catch (error) {
+      console.error('Failed to reject call:', error);
+      // Still clear the modal even if API call fails
+      setIncomingCall(null);
+    }
+  };
+
+  const handleCancelOutgoingCall = async () => {
+    if (!outgoingCall) return;
+
+    // Play call end sound
+    playCallEndSound();
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const endpoint = `${API_BASE_URL}/api/v1/video-calls/${outgoingCall.callId}/reject`;
+
+      await axios.post(
+        endpoint,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Clear outgoing call state
+      setOutgoingCall(null);
+
+      toast({
+        title: 'Call cancelled',
+        description: 'The call has been cancelled',
+      });
+    } catch (error) {
+      console.error('Failed to cancel call:', error);
+      // Still clear the modal even if API call fails
+      setOutgoingCall(null);
+    }
+  };
+
   const scrollToBottom = () => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -331,13 +982,26 @@ const InternalChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Helper function to change channel and update URL
+  const handleChannelSelect = (channel: ChatChannel) => {
+    console.log('[Channel Select] Changing to channel:', channel.id);
+    setSelectedChannel(channel);
+    // Update URL parameter to keep it in sync
+    setSearchParams({ channelId: channel.id.toString() });
+  };
+
   // Auto-select channel from URL params (e.g., when returning from video call)
   useEffect(() => {
     const channelIdParam = searchParams.get('channelId');
+    console.log('[URL Sync] Checking URL param:', channelIdParam, 'Current channel:', selectedChannel?.id);
+
     if (channelIdParam && channels) {
       const channelToSelect = channels.find(ch => ch.id === Number(channelIdParam));
       if (channelToSelect && (!selectedChannel || selectedChannel.id !== channelToSelect.id)) {
+        console.log('[URL Sync] Switching to channel from URL:', channelToSelect.id);
         setSelectedChannel(channelToSelect);
+      } else {
+        console.log('[URL Sync] No channel switch needed');
       }
     }
   }, [searchParams, channels, selectedChannel]);
@@ -359,65 +1023,147 @@ const InternalChatPage: React.FC = () => {
     <TooltipProvider>
       <div className="flex h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900 text-gray-800 dark:text-gray-200 font-sans overflow-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
         {/* Left Sidebar: Channel List */}
-        <Card className="w-80 flex-shrink-0 border-r dark:border-slate-700 rounded-none bg-white dark:bg-slate-800 shadow-lg flex flex-col h-full">
-          <CardHeader className="flex flex-row items-center justify-between p-5 pb-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 flex-shrink-0">
-            <CardTitle className="text-xl font-bold dark:text-white flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-                <Users className="h-4 w-4 text-white" />
-              </div>
-              {t('teamChat.channels')}
-            </CardTitle>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCreateChannelModalOpen(true)}
-                  className="hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full"
-                >
-                  <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('teamChat.createChannel')}</p>
-              </TooltipContent>
-            </Tooltip>
+        <Card className={cn(
+          "flex-shrink-0 border-r dark:border-slate-700 rounded-none bg-white dark:bg-slate-800 shadow-lg flex flex-col h-full relative transition-all duration-300",
+          channelSidebarCollapsed ? "w-20" : "w-80"
+        )}>
+          {/* Collapse/Expand Button */}
+          <button
+            onClick={() => setChannelSidebarCollapsed(!channelSidebarCollapsed)}
+            className={cn(
+              "absolute -right-3 top-8 z-20 bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-110 group",
+              isRTL && "-left-3 -right-auto"
+            )}
+            title={channelSidebarCollapsed ? t("navigation.expandSidebar") : t("navigation.collapseSidebar")}
+          >
+            {channelSidebarCollapsed ? (
+              isRTL ? (
+                <PanelLeftClose className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5 scale-x-[-1]" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              )
+            ) : (
+              isRTL ? (
+                <PanelLeftOpen className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 scale-x-[-1]" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
+              )
+            )}
+          </button>
+
+          <CardHeader className={cn(
+            "flex flex-row items-center justify-between p-5 pb-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 flex-shrink-0",
+            channelSidebarCollapsed && "justify-center p-3"
+          )}>
+            {!channelSidebarCollapsed && (
+              <CardTitle className="text-xl font-bold dark:text-white flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-white" />
+                </div>
+                {t('teamChat.channels')}
+              </CardTitle>
+            )}
+            {channelSidebarCollapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCreateChannelModalOpen(true)}
+                    className="hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full"
+                  >
+                    <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{t('teamChat.createChannel')}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCreateChannelModalOpen(true)}
+                    className="hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-full"
+                  >
+                    <Plus className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('teamChat.createChannel')}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <ScrollArea className="h-full">
               {channels?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-4">
+                <div className={cn(
+                  "flex flex-col items-center justify-center py-12",
+                  channelSidebarCollapsed ? "px-2" : "px-4"
+                )}>
                   <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
                     <Users className="h-8 w-8 text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center">{t('teamChat.noChannels')}</p>
+                  {!channelSidebarCollapsed && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center">{t('teamChat.noChannels')}</p>
+                  )}
                 </div>
               ) : (
-                channels?.map((channel) => (
-                  <div
-                    key={channel.id}
-                    dir={isRTL ? 'rtl' : 'ltr'}
-                    className={cn(
-                      'flex items-center p-4 cursor-pointer border-b border-slate-100 dark:border-slate-700 transition-all duration-200',
-                      selectedChannel?.id === channel.id
-                        ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-l-4 border-l-purple-600 dark:border-l-purple-400'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 border-l-4 border-l-transparent'
-                    )}
-                    onClick={() => setSelectedChannel(channel)}
-                  >
-                    <Avatar className="h-11 w-11 mr-3 ring-2 ring-slate-200 dark:ring-slate-600">
-                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-lg">
-                        {channel.name ? channel.name[0].toUpperCase() : '#'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm dark:text-white truncate">{channel.name || t('teamChat.directMessage')}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                        {channel.description || t('teamChat.noDescription')}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                channels?.map((channel) => {
+                  const displayName = getChannelDisplayName(channel, user?.id);
+                  const avatar = getChannelAvatar(channel, user?.id);
+                  const description = getChannelDescription(channel, user?.id);
+
+                  return (
+                    <Tooltip key={channel.id}>
+                      <TooltipTrigger asChild>
+                        <div
+                          dir={isRTL ? 'rtl' : 'ltr'}
+                          className={cn(
+                            'flex items-center cursor-pointer border-b border-slate-100 dark:border-slate-700 transition-all duration-200',
+                            channelSidebarCollapsed ? 'p-2 justify-center' : 'p-4',
+                            selectedChannel?.id === channel.id
+                              ? 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 border-l-4 border-l-purple-600 dark:border-l-purple-400'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 border-l-4 border-l-transparent'
+                          )}
+                          onClick={() => handleChannelSelect(channel)}
+                        >
+                          <Avatar className={cn(
+                            "ring-2 ring-slate-200 dark:ring-slate-600",
+                            channelSidebarCollapsed ? "h-10 w-10" : "h-11 w-11 mr-3"
+                          )}>
+                            {avatar.url && <AvatarImage src={avatar.url} />}
+                            <AvatarFallback className={cn(
+                              "font-bold text-lg text-white",
+                              avatar.isUser ? "bg-gradient-to-br from-blue-400 to-purple-500" : "bg-gradient-to-br from-purple-500 to-indigo-600"
+                            )}>
+                              {avatar.fallback}
+                            </AvatarFallback>
+                          </Avatar>
+                          {!channelSidebarCollapsed && (
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm dark:text-white truncate">{displayName}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {description}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      {channelSidebarCollapsed && (
+                        <TooltipContent side="right">
+                          <div>
+                            <p className="font-semibold">{displayName}</p>
+                            <p className="text-xs text-slate-400">{description}</p>
+                          </div>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  );
+                })
               )}
             </ScrollArea>
           </CardContent>
@@ -430,20 +1176,31 @@ const InternalChatPage: React.FC = () => {
               <CardHeader className="flex flex-row items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-sm flex-shrink-0">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12 ring-2 ring-purple-200 dark:ring-purple-800">
-                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-lg">
-                        {selectedChannel.name ? selectedChannel.name[0].toUpperCase() : '#'}
-                      </AvatarFallback>
-                    </Avatar>
+                    {(() => {
+                      const avatar = getChannelAvatar(selectedChannel, user?.id);
+                      return (
+                        <Avatar className="h-12 w-12 ring-2 ring-purple-200 dark:ring-purple-800">
+                          {avatar.url && <AvatarImage src={avatar.url} />}
+                          <AvatarFallback className={cn(
+                            "font-bold text-lg text-white",
+                            avatar.isUser ? "bg-gradient-to-br from-blue-400 to-purple-500" : "bg-gradient-to-br from-purple-500 to-indigo-600"
+                          )}>
+                            {avatar.fallback}
+                          </AvatarFallback>
+                        </Avatar>
+                      );
+                    })()}
                     <div>
-                      <CardTitle className="text-xl font-bold dark:text-white">{selectedChannel.name || t('teamChat.directMessage')}</CardTitle>
+                      <CardTitle className="text-xl font-bold dark:text-white">
+                        {getChannelDisplayName(selectedChannel, user?.id)}
+                      </CardTitle>
                       <div className="flex items-center mt-1 gap-2">
                         <div className="flex -space-x-2 overflow-hidden">
                           {channelMembers?.slice(0, 5).map((member: any, index: number) => (
-                            <Avatar key={member.user?.id || `member-${index}`} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-800">
-                              <AvatarImage src={member.user?.profile_picture_url} />
+                            <Avatar key={member?.id || `member-${index}`} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-800">
+                              <AvatarImage src={member?.profile_picture_url} />
                               <AvatarFallback className="text-xs bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-                                {member.user?.first_name?.[0] || 'U'}
+                                {member?.first_name?.[0] || 'U'}
                               </AvatarFallback>
                             </Avatar>
                           ))}
@@ -456,6 +1213,36 @@ const InternalChatPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setIsSearchModalOpen(true)}
+                        className="hover:bg-purple-50 dark:hover:bg-purple-900/20 dark:border-slate-600 dark:text-white rounded-full"
+                      >
+                        <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Search Messages</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setIsCallHistoryOpen(true)}
+                        className="hover:bg-purple-50 dark:hover:bg-purple-900/20 dark:border-slate-600 dark:text-white rounded-full"
+                      >
+                        <History className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Call History</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -487,7 +1274,13 @@ const InternalChatPage: React.FC = () => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{activeCallExists ? t('teamChat.joinCall') : t('teamChat.startCall')}</p>
+                      <p>
+                        {(() => {
+                          const text = activeCallExists === true ? t('teamChat.joinCall') : t('teamChat.startCall');
+                          console.log('[Tooltip Render] activeCallExists:', activeCallExists, '-> showing:', text);
+                          return text;
+                        })()}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -519,7 +1312,26 @@ const InternalChatPage: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      messages?.map((msg) => (
+                      messages?.map((msg) => {
+                        // Render system messages differently
+                        if (msg.extra_data?.is_system) {
+                          return (
+                            <div key={msg.id} className="flex w-full justify-center my-4 animate-fade-in">
+                              <div className="px-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm flex items-center gap-2">
+                                <span>{msg.content}</span>
+                                <span className="text-xs text-slate-400 dark:text-slate-500">
+                                  {new Date(msg.created_at).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Regular message rendering
+                        return (
                         <div
                           key={msg.id}
                           className={cn(
@@ -573,9 +1385,85 @@ const InternalChatPage: React.FC = () => {
                                   ? "prose-invert"
                                   : "dark:prose-invert"
                               )}>
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {msg.content}
-                                </ReactMarkdown>
+                                <MentionText
+                                  content={msg.content}
+                                  users={channelMembers?.reduce((acc, member) => {
+                                    if (member && member.id) {
+                                      acc[member.id] = {
+                                        id: member.id,
+                                        first_name: member.first_name,
+                                        last_name: member.last_name,
+                                        email: member.email
+                                      };
+                                    }
+                                    return acc;
+                                  }, {} as any) || {}}
+                                  className={msg.sender_id === user?.id ? "text-white" : ""}
+                                />
+                              </div>
+
+                              {/* Display attachments */}
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {msg.attachments.map((attachment) => (
+                                    <FileAttachment
+                                      key={attachment.id}
+                                      attachment={attachment}
+                                      onDownload={handleDownloadFile}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Reactions */}
+                              {msg.reactions && msg.reactions.length > 0 && (
+                                <div className="mt-2">
+                                  <MessageReactions
+                                    reactions={msg.reactions}
+                                    currentUserId={user?.id}
+                                    onAddReaction={(emoji) => handleAddReaction(msg.id, emoji)}
+                                    onRemoveReaction={(emoji) => handleRemoveReaction(msg.id, emoji)}
+                                    users={messages?.reduce((acc, m) => {
+                                      acc[m.sender_id] = {
+                                        first_name: m.sender.first_name,
+                                        email: m.sender.email
+                                      };
+                                      return acc;
+                                    }, {} as any)}
+                                  />
+                                </div>
+                              )}
+
+                              {/* Reply button */}
+                              <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleOpenThread(msg)}
+                                  className={cn(
+                                    "h-7 text-xs gap-1",
+                                    msg.sender_id === user?.id
+                                      ? "text-purple-100 hover:text-white hover:bg-purple-600/50"
+                                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400"
+                                  )}
+                                >
+                                  <MessageSquare className="h-3 w-3" />
+                                  {msg.reply_count && msg.reply_count > 0 ? (
+                                    <span>{msg.reply_count} {msg.reply_count === 1 ? 'reply' : 'replies'}</span>
+                                  ) : (
+                                    <span>Reply</span>
+                                  )}
+                                </Button>
+
+                                {/* Show emoji picker when no reactions yet */}
+                                {(!msg.reactions || msg.reactions.length === 0) && (
+                                  <MessageReactions
+                                    reactions={[]}
+                                    currentUserId={user?.id}
+                                    onAddReaction={(emoji) => handleAddReaction(msg.id, emoji)}
+                                    onRemoveReaction={(emoji) => handleRemoveReaction(msg.id, emoji)}
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>
@@ -588,28 +1476,58 @@ const InternalChatPage: React.FC = () => {
                             </Avatar>
                           )}
                         </div>
-                      ))
+                      );
+                    })
                     )}
                     <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
               </CardContent>
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <Input
-                    placeholder={t('teamChat.typeMessage')}
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                    className="flex-1 px-5 py-3 rounded-full bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-400/20 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!inputValue.trim()}
-                    className="rounded-full w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="h-5 w-5" />
-                  </Button>
+                <div className="flex flex-col gap-3">
+                  {/* File Upload Component */}
+                  {selectedFiles.length > 0 && (
+                    <div className="px-2">
+                      <FileUpload
+                        onFileSelect={handleFileSelect}
+                        onFileRemove={handleFileRemove}
+                        selectedFiles={selectedFiles}
+                        isUploading={isUploadingFiles}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3">
+                    {/* File Attach Button */}
+                    <FileUpload
+                      onFileSelect={handleFileSelect}
+                      onFileRemove={handleFileRemove}
+                      selectedFiles={[]}
+                      isUploading={isUploadingFiles}
+                      multiple={true}
+                    />
+
+                    <MentionInput
+                      placeholder={t('teamChat.typeMessage')}
+                      value={inputValue}
+                      onChange={setInputValue}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      className="flex-1 px-5 py-3 rounded-full bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:border-purple-500 dark:focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 dark:focus:ring-purple-400/20 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      disabled={isUploadingFiles}
+                      users={channelMembers || []}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={(!inputValue.trim() && selectedFiles.length === 0) || isUploadingFiles}
+                      className="rounded-full w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUploadingFiles ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Send className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>
@@ -640,6 +1558,63 @@ const InternalChatPage: React.FC = () => {
           userPresences={userPresences}
         />
       )}
+      {threadParentMessage && (
+        <MessageThreadModal
+          isOpen={isThreadModalOpen}
+          onClose={() => setIsThreadModalOpen(false)}
+          parentMessage={threadParentMessage}
+          currentUserId={user?.id}
+          onSendReply={handleSendReply}
+          onDownloadFile={handleDownloadFile}
+        />
+      )}
+      {selectedChannel && (
+        <SearchModal
+          isOpen={isSearchModalOpen}
+          onClose={() => setIsSearchModalOpen(false)}
+          channelId={selectedChannel.id}
+          onMessageClick={(messageId) => {
+            // Optionally scroll to message or open thread
+            console.log('Navigate to message:', messageId);
+          }}
+        />
+      )}
+      {incomingCall && (
+        <IncomingCallModal
+          isOpen={true}
+          callerName={incomingCall.callerName}
+          callerAvatar={incomingCall.callerAvatar}
+          channelName={incomingCall.channelName}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+        />
+      )}
+      {outgoingCall && (
+        <CallingModal
+          isOpen={true}
+          recipientName={outgoingCall.channelName}
+          channelName={selectedChannel?.name}
+          onCancel={handleCancelOutgoingCall}
+          status={outgoingCall.status}
+        />
+      )}
+
+      {/* Call History Sheet */}
+      <Sheet open={isCallHistoryOpen} onOpenChange={setIsCallHistoryOpen}>
+        <SheetContent className="w-[400px] sm:w-[540px] flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              Call History
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 mt-4 overflow-hidden">
+            {selectedChannel && (
+              <CallHistory channelId={selectedChannel.id} currentUserId={user?.id} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </TooltipProvider>
   );
 };

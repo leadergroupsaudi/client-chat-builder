@@ -56,8 +56,40 @@ import AIToolDetailPage from "./pages/AIToolDetailPage";
 import AIToolEditPage from "./pages/AIToolEditPage";
 import KnowledgeBaseProcessing from "./pages/KnowledgeBaseProcessing";
 import { ObjectDetectionPage } from "./pages/ObjectDetectionPage";
+import ErrorBoundary from "./components/ErrorBoundary";
+// CRM Pages
+import CRMDashboard from "./pages/CRM/CRMDashboard";
+import LeadsPage from "./pages/CRM/LeadsPage";
+import LeadDetailPage from "./pages/CRM/LeadDetailPage";
+import ContactsPage from "./pages/CRM/ContactsPage";
+import CampaignsPage from "./pages/CRM/CampaignsPage";
+import CampaignCreatePage from "./pages/CRM/CampaignCreatePage";
+import CampaignDetailPage from "./pages/CRM/CampaignDetailPage";
+import CampaignEditPage from "./pages/CRM/CampaignEditPage";
+import AnalyticsPage from "./pages/CRM/AnalyticsPage";
+import TagsPage from "./pages/CRM/TagsPage";
+import SegmentsPage from "./pages/CRM/SegmentsPage";
+import TemplatesPage from "./pages/CRM/TemplatesPage";
+import TemplateEditorPage from "./pages/CRM/TemplateEditorPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      retry: (failureCount, error: any) => {
+        // Don't retry on 401 (unauthorized) errors
+        if (error?.message === 'Unauthorized' || error?.status === 401) {
+          return false;
+        }
+        // Retry up to 2 times for other errors
+        return failureCount < 2;
+      },
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -109,6 +141,20 @@ const AppRoutes = () => {
           <Route path="ai-tools/:id" element={<AIToolDetailPage />} />
           <Route path="ai-tools/:id/edit" element={<AIToolEditPage />} />
           <Route path="object-detection" element={<ObjectDetectionPage />} />
+          {/* CRM Routes */}
+          <Route path="crm" element={<CRMDashboard />} />
+          <Route path="crm/leads" element={<LeadsPage />} />
+          <Route path="crm/leads/:id" element={<LeadDetailPage />} />
+          <Route path="crm/contacts" element={<ContactsPage />} />
+          <Route path="crm/campaigns" element={<CampaignsPage />} />
+          <Route path="crm/campaigns/new" element={<CampaignCreatePage />} />
+          <Route path="crm/campaigns/:id" element={<CampaignDetailPage />} />
+          <Route path="crm/campaigns/:id/edit" element={<CampaignEditPage />} />
+          <Route path="crm/tags" element={<TagsPage />} />
+          <Route path="crm/segments" element={<SegmentsPage />} />
+          <Route path="crm/templates" element={<TemplatesPage />} />
+          <Route path="crm/templates/:id" element={<TemplateEditorPage />} />
+          <Route path="crm/analytics" element={<AnalyticsPage />} />
         </Route>
       </Route>
       <Route path="/client-portal" element={<ProtectedRoute />}>
@@ -125,21 +171,23 @@ const AppRoutes = () => {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <BrandingProvider>
-              <AppRoutes />
-            </BrandingProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthProvider>
+              <BrandingProvider>
+                <AppRoutes />
+              </BrandingProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

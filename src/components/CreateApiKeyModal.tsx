@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useI18n } from '@/hooks/useI18n';
 
 interface CreateApiKeyModalProps {
@@ -28,6 +29,7 @@ export const CreateApiKeyModal = ({
 }: CreateApiKeyModalProps) => {
   const { t, isRTL } = useI18n();
   const { toast } = useToast();
+  const { playSuccessSound } = useNotifications();
   const { authFetch } = useAuth();
   const [newApiKeyName, setNewApiKeyName] = useState("");
 
@@ -46,6 +48,7 @@ export const CreateApiKeyModal = ({
           title: t('createApiKeyModal.success'),
           description: t('createApiKeyModal.createdSuccess'),
         });
+        playSuccessSound();
         onApiKeyCreated();
         onClose();
       } else {

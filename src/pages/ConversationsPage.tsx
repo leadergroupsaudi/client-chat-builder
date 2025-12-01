@@ -67,12 +67,11 @@ const ConversationsPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch session counts');
       const counts = await response.json();
 
-      // Also fetch all sessions to count "mine" (only status='assigned' conversations assigned to me)
+      // Also fetch all sessions to count "mine" (sessions assigned to current user)
       const sessionsResponse = await authFetch(`/api/v1/conversations/sessions?status_filter=open`);
       const allSessions = await sessionsResponse.json();
-      const mineCount = allSessions.filter(s =>
-        s.status === 'assigned' && s.assignee_id === user?.id
-      ).length;
+      // Count sessions assigned to current user (assignee_id is source of truth, not status)
+      const mineCount = allSessions.filter(s => s.assignee_id === user?.id).length;
 
       return { ...counts, mine: mineCount };
     },
@@ -87,15 +86,13 @@ const ConversationsPage: React.FC = () => {
     queryFn: async () => {
       if (!companyId) return [];
 
-      // For 'mine' tab, fetch all open and filter to assigned conversations only
+      // For 'mine' tab, fetch all open and filter to sessions assigned to current user
       if (activeTab === 'mine') {
         const response = await authFetch(`/api/v1/conversations/sessions?status_filter=open`);
         if (!response.ok) throw new Error('Failed to fetch sessions');
         const allSessions = await response.json();
-        // Filter to only show sessions with status='assigned' AND assigned to current user
-        return allSessions.filter(s =>
-          s.status === 'assigned' && s.assignee_id === user?.id
-        );
+        // Filter to only show sessions assigned to current user (assignee_id is source of truth)
+        return allSessions.filter(s => s.assignee_id === user?.id);
       }
 
       const statusFilter = activeTab === 'all' ? '' : activeTab; // 'open', 'resolved', or ''
@@ -110,7 +107,7 @@ const ConversationsPage: React.FC = () => {
     refetchOnWindowFocus: false, // Rely on WebSocket for real-time updates
   });
 
-  const wsUrl = companyId ? `${getWebSocketUrl()}/api/v1/ws/updates/ws/${companyId}?token=${token}` : null;
+  const wsUrl = companyId ? `${getWebSocketUrl()}/ws/${companyId}?token=${token}` : null;
 
   // Memoize WebSocket options to prevent unnecessary reconnections
   const wsOptions = useMemo(() => ({
@@ -241,8 +238,8 @@ const ConversationsPage: React.FC = () => {
             }
           };
 
-          // Determine if this is assigned to current user
-          const isAssignedToCurrentUser = eventData.status === 'assigned' && eventData.assignee_id === user?.id;
+          // Determine if this is assigned to current user (assignee_id is source of truth)
+          const isAssignedToCurrentUser = eventData.assignee_id === user?.id;
 
           // Show enhanced toast notification with quick actions
           toast({
@@ -275,8 +272,8 @@ const ConversationsPage: React.FC = () => {
                   <button
                     onClick={() => {
                       setSelectedSessionId(eventData.session_id);
-                      // If status is 'assigned' and assigned to me, go to 'mine', otherwise 'open'
-                      if (eventData.status === 'assigned' && eventData.assignee_id === user?.id) {
+                      // If assigned to me, go to 'mine', otherwise 'open'
+                      if (eventData.assignee_id === user?.id) {
                         setActiveTab('mine');
                       } else {
                         setActiveTab('open');
@@ -325,7 +322,8 @@ const ConversationsPage: React.FC = () => {
             if (sessionExists) {
               // Check if the session still belongs in the current tab after status change
               const isResolvedStatus = ['resolved', 'archived'].includes(eventData.status);
-              const isAssignedToMe = eventData.status === 'assigned' && eventData.assignee_id === user?.id;
+              // assignee_id is source of truth for assignment
+              const isAssignedToMe = eventData.assignee_id === user?.id;
 
               const shouldStayInTab =
                 (activeTab === 'mine' && isAssignedToMe) ||
@@ -355,6 +353,18 @@ const ConversationsPage: React.FC = () => {
           });
 
           // Also invalidate all tab queries to ensure consistency
+          queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
+        } else if (eventData.type === 'contact_updated') {
+          // Handle real-time contact updates when AI collects contact information
+          console.log('[WebSocket] 📇 Contact updated:', eventData);
+
+          // Invalidate contact query to refresh ContactProfile component
+          if (selectedSessionId === eventData.session_id) {
+            queryClient.invalidateQueries({ queryKey: ['contact', selectedSessionId] });
+            queryClient.invalidateQueries({ queryKey: ['sessionDetails', selectedSessionId] });
+          }
+
+          // Also refresh sessions list to show updated contact name
           queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
         }
       },
@@ -436,8 +446,10 @@ const ConversationsPage: React.FC = () => {
   }, [sessions, searchQuery]);
 
   // Check if conversation is assigned to current user
+  // Note: assignee_id indicates assignment regardless of status field
+  // (status can be 'active', 'assigned', etc. but assignee_id is the source of truth)
   const isAssignedToMe = (session: Session) => {
-    return session.assignee_id === user?.id && session.status === 'assigned';
+    return session.assignee_id === user?.id;
   };
 
   // Conversation Card Component
@@ -521,7 +533,7 @@ const ConversationsPage: React.FC = () => {
             <p className="text-xs text-muted-foreground truncate">
               {new Date(Number(session.conversation_id)).toLocaleString()}
             </p>
-            {session.status === 'assigned' && !assignedToMe && (
+            {session.assignee_id && !assignedToMe && (
               <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 truncate flex items-center gap-1">
                 <span className="text-sm">💼</span> {t('conversations.card.assignedTo', { email: getAssigneeEmail(session.assignee_id) })}
               </p>
@@ -675,40 +687,40 @@ const ConversationsPage: React.FC = () => {
               ) : filteredSessions.length > 0 && !isSidebarCollapsed ? (
                 <div className="space-y-1">
                   {/* Group conversations by status */}
-                  {filteredSessions.filter(s => s.status === 'active').length > 0 && (
+                  {filteredSessions.filter(s => s.status === 'active' && !s.assignee_id).length > 0 && (
                     <>
                       <div className="px-3 py-2 bg-green-100 dark:bg-green-900 sticky top-0 z-10">
                         <p className="text-xs font-semibold text-green-800 dark:text-green-200 uppercase">
-                          {t('conversations.statusGroups.active')} ({filteredSessions.filter(s => s.status === 'active').length})
+                          {t('conversations.statusGroups.active')} ({filteredSessions.filter(s => s.status === 'active' && !s.assignee_id).length})
                         </p>
                       </div>
-                      {filteredSessions.filter(s => s.status === 'active').map((session) => (
+                      {filteredSessions.filter(s => s.status === 'active' && !s.assignee_id).map((session) => (
                         <ConversationCard key={session.conversation_id} session={session} />
                       ))}
                     </>
                   )}
 
-                  {filteredSessions.filter(s => s.status === 'inactive').length > 0 && (
+                  {filteredSessions.filter(s => s.status === 'inactive' && !s.assignee_id).length > 0 && (
                     <>
                       <div className="px-3 py-2 bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
                         <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">
-                          {t('conversations.statusGroups.inactive')} ({filteredSessions.filter(s => s.status === 'inactive').length})
+                          {t('conversations.statusGroups.inactive')} ({filteredSessions.filter(s => s.status === 'inactive' && !s.assignee_id).length})
                         </p>
                       </div>
-                      {filteredSessions.filter(s => s.status === 'inactive').map((session) => (
+                      {filteredSessions.filter(s => s.status === 'inactive' && !s.assignee_id).map((session) => (
                         <ConversationCard key={session.conversation_id} session={session} />
                       ))}
                     </>
                   )}
 
-                  {filteredSessions.filter(s => s.status === 'assigned').length > 0 && (
+                  {filteredSessions.filter(s => s.status === 'assigned' || s.assignee_id != null).length > 0 && (
                     <>
                       <div className="px-3 py-2 bg-purple-100 dark:bg-purple-900 sticky top-0 z-10">
                         <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 uppercase">
-                          {t('conversations.statusGroups.assigned')} ({filteredSessions.filter(s => s.status === 'assigned').length})
+                          {t('conversations.statusGroups.assigned')} ({filteredSessions.filter(s => s.status === 'assigned' || s.assignee_id != null).length})
                         </p>
                       </div>
-                      {filteredSessions.filter(s => s.status === 'assigned').map((session) => (
+                      {filteredSessions.filter(s => s.status === 'assigned' || s.assignee_id != null).map((session) => (
                         <ConversationCard key={session.conversation_id} session={session} />
                       ))}
                     </>
@@ -756,7 +768,7 @@ const ConversationsPage: React.FC = () => {
               ) : isSidebarCollapsed && filteredSessions.length > 0 ? (
                 <div className="flex flex-col gap-1 p-1">
                   {filteredSessions.slice(0, 10).map((session) => {
-                    const assignedToMe = session.assignee_id === user?.id && session.status === 'assigned';
+                    const assignedToMe = session.assignee_id === user?.id;
                     return (
                       <button
                         key={session.conversation_id}

@@ -21,6 +21,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { Integration } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface IntegrationDialogProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
   const [type, setType] = useState('whatsapp');
   const [credentials, setCredentials] = useState<Record<string, string>>({});
   const { authFetch } = useAuth();
+  const { playSuccessSound } = useNotifications();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
         throw new Error(errorData.detail || 'Failed to save integration');
       }
       toast({ title: 'Success', variant: 'success', description: `Integration ${integration ? 'updated' : 'created'} successfully.` });
+      playSuccessSound();
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
       onClose();
     },
