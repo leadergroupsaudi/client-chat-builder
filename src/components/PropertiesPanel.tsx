@@ -691,7 +691,7 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
           </div>
         )}
 
-        {currentNode.type === 'output' && (
+        {currentNode.type === 'response' && (
           <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
             <h3 className="text-base font-semibold mb-4 text-slate-900 dark:text-slate-100">{t("workflows.editor.properties.workflowOutput")}</h3>
             <div className="mb-4">

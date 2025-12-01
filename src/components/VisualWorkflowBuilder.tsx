@@ -50,7 +50,7 @@ const VisualWorkflowBuilder = () => {
   const { authFetch } = useAuth();
 
   const nodeTypes = useMemo(() => ({
-    llm: LlmNode, tool: ToolNode, condition: ConditionNode, output: OutputNode,
+    llm: LlmNode, tool: ToolNode, condition: ConditionNode, response: OutputNode,
     start: StartNode, listen: ListenNode, prompt: PromptNode, knowledge: KnowledgeNode,
     code: CodeNode, data_manipulation: DataManipulationNode, http_request: HttpRequestNode, form: FormNode,
     // Chat-specific nodes
@@ -97,7 +97,7 @@ const VisualWorkflowBuilder = () => {
     }
 
     // Check for output node
-    const hasOutputNode = nodes.some(node => node.type === 'output');
+    const hasOutputNode = nodes.some(node => node.type === 'response');
     if (!hasOutputNode) {
       errors.push(t("workflows.editor.validation.missingOutputNode"));
     }
@@ -107,7 +107,7 @@ const VisualWorkflowBuilder = () => {
       const outgoingEdges = edges.filter(edge => edge.source === node.id);
 
       // Skip validation for output nodes (they don't need outgoing edges)
-      if (node.type === 'output') return;
+      if (node.type === 'response') return;
 
       // Check condition nodes for required edges
       if (node.type === 'condition') {
@@ -369,7 +369,7 @@ const VisualWorkflowBuilder = () => {
                   className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700"
                   nodeColor={(node) => {
                     if (node.type === 'start') return '#10b981';
-                    if (node.type === 'output') return '#ef4444';
+                    if (node.type === 'response') return '#ef4444';
                     if (node.type === 'llm') return '#6366f1';
                     if (node.type === 'tool') return '#10b981';
                     if (node.type === 'condition') return '#f59e0b';

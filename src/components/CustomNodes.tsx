@@ -121,7 +121,7 @@ export const ConditionNode = ({ data }) => {
 };
 
 export const OutputNode = ({ data }) => (
-  <div className="px-4 py-3 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950 dark:to-blue-950 shadow-lg hover:shadow-xl transition-shadow">
+  <div className="px-4 py-3 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/50 dark:to-blue-950/50 shadow-lg hover:shadow-xl transition-shadow backdrop-blur-sm">
     <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-indigo-500 dark:!bg-indigo-400 border-2 border-white dark:border-slate-800" />
     <div className="flex items-center gap-2 mb-2">
       <div className="p-1.5 rounded-lg bg-indigo-500 dark:bg-indigo-600">
@@ -130,6 +130,7 @@ export const OutputNode = ({ data }) => (
       <strong className="text-sm font-semibold text-slate-900 dark:text-white">{data.label}</strong>
     </div>
     <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">Workflow Output</div>
+    <Handle type="source" position={Position.Bottom} id="output" className="w-3 h-3 !bg-slate-600 dark:!bg-slate-400 border-2 border-white dark:border-slate-800" />
   </div>
 );
 
