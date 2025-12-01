@@ -358,24 +358,53 @@ export default function TemplatesPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {template.subject && (
-                    <p className="text-sm font-medium dark:text-white mb-1">
-                      {truncateText(template.subject, 50)}
-                    </p>
-                  )}
-                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                    {truncateText(template.body || template.voice_script, 100)}
-                  </p>
-                  <div className="flex items-center gap-2 mt-3">
-                    <Badge variant="outline" className={TYPE_COLORS[template.template_type]}>
-                      {t(`crm.templates.types.${template.template_type}`, template.template_type)}
-                    </Badge>
-                    {template.is_ai_generated && (
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        AI
-                      </Badge>
+                  {/* Preview area */}
+                  <div
+                    className="bg-gray-50 dark:bg-slate-900 rounded-lg p-3 mb-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors min-h-[80px]"
+                    onClick={() => openPreviewDialog(template)}
+                  >
+                    {template.template_type === 'email' && template.html_body ? (
+                      <div className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-2">
+                        <Mail className="h-3 w-3" />
+                        <span>{t('crm.templates.htmlPreview', 'HTML Email')} - {t('crm.common.preview', 'Click to preview')}</span>
+                      </div>
+                    ) : (
+                      <>
+                        {template.subject && (
+                          <p className="text-sm font-medium dark:text-white mb-1 line-clamp-1">
+                            {template.subject}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                          {truncateText(template.body || template.voice_script, 80)}
+                        </p>
+                      </>
                     )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={TYPE_COLORS[template.template_type]}>
+                        {t(`crm.templates.types.${template.template_type}`, template.template_type)}
+                      </Badge>
+                      {template.is_ai_generated && (
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          AI
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPreviewDialog(template);
+                      }}
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      {t('crm.common.preview', 'Preview')}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
