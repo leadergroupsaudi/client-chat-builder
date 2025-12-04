@@ -283,8 +283,24 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
                 dir={isRTL ? 'rtl' : 'ltr'}
               >
                 <option value="">{t("workflows.editor.properties.selectModel")}</option>
-                <option value="groq/llama3-8b-8192">Groq Llama3 8b</option>
-                <option value="gemini/gemini-pro">Gemini Pro</option>
+                <optgroup label="Groq">
+                  <option value="groq/llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+                  <option value="groq/llama-3.1-70b-versatile">Llama 3.1 70B Versatile</option>
+                  <option value="groq/llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                  <option value="groq/llama3-8b-8192">Llama3 8B</option>
+                  <option value="groq/mixtral-8x7b-32768">Mixtral 8x7B</option>
+                </optgroup>
+                <optgroup label="OpenAI">
+                  <option value="openai/gpt-4o">GPT-4o</option>
+                  <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                  <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+                  <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                </optgroup>
+                <optgroup label="Gemini">
+                  <option value="gemini/gemini-1.5-pro">Gemini 1.5 Pro</option>
+                  <option value="gemini/gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  <option value="gemini/gemini-pro">Gemini Pro</option>
+                </optgroup>
               </select>
             </div>
             <div className="mb-4">
