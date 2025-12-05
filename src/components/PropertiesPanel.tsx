@@ -376,6 +376,17 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
               </select>
             </div>
             <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.systemPrompt")}</label>
+              <textarea
+                value={currentNode.data.system_prompt || ''}
+                onChange={(e) => handleDataChange('system_prompt', e.target.value)}
+                placeholder={t("workflows.editor.properties.systemPromptPlaceholder")}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 min-h-[80px] resize-y"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("workflows.editor.properties.systemPromptHint")}</p>
+            </div>
+            <div className="mb-4">
               <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.prompt")}</label>
               <VariableInput
                 value={currentNode.data.prompt || ''}
