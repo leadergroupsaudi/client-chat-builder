@@ -21,6 +21,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  Tag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,6 +88,7 @@ export default function ContactsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'with_lead' | 'without_lead'>('all');
+  const [filterTagIds, setFilterTagIds] = useState<number[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [convertingContact, setConvertingContact] = useState<Contact | null>(null);
@@ -103,13 +105,20 @@ export default function ContactsPage() {
   useEffect(() => {
     fetchContacts();
     fetchStats();
-  }, []);
+  }, [filterTagIds]);
 
   const fetchContacts = async () => {
     try {
       const token = localStorage.getItem('accessToken');
       const headers = { Authorization: `Bearer ${token}` };
-      const response = await axios.get('/api/v1/contacts/', { headers });
+      // Build query params including tag_ids
+      const params = new URLSearchParams();
+      if (filterTagIds.length > 0) {
+        filterTagIds.forEach(id => params.append('tag_ids', id.toString()));
+      }
+      const queryString = params.toString();
+      const url = `/api/v1/contacts/${queryString ? `?${queryString}` : ''}`;
+      const response = await axios.get(url, { headers });
       const leadsResponse = await axios.get('/api/v1/leads/', { headers });
       const leadContactIds = new Set(leadsResponse.data.map((lead: any) => lead.contact_id));
       const contactsWithLeadStatus = response.data.map((contact: Contact) => ({
@@ -442,6 +451,26 @@ export default function ContactsPage() {
                 <SelectItem value="with_lead">{t('crm.contacts.withLeads')}</SelectItem>
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-md px-3 py-1.5">
+              <Tag className="h-4 w-4 text-gray-400" />
+              <TagSelector
+                entityType="contact"
+                selectedTagIds={filterTagIds}
+                onTagsChange={setFilterTagIds}
+                showCreateOption={false}
+                maxDisplay={3}
+              />
+              {filterTagIds.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setFilterTagIds([])}
+                >
+                  {t('common.clear')}
+                </Button>
+              )}
+            </div>
             {selectedContacts.length > 0 && (
               <Button
                 onClick={() => toast({ title: 'Coming Soon', description: 'Bulk conversion will be available soon' })}

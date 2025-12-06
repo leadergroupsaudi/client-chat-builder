@@ -13,7 +13,27 @@ export interface Session {
   session_id?: string;
   first_message_content?: string;
   contact_identifier?: string;
+  priority?: number; // 0=None, 1=Low, 2=Medium, 3=High, 4=Urgent
 }
+
+// Priority level constants
+export const PRIORITY_LEVELS = {
+  NONE: 0,
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  URGENT: 4,
+} as const;
+
+export type PriorityLevel = typeof PRIORITY_LEVELS[keyof typeof PRIORITY_LEVELS];
+
+export const PRIORITY_CONFIG: Record<number, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  0: { label: 'None', color: 'text-gray-500', bgColor: 'bg-gray-100', borderColor: 'border-l-gray-300' },
+  1: { label: 'Low', color: 'text-blue-600', bgColor: 'bg-blue-100', borderColor: 'border-l-blue-500' },
+  2: { label: 'Medium', color: 'text-yellow-600', bgColor: 'bg-yellow-100', borderColor: 'border-l-yellow-500' },
+  3: { label: 'High', color: 'text-orange-600', bgColor: 'bg-orange-100', borderColor: 'border-l-orange-500' },
+  4: { label: 'Urgent', color: 'text-red-600', bgColor: 'bg-red-100', borderColor: 'border-l-red-500' },
+};
 
 export interface Agent {
   id: number;
@@ -222,3 +242,59 @@ export interface WidgetSettings {
   typing_indicator_enabled: boolean;
   response_delay_ms: number;
 }
+
+// Entity Notes types
+export type NoteType = 'note' | 'call' | 'meeting' | 'email' | 'task';
+
+export interface EntityNote {
+  id: number;
+  company_id: number;
+  contact_id?: number;
+  lead_id?: number;
+  note_type: NoteType;
+  title?: string;
+  content: string;
+  activity_date?: string;
+  duration_minutes?: number;
+  participants?: string[];
+  outcome?: string;
+  created_by: number;
+  creator_email?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntityNoteCreate {
+  contact_id?: number;
+  lead_id?: number;
+  note_type: NoteType;
+  title?: string;
+  content: string;
+  activity_date?: string;
+  duration_minutes?: number;
+  participants?: string[];
+  outcome?: string;
+}
+
+export interface EntityNoteUpdate {
+  note_type?: NoteType;
+  title?: string;
+  content?: string;
+  activity_date?: string;
+  duration_minutes?: number;
+  participants?: string[];
+  outcome?: string;
+}
+
+export interface EntityNoteList {
+  notes: EntityNote[];
+  total: number;
+}
+
+export const NOTE_TYPE_CONFIG: Record<NoteType, { label: string; icon: string; color: string; bgColor: string }> = {
+  note: { label: 'Note', icon: 'FileText', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  call: { label: 'Call', icon: 'Phone', color: 'text-green-600', bgColor: 'bg-green-100' },
+  meeting: { label: 'Meeting', icon: 'Calendar', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  email: { label: 'Email', icon: 'Mail', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  task: { label: 'Task', icon: 'CheckSquare', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+};

@@ -29,6 +29,7 @@ import {
   Percent,
   LayoutGrid,
   List,
+  Tag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +75,7 @@ import {
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { TagSelector } from '@/components/TagSelector';
 
 interface Lead {
   id: number;
@@ -151,6 +153,7 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStage, setSelectedStage] = useState<string>('all');
+  const [filterTagIds, setFilterTagIds] = useState<number[]>([]);
   const [view, setView] = useState<'kanban' | 'table'>('kanban');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createMode, setCreateMode] = useState<'existing' | 'new'>('existing');
@@ -172,7 +175,7 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads();
     fetchStats();
-  }, [selectedStage]);
+  }, [selectedStage, filterTagIds]);
 
   useEffect(() => {
     if (createDialogOpen) {
@@ -188,7 +191,10 @@ export default function LeadsPage() {
       if (selectedStage !== 'all') {
         params.stage = selectedStage;
       }
-      const response = await axios.get('/api/v1/leads/', { params, headers });
+      if (filterTagIds.length > 0) {
+        params.tag_ids = filterTagIds;
+      }
+      const response = await axios.get('/api/v1/leads/', { params, headers, paramsSerializer: { indexes: null } });
       setLeads(response.data);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -512,6 +518,26 @@ export default function LeadsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-md px-3 py-1.5">
+              <Tag className="h-4 w-4 text-gray-400" />
+              <TagSelector
+                entityType="lead"
+                selectedTagIds={filterTagIds}
+                onTagsChange={setFilterTagIds}
+                showCreateOption={false}
+                maxDisplay={3}
+              />
+              {filterTagIds.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setFilterTagIds([])}
+                >
+                  {t('common.clear')}
+                </Button>
+              )}
+            </div>
             <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
               <Button
                 variant={view === 'kanban' ? 'default' : 'ghost'}

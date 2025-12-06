@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MoreHorizontal, Edit, Trash2, Code, PlusCircle, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MoreHorizontal, Edit, Trash2, Code, PlusCircle, Eye, Search, Filter, X, MessageSquare, Phone, Globe, Instagram, Mail, Send, ArrowLeft, Users, Clock } from "lucide-react";
 import { Permission } from "@/components/Permission";
+import { formatDistanceToNow } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +44,12 @@ export const AgentList = () => {
   const { authFetch, user } = useAuth();
   const companyId = user?.company_id;
 
+  // Filter states for conversations view
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+
   const { data: agents, isLoading, isError } = useQuery<Agent[]>({
     queryKey: ['agents', companyId],
     queryFn: async () => {
@@ -61,6 +70,110 @@ export const AgentList = () => {
     },
     enabled: !!selectedAgent,
   });
+
+  // Fetch users for assignee filter
+  const { data: users } = useQuery({
+    queryKey: ['users', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const response = await authFetch(`/api/v1/users/`);
+      if (!response.ok) throw new Error('Failed to fetch users');
+      return response.json();
+    },
+    enabled: !!companyId && !!selectedAgent,
+  });
+
+  // Get unique channels from sessions
+  const availableChannels = useMemo(() => {
+    if (!sessions) return [];
+    const channels = [...new Set(sessions.map(s => s.channel).filter(Boolean))];
+    return channels;
+  }, [sessions]);
+
+  // Get unique statuses from sessions
+  const availableStatuses = useMemo(() => {
+    if (!sessions) return [];
+    const statuses = [...new Set(sessions.map(s => s.status).filter(Boolean))];
+    return statuses;
+  }, [sessions]);
+
+  // Filter sessions based on filters
+  const filteredSessions = useMemo(() => {
+    if (!sessions) return [];
+
+    return sessions.filter(session => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          session.conversation_id?.toLowerCase().includes(query) ||
+          session.contact_name?.toLowerCase().includes(query) ||
+          session.contact_phone?.toLowerCase().includes(query) ||
+          session.first_message_content?.toLowerCase().includes(query);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all' && session.status !== statusFilter) {
+        return false;
+      }
+
+      // Channel filter
+      if (channelFilter !== 'all' && session.channel !== channelFilter) {
+        return false;
+      }
+
+      // Assignee filter
+      if (assigneeFilter !== 'all') {
+        if (assigneeFilter === 'unassigned' && session.assignee_id) return false;
+        if (assigneeFilter !== 'unassigned' && session.assignee_id !== parseInt(assigneeFilter)) return false;
+      }
+
+      return true;
+    });
+  }, [sessions, searchQuery, statusFilter, channelFilter, assigneeFilter]);
+
+  // Helper function to get channel icon
+  const getChannelIcon = (channel: string) => {
+    switch (channel?.toLowerCase()) {
+      case 'whatsapp': return <Phone className="h-4 w-4 text-green-500" />;
+      case 'web': return <Globe className="h-4 w-4 text-blue-500" />;
+      case 'instagram': return <Instagram className="h-4 w-4 text-pink-500" />;
+      case 'messenger': return <MessageSquare className="h-4 w-4 text-blue-600" />;
+      case 'telegram': return <Send className="h-4 w-4 text-sky-500" />;
+      case 'gmail': return <Mail className="h-4 w-4 text-red-500" />;
+      default: return <MessageSquare className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  // Helper function to get status badge
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      active: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', dot: 'bg-green-500' },
+      inactive: { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-400', dot: 'bg-gray-500' },
+      assigned: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500' },
+      pending: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', dot: 'bg-yellow-500' },
+      resolved: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400', dot: 'bg-purple-500' },
+      archived: { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-400', dot: 'bg-slate-500' },
+    };
+    const config = statusConfig[status] || statusConfig.inactive;
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`}></span>
+        {status}
+      </span>
+    );
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setChannelFilter('all');
+    setAssigneeFilter('all');
+  };
+
+  const hasActiveFilters = searchQuery || statusFilter !== 'all' || channelFilter !== 'all' || assigneeFilter !== 'all';
 
   const deleteAgentMutation = useMutation({
     mutationFn: (agentId: number) => authFetch(`/api/v1/agents/${agentId}`, { method: "DELETE" }),
@@ -96,41 +209,193 @@ export const AgentList = () => {
   if (isError) return <div>{t('agents.error')}</div>;
 
   if (selectedAgent && selectedSessionId) {
-    return <ConversationDetail agentId={selectedAgent.id} sessionId={selectedSessionId} />;
+    return (
+      <ConversationDetail
+        agentId={selectedAgent.id}
+        sessionId={selectedSessionId}
+        readOnly={true}
+        onBack={() => setSelectedSessionId(null)}
+      />
+    );
   }
 
   if (selectedAgent) {
     return (
-      <Card>
-        <CardHeader>
-          <div className={`flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <CardTitle>{t('agents.conversationsFor', { name: selectedAgent.name })}</CardTitle>
-            <Button onClick={() => setSelectedAgent(null)} variant="outline">
-              {t('agents.backToAgents')}
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => {
+                setSelectedAgent(null);
+                clearFilters();
+              }}
+              variant="ghost"
+              size="icon"
+              className="hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <ArrowLeft className="h-5 w-5" />
             </Button>
+            <div>
+              <h2 className="text-2xl font-bold dark:text-white">{t('agents.conversationsFor', { name: selectedAgent.name })}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {filteredSessions.length} of {sessions?.length || 0} conversations
+              </p>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoadingSessions ? (
-            <div>{t('agents.loadingConversations')}</div>
-          ) : sessions && sessions.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sessions.filter(s => s.conversation_id).map((session) => (
-                <Card key={session.conversation_id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedSessionId(session.conversation_id)}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{t('agents.session')}: {session.conversation_id.substring(0, 8)}...</CardTitle>
-                    <CardDescription>{t('agents.status')}: <Badge variant={session.status === 'resolved' ? 'default' : 'secondary'}>{session.status}</Badge></CardDescription>
-                  </CardHeader>
-                </Card>
-              ))}
+        </div>
+
+        {/* Filters */}
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-3 items-center">
+              {/* Search */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder={t('conversations.search')}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {availableStatuses.map(status => (
+                    <SelectItem key={status} value={status} className="capitalize">{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Channel Filter */}
+              <Select value={channelFilter} onValueChange={setChannelFilter}>
+                <SelectTrigger className="w-[140px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Channel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Channels</SelectItem>
+                  {availableChannels.map(channel => (
+                    <SelectItem key={channel} value={channel} className="capitalize">{channel}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Assignee Filter */}
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="w-[160px] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Assignees</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {users?.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id.toString()}>
+                      {u.first_name || u.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-gray-500 hover:text-gray-700">
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">{t('agents.noConversations')}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Sessions List */}
+        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <CardContent className="p-0">
+            {isLoadingSessions ? (
+              <div className="p-8 text-center text-gray-500">{t('agents.loadingConversations')}</div>
+            ) : filteredSessions.length > 0 ? (
+              <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filteredSessions.filter(s => s.conversation_id).map((session) => {
+                  const assignee = users?.find((u: any) => u.id === session.assignee_id);
+
+                  return (
+                    <div
+                      key={session.conversation_id}
+                      onClick={() => setSelectedSessionId(session.conversation_id)}
+                      className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {/* Channel Icon */}
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                            {getChannelIcon(session.channel)}
+                          </div>
+
+                          {/* Main Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-gray-900 dark:text-white truncate">
+                                {session.contact_name || session.contact_phone || `Session ${session.conversation_id.substring(0, 8)}...`}
+                              </span>
+                              {session.is_client_connected && (
+                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Online"></span>
+                              )}
+                            </div>
+
+                            {session.first_message_content && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate mb-2">
+                                {session.first_message_content}
+                              </p>
+                            )}
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {getStatusBadge(session.status)}
+                              <span className="text-xs text-gray-400 capitalize">{session.channel}</span>
+                              {session.reopen_count > 0 && (
+                                <span className="text-xs text-orange-500">🔄 Reopened {session.reopen_count}x</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Side - Time & Assignee */}
+                        <div className="flex-shrink-0 text-right">
+                          <div className="text-xs text-gray-400 mb-1">
+                            {session.last_message_timestamp && formatDistanceToNow(new Date(session.last_message_timestamp), { addSuffix: true })}
+                          </div>
+                          {assignee && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Users className="h-3 w-3" />
+                              <span>{assignee.first_name || assignee.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-12 text-center">
+                <MessageSquare className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400">
+                  {hasActiveFilters ? 'No conversations match your filters' : t('agents.noConversations')}
+                </p>
+                {hasActiveFilters && (
+                  <Button variant="link" onClick={clearFilters} className="mt-2">
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

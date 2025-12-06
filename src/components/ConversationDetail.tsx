@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChatMessage, User, Contact } from '@/types';
-import { Paperclip, Send, CornerDownRight, Book, CheckCircle, Users, Video, Bot, Mic, MessageSquare, Sparkles } from 'lucide-react';
+import { ChatMessage, User, Contact, PRIORITY_CONFIG } from '@/types';
+import { Paperclip, Send, CornerDownRight, Book, CheckCircle, Users, Video, Bot, Mic, MessageSquare, Sparkles, ArrowLeft, AlertTriangle, ArrowUp, Minus, ArrowDown, Flag, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,8 @@ import remarkGfm from 'remark-gfm';
 interface ConversationDetailProps {
   sessionId: string;
   agentId: number;
+  readOnly?: boolean;
+  onBack?: () => void;
 }
 
 // Utility function to format date for separator
@@ -77,7 +79,10 @@ const isDifferentDay = (date1: string | Date, date2: string | Date): boolean => 
          d1.getFullYear() !== d2.getFullYear();
 };
 
-export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionId, agentId }) => {
+// localStorage keys for draft auto-save
+const getDraftKey = (sessionId: string, type: 'message' | 'note') => `draft_${type}_${sessionId}`;
+
+export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionId, agentId, readOnly = false, onBack }) => {
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const queryClient = useQueryClient();
@@ -92,7 +97,21 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const draftSaveTimeoutRef = useRef<NodeJS.Timeout>();
+  const currentSessionIdRef = useRef(sessionId);
+  const isInitialLoadRef = useRef(true);
+  const isLoadingDraftRef = useRef(false);
+  const messageRef = useRef(message);
+  const noteRef = useRef(note);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    console.log('[Draft] Syncing refs - message:', message, 'note:', note);
+    messageRef.current = message;
+    noteRef.current = note;
+  }, [message, note]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const ws = useRef<WebSocket | null>(null);
@@ -100,6 +119,133 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { authFetch, token } = useAuth();
   const { isRecording, startRecording, stopRecording } = useVoiceConnection(agentId, sessionId);
+
+  // Load drafts from localStorage when session changes
+  useEffect(() => {
+    if (readOnly) return;
+
+    console.log('[Draft] Session changed to:', sessionId);
+    console.log('[Draft] Previous session:', currentSessionIdRef.current);
+    console.log('[Draft] isInitialLoad:', isInitialLoadRef.current);
+    console.log('[Draft] messageRef.current:', messageRef.current);
+
+    // Set loading flag
+    isLoadingDraftRef.current = true;
+
+    // Save draft for previous session before switching (if not initial load)
+    if (!isInitialLoadRef.current && currentSessionIdRef.current !== sessionId) {
+      const prevSessionId = currentSessionIdRef.current;
+      // Use refs to get the latest values
+      const currentMessage = messageRef.current;
+      const currentNote = noteRef.current;
+
+      console.log('[Draft] Saving to previous session:', prevSessionId);
+      console.log('[Draft] Message to save:', currentMessage);
+
+      if (currentMessage.trim()) {
+        localStorage.setItem(getDraftKey(prevSessionId, 'message'), currentMessage);
+        console.log('[Draft] Saved message to localStorage:', getDraftKey(prevSessionId, 'message'));
+      }
+      if (currentNote.trim()) {
+        localStorage.setItem(getDraftKey(prevSessionId, 'note'), currentNote);
+      }
+    }
+
+    // Update current session ref
+    currentSessionIdRef.current = sessionId;
+    isInitialLoadRef.current = false;
+
+    // Load drafts for new session
+    const savedMessage = localStorage.getItem(getDraftKey(sessionId, 'message')) || '';
+    const savedNote = localStorage.getItem(getDraftKey(sessionId, 'note')) || '';
+
+    console.log('[Draft] Loading from session:', sessionId);
+    console.log('[Draft] Loaded message:', savedMessage);
+    console.log('[Draft] localStorage key:', getDraftKey(sessionId, 'message'));
+
+    // Update refs immediately to prevent stale data issues
+    messageRef.current = savedMessage;
+    noteRef.current = savedNote;
+
+    setMessage(savedMessage);
+    setNote(savedNote);
+    setHasDraft(!!savedMessage || !!savedNote);
+
+    // Reset loading flag after state updates
+    setTimeout(() => {
+      isLoadingDraftRef.current = false;
+      console.log('[Draft] Loading flag reset');
+    }, 100);
+  }, [sessionId, readOnly]);
+
+  // Auto-save drafts to localStorage with debounce (only when user types)
+  useEffect(() => {
+    if (readOnly) return;
+
+    // Skip auto-save while loading drafts
+    if (isLoadingDraftRef.current) {
+      console.log('[Draft] Auto-save skipped - loading in progress');
+      return;
+    }
+
+    // Clear previous timeout
+    if (draftSaveTimeoutRef.current) {
+      clearTimeout(draftSaveTimeoutRef.current);
+    }
+
+    // Debounce save to avoid too many writes
+    draftSaveTimeoutRef.current = setTimeout(() => {
+      // Double-check loading flag
+      if (isLoadingDraftRef.current) {
+        console.log('[Draft] Auto-save skipped in timeout - loading in progress');
+        return;
+      }
+
+      // Only save for current session
+      const saveSessionId = currentSessionIdRef.current;
+
+      console.log('[Draft] Auto-saving to session:', saveSessionId);
+      console.log('[Draft] Message:', message);
+
+      if (message.trim()) {
+        localStorage.setItem(getDraftKey(saveSessionId, 'message'), message);
+        console.log('[Draft] Auto-saved message');
+      } else {
+        localStorage.removeItem(getDraftKey(saveSessionId, 'message'));
+        console.log('[Draft] Removed empty message from localStorage');
+      }
+
+      if (note.trim()) {
+        localStorage.setItem(getDraftKey(saveSessionId, 'note'), note);
+      } else {
+        localStorage.removeItem(getDraftKey(saveSessionId, 'note'));
+      }
+
+      setHasDraft(!!message.trim() || !!note.trim());
+    }, 500);
+
+    return () => {
+      if (draftSaveTimeoutRef.current) {
+        clearTimeout(draftSaveTimeoutRef.current);
+      }
+    };
+  }, [message, note, readOnly]);
+
+  // Clear drafts helper function
+  const clearDraft = (type: 'message' | 'note' | 'all') => {
+    const saveSessionId = currentSessionIdRef.current;
+
+    if (type === 'message' || type === 'all') {
+      localStorage.removeItem(getDraftKey(saveSessionId, 'message'));
+    }
+    if (type === 'note' || type === 'all') {
+      localStorage.removeItem(getDraftKey(saveSessionId, 'note'));
+    }
+
+    const remainingMessage = type === 'message' || type === 'all' ? '' : message;
+    const remainingNote = type === 'note' || type === 'all' ? '' : note;
+    setHasDraft(!!remainingMessage.trim() || !!remainingNote.trim());
+  };
 
   const handleMicClick = () => {
     if (isRecording) {
@@ -179,6 +325,9 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const messages = messagesData?.pages ? [...messagesData.pages].reverse().flat() : [];
 
   useEffect(() => {
+    // Skip WebSocket connection in read-only mode
+    if (readOnly) return;
+
     if (sessionId && agentId && token) {
       ws.current = new WebSocket(`${getWebSocketUrl()}/api/v1/ws/${agentId}/${sessionId}?user_type=agent&token=${token}`);
       ws.current.onmessage = (event) => {
@@ -228,7 +377,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
         ws.current?.close();
       };
     }
-  }, [sessionId, agentId, companyId, queryClient, token]);
+  }, [sessionId, agentId, companyId, queryClient, token, readOnly]);
 
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
@@ -315,13 +464,18 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
     mutationFn: (newMessage: { message: string, message_type: string, sender: string, token?: string }) => {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
             ws.current.send(JSON.stringify(newMessage));
-            return Promise.resolve();
+            return Promise.resolve(newMessage.message_type);
         }
         return Promise.reject(new Error("WebSocket is not connected."));
     },
-    onSuccess: () => {
-        setMessage('');
-        setNote('');
+    onSuccess: (messageType) => {
+        if (messageType === 'note') {
+          setNote('');
+          clearDraft('note');
+        } else {
+          setMessage('');
+          clearDraft('message');
+        }
     },
     onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
   });
@@ -389,6 +543,36 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
     },
     onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
   });
+
+  const priorityMutation = useMutation({
+    mutationFn: (newPriority: number) => authFetch(`/api/v1/conversations/${sessionId}/priority`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json'},
+      body: JSON.stringify({ priority: newPriority }),
+    }).then(res => { if (!res.ok) throw new Error('Failed to update priority'); return res.json(); }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', agentId] });
+      queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['sessionDetails', sessionId] });
+      toast({
+        title: t('conversations.priority.updated', { defaultValue: 'Priority updated' }),
+        description: t('conversations.priority.updatedDesc', { defaultValue: 'Conversation priority has been updated' }),
+        variant: 'success'
+      });
+      playSuccessSound();
+    },
+    onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
+  });
+
+  const getPriorityIcon = (priority: number) => {
+    switch (priority) {
+      case 4: return <AlertTriangle className="h-3 w-3" />;
+      case 3: return <ArrowUp className="h-3 w-3" />;
+      case 2: return <Minus className="h-3 w-3" />;
+      case 1: return <ArrowDown className="h-3 w-3" />;
+      default: return <Flag className="h-3 w-3" />;
+    }
+  };
 
   const handlePostNote = () => {
     if (note.trim()) sendMessageMutation.mutate({ message: note.trim(), message_type: 'note', sender: 'agent' });
@@ -522,48 +706,78 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
 
   const contact: Contact | undefined = sessionDetails?.contact;
   const conversationStatus = sessionDetails?.status || 'bot';
+  const conversationPriority = sessionDetails?.priority ?? 0;
 
   return (
     <div className="flex h-full bg-white dark:bg-slate-800 card-shadow-lg rounded-lg overflow-hidden">
       <div className="flex flex-col flex-grow">
         <header className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-sm">
           {/* Top Row - Title and Quick Actions */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+          <div className={`flex items-center justify-between px-6 py-4 ${!readOnly ? 'border-b border-slate-200 dark:border-slate-700' : ''}`}>
             <div className="flex items-center gap-3">
+              {/* Back button for read-only mode */}
+              {readOnly && onBack && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
               <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
                 <MessageSquare className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold dark:text-white">{t('conversations.detail.conversation')}</h2>
+                <h2 className="text-xl font-bold dark:text-white">
+                  {readOnly ? t('conversations.detail.viewConversation', { defaultValue: 'View Conversation' }) : t('conversations.detail.conversation')}
+                </h2>
                 <p className="text-xs text-muted-foreground">{t('conversations.detail.sessionId', { id: sessionId.slice(0, 12) + '...' })}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => startCallMutation.mutate()}
-                disabled={startCallMutation.isPending}
-                className="btn-hover-lift"
-              >
-                <Video className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-                {t('conversations.detail.videoCall')}
-              </Button>
-              <Button
-                size="sm"
-                variant={conversationStatus === 'resolved' ? 'outline' : 'default'}
-                onClick={() => statusMutation.mutate('resolved')}
-                disabled={statusMutation.isPending || conversationStatus === 'resolved'}
-                className={conversationStatus === 'resolved' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-blue-600 hover:bg-blue-700 text-white btn-hover-lift'}
-              >
-                <CheckCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-                {conversationStatus === 'resolved' ? t('conversations.detail.resolved') : t('conversations.detail.resolve')}
-              </Button>
+              {/* Status Badge - always visible */}
+              <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                conversationStatus === 'resolved' ? 'bg-green-100 text-green-800' :
+                conversationStatus === 'active' ? 'bg-blue-100 text-blue-800' :
+                conversationStatus === 'assigned' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {conversationStatus.charAt(0).toUpperCase() + conversationStatus.slice(1)}
+              </div>
+
+              {/* Action buttons - hidden in read-only mode */}
+              {!readOnly && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startCallMutation.mutate()}
+                    disabled={startCallMutation.isPending}
+                    className="btn-hover-lift"
+                  >
+                    <Video className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    {t('conversations.detail.videoCall')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={conversationStatus === 'resolved' ? 'outline' : 'default'}
+                    onClick={() => statusMutation.mutate('resolved')}
+                    disabled={statusMutation.isPending || conversationStatus === 'resolved'}
+                    className={conversationStatus === 'resolved' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-blue-600 hover:bg-blue-700 text-white btn-hover-lift'}
+                  >
+                    <CheckCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    {conversationStatus === 'resolved' ? t('conversations.detail.resolved') : t('conversations.detail.resolve')}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Bottom Row - Controls */}
+          {/* Bottom Row - Controls (hidden in read-only mode) */}
+          {!readOnly && (
           <div className="flex items-center gap-4 px-6 py-3">
             {/* AI Toggle */}
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 card-shadow">
@@ -608,6 +822,35 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
               </Select>
             </div>
 
+            {/* Priority Selector */}
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 card-shadow">
+              <Flag className={`h-4 w-4 ${conversationPriority > 0 ? PRIORITY_CONFIG[conversationPriority]?.color : 'text-muted-foreground'}`} />
+              <Select
+                key={`priority-${sessionId}`}
+                value={conversationPriority.toString()}
+                onValueChange={(value) => priorityMutation.mutate(parseInt(value))}
+              >
+                <SelectTrigger className="border-0 h-auto p-0 focus:ring-0 w-[120px]">
+                  <SelectValue placeholder={t('conversations.priority.label', { defaultValue: 'Priority' })} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, 1, 2, 3, 4].map((priority) => {
+                    const config = PRIORITY_CONFIG[priority];
+                    return (
+                      <SelectItem key={priority} value={priority.toString()}>
+                        <div className="flex items-center gap-2">
+                          <span className={config.color}>{getPriorityIcon(priority)}</span>
+                          <span className={`text-sm ${config.color}`}>
+                            {t(`conversations.priority.${config.label.toLowerCase()}`, { defaultValue: config.label })}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Status Badge */}
             <div className={isRTL ? 'mr-auto' : 'ml-auto'}>
               <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
@@ -620,6 +863,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
               </div>
             </div>
           </div>
+          )}
         </header>
 
         <main ref={messagesContainerRef} className="flex-grow overflow-y-auto p-6 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
@@ -755,18 +999,34 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
           )}
         </main>
 
+        {/* Footer - hidden in read-only mode */}
+        {!readOnly && (
         <footer className="border-t border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-5 flex-shrink-0">
           <Tabs defaultValue="reply" className="w-full">
             <TabsList className="bg-white dark:bg-slate-900 rounded-lg p-1 shadow-sm border dark:border-slate-700">
-              <TabsTrigger value="reply" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md">
+              <TabsTrigger value="reply" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md relative">
                 <CornerDownRight className="h-4 w-4 mr-2"/>
                 {t('conversations.detail.replyTab')}
+                {message.trim() && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-blue-500 rounded-full" title={t('conversations.detail.draftSaved', { defaultValue: 'Draft saved' })} />
+                )}
               </TabsTrigger>
-              <TabsTrigger value="note" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-white rounded-md">
+              <TabsTrigger value="note" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-white rounded-md relative">
                 <Book className="h-4 w-4 mr-2"/>
                 {t('conversations.detail.privateNoteTab')}
+                {note.trim() && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-yellow-500 rounded-full" title={t('conversations.detail.draftSaved', { defaultValue: 'Draft saved' })} />
+                )}
               </TabsTrigger>
             </TabsList>
+
+            {/* Draft indicator */}
+            {hasDraft && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <FileText className="h-3 w-3" />
+                <span>{t('conversations.detail.draftAutoSaved', { defaultValue: 'Draft auto-saved' })}</span>
+              </div>
+            )}
 
             <TabsContent value="reply" className="mt-4">
               <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 card-shadow overflow-hidden">
@@ -868,6 +1128,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
             </TabsContent>
           </Tabs>
         </footer>
+        )}
       </div>
 
       {isCallModalOpen && (

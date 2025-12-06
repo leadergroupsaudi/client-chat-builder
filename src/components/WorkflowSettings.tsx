@@ -184,15 +184,15 @@ export const WorkflowSettings: React.FC<WorkflowSettingsProps> = ({ open, onOpen
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0" dir={isRTL ? 'rtl' : 'ltr'}>
+        <DialogContent className="max-w-4xl h-[85vh] overflow-hidden p-0 flex flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
           {loading ? (
-            <div className="p-6 h-full flex items-center justify-center bg-white dark:bg-slate-900">
+            <div className="p-6 flex-1 flex items-center justify-center bg-white dark:bg-slate-900">
               <div className="text-slate-600 dark:text-slate-400">{t('workflows.settingsDialog.loading')}</div>
             </div>
           ) : (
-            <div className="h-full flex flex-col bg-white dark:bg-slate-900 overflow-y-auto">
+            <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 min-h-0">
       {/* Header */}
-      <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+      <div className="flex-shrink-0 p-6 border-b border-slate-200 dark:border-slate-700">
         <div className={`flex items-center justify-between mb-4 `}>
           <div className={`flex items-center gap-3 `}>
             <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500">
@@ -207,9 +207,6 @@ export const WorkflowSettings: React.FC<WorkflowSettingsProps> = ({ open, onOpen
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-            <X className="h-5 w-5" />
-          </Button>
         </div>
 
         {/* Enable Intent Detection Toggle */}
@@ -237,7 +234,7 @@ export const WorkflowSettings: React.FC<WorkflowSettingsProps> = ({ open, onOpen
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
         {config.enabled && (
           <>
             {/* Auto-Trigger Settings */}
@@ -464,7 +461,7 @@ export const WorkflowSettings: React.FC<WorkflowSettingsProps> = ({ open, onOpen
       </div>
 
       {/* Footer */}
-      <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+      <div className="flex-shrink-0 p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
         <div className={`flex gap-3 `}>
           <Button
             onClick={saveIntentConfig}

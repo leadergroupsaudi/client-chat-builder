@@ -13,7 +13,10 @@ import {
   Users,
   Star,
   Download,
-  Filter
+  Filter,
+  CheckCircle2,
+  UserCheck,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -252,40 +255,54 @@ export const Reports = () => {
     {
       title: t("reports.metrics.totalSessions"),
       value: metricsData?.total_sessions ?? "N/A",
-      change: "+12%", // Placeholder, needs backend calculation
-      trend: "up",
       icon: MessageSquare,
       color: "text-blue-600"
     },
     {
+      title: t("reports.metrics.activeConversations"),
+      value: metricsData?.active_conversations ?? "N/A",
+      icon: MessageSquare,
+      color: "text-green-600"
+    },
+    {
+      title: t("reports.metrics.resolutionRate"),
+      value: metricsData?.resolution_rate ?? "N/A",
+      icon: CheckCircle2,
+      color: "text-emerald-600"
+    },
+    {
+      title: t("reports.metrics.agentAvailability"),
+      value: metricsData?.agent_availability_rate ?? "N/A",
+      icon: UserCheck,
+      color: "text-purple-600"
+    },
+    {
+      title: t("reports.metrics.unattendedConversations"),
+      value: metricsData?.unattended_conversations ?? "N/A",
+      icon: AlertCircle,
+      color: "text-orange-600"
+    },
+    {
       title: t("reports.metrics.avgResponseTime"),
       value: latencyData?.avg_response_time ?? "N/A",
-      change: "-15%", // Placeholder
-      trend: "down",
       icon: Clock,
-      color: "text-green-600"
+      color: "text-sky-600"
     },
     {
       title: t("reports.metrics.customerSatisfaction"),
       value: metricsData?.customer_satisfaction ?? "N/A",
-      change: "+0.2", // Placeholder
-      trend: "up",
       icon: Star,
       color: "text-yellow-600"
     },
     {
       title: t("reports.metrics.activeAgents"),
       value: metricsData?.active_agents ?? "N/A",
-      change: "+3%", // Placeholder
-      trend: "up",
       icon: Users,
-      color: "text-purple-600"
+      color: "text-indigo-600"
     },
     {
       title: t("reports.metrics.overallErrorRate"),
       value: errorRatesData?.overall_error_rate ?? "N/A",
-      change: "",
-      trend: "up",
       icon: TrendingUp,
       color: "text-red-600"
     }
@@ -402,42 +419,30 @@ export const Reports = () => {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {metrics.map((metric) => {
           const IconComponent = metric.icon;
+          const colorMap = {
+            'text-blue-600': 'from-blue-500/10 to-blue-600/10 border-blue-200 dark:border-blue-800',
+            'text-green-600': 'from-green-500/10 to-green-600/10 border-green-200 dark:border-green-800',
+            'text-emerald-600': 'from-emerald-500/10 to-emerald-600/10 border-emerald-200 dark:border-emerald-800',
+            'text-purple-600': 'from-purple-500/10 to-purple-600/10 border-purple-200 dark:border-purple-800',
+            'text-orange-600': 'from-orange-500/10 to-orange-600/10 border-orange-200 dark:border-orange-800',
+            'text-sky-600': 'from-sky-500/10 to-sky-600/10 border-sky-200 dark:border-sky-800',
+            'text-yellow-600': 'from-yellow-500/10 to-yellow-600/10 border-yellow-200 dark:border-yellow-800',
+            'text-indigo-600': 'from-indigo-500/10 to-indigo-600/10 border-indigo-200 dark:border-indigo-800',
+            'text-red-600': 'from-red-500/10 to-red-600/10 border-red-200 dark:border-red-800',
+          };
+          const bgGradient = colorMap[metric.color] || 'from-slate-500/10 to-slate-600/10 border-slate-200 dark:border-slate-700';
+
           return (
-            <Card key={metric.title} className="card-shadow-lg border-slate-200 dark:border-slate-700 dark:bg-slate-800 hover:shadow-xl transition-shadow">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${
-                    metric.title === "Total Sessions" ? "from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50" :
-                    metric.title === "Avg Response Time" ? "from-green-100 to-green-200 dark:from-green-900/50 dark:to-green-800/50" :
-                    metric.title === "Customer Satisfaction" ? "from-yellow-100 to-yellow-200 dark:from-yellow-900/50 dark:to-yellow-800/50" :
-                    metric.title === "Active Agents" ? "from-purple-100 to-purple-200 dark:from-purple-900/50 dark:to-purple-800/50" :
-                    "from-red-100 to-red-200 dark:from-red-900/50 dark:to-red-800/50"
-                  } flex items-center justify-center shadow-sm`}>
-                    <IconComponent className={`h-6 w-6 ${metric.color} dark:opacity-90`} />
-                  </div>
+            <Card key={metric.title} className={`bg-gradient-to-br ${bgGradient} border hover:shadow-lg transition-all duration-200 dark:bg-slate-800/50`}>
+              <CardContent className="p-4">
+                <div className={`flex items-center gap-2 mb-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <IconComponent className={`h-4 w-4 ${metric.color} dark:opacity-90`} />
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate">{metric.title}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1.5">{metric.title}</p>
-                  <p className="text-2xl font-bold dark:text-white mb-2">{metric.value}</p>
-                  {metric.change && (
-                    <div className={`flex items-center`}>
-                      {metric.trend === "up" ? (
-                        <TrendingUp className={`h-3.5 w-3.5 text-green-500 dark:text-green-400 ${isRTL ? 'ml-1' : 'mr-1'}`} />
-                      ) : (
-                        <TrendingDown className={`h-3.5 w-3.5 text-red-500 dark:text-red-400 ${isRTL ? 'ml-1' : 'mr-1'}`} />
-                      )}
-                      <span className={`text-xs font-medium ${
-                        metric.trend === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                      }`}>
-                        {metric.change}
-                      </span>
-                      <span className={`text-xs text-gray-500 dark:text-gray-400 ${isRTL ? 'mr-1' : 'ml-1'}`}>{t("reports.vsLastMonth")}</span>
-                    </div>
-                  )}
-                </div>
+                <p className={`text-2xl font-bold ${metric.color.replace('text-', 'text-').replace('-600', '-700')} dark:text-white`}>{metric.value}</p>
               </CardContent>
             </Card>
           );

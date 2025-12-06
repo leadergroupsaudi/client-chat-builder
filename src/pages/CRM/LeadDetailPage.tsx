@@ -19,6 +19,15 @@ import {
   MessageSquare,
   History,
   MoreVertical,
+  Zap,
+  Award,
+  Timer,
+  CalendarDays,
+  Globe,
+  UserCheck,
+  ShieldCheck,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,9 +63,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { TagSelector } from '@/components/TagSelector';
+import { EntityNotes } from '@/components/EntityNotes';
+import { cn } from '@/lib/utils';
 
 interface Lead {
   id: number;
@@ -106,25 +119,58 @@ interface LeadScore {
   created_at: string;
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  lead: 'Lead',
-  mql: 'MQL',
-  sql: 'SQL',
-  opportunity: 'Opportunity',
-  customer: 'Customer',
-  lost: 'Lost',
-};
-
-const STAGE_COLORS: Record<string, string> = {
-  lead: 'bg-gray-100 text-gray-800',
-  mql: 'bg-blue-100 text-blue-800',
-  sql: 'bg-purple-100 text-purple-800',
-  opportunity: 'bg-yellow-100 text-yellow-800',
-  customer: 'bg-green-100 text-green-800',
-  lost: 'bg-red-100 text-red-800',
+const STAGE_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+  lead: {
+    label: 'Lead',
+    color: 'text-slate-700 dark:text-slate-300',
+    bgColor: 'bg-slate-100 dark:bg-slate-800',
+    icon: <User className="h-4 w-4" />
+  },
+  mql: {
+    label: 'MQL',
+    color: 'text-blue-700 dark:text-blue-300',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
+    icon: <Zap className="h-4 w-4" />
+  },
+  sql: {
+    label: 'SQL',
+    color: 'text-purple-700 dark:text-purple-300',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/50',
+    icon: <Target className="h-4 w-4" />
+  },
+  opportunity: {
+    label: 'Opportunity',
+    color: 'text-amber-700 dark:text-amber-300',
+    bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+    icon: <Sparkles className="h-4 w-4" />
+  },
+  customer: {
+    label: 'Customer',
+    color: 'text-emerald-700 dark:text-emerald-300',
+    bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+    icon: <CheckCircle2 className="h-4 w-4" />
+  },
+  lost: {
+    label: 'Lost',
+    color: 'text-red-700 dark:text-red-300',
+    bgColor: 'bg-red-100 dark:bg-red-900/50',
+    icon: <XCircle className="h-4 w-4" />
+  },
 };
 
 const STAGE_ORDER = ['lead', 'mql', 'sql', 'opportunity', 'customer', 'lost'];
+
+const getScoreColor = (score: number) => {
+  if (score >= 70) return 'text-emerald-600 dark:text-emerald-400';
+  if (score >= 40) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-600 dark:text-red-400';
+};
+
+const getScoreGradient = (score: number) => {
+  if (score >= 70) return 'from-emerald-500 to-emerald-600';
+  if (score >= 40) return 'from-amber-500 to-amber-600';
+  return 'from-red-500 to-red-600';
+};
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -165,7 +211,6 @@ export default function LeadDetailPage() {
         notes: response.data.notes || '',
         expected_close_date: response.data.expected_close_date?.split('T')[0] || '',
       });
-      // Set tag IDs from either tag_ids array or from tags objects
       const tagIds = response.data.tag_ids || response.data.tags?.map((t: any) => t.id) || [];
       setSelectedTagIds(tagIds);
     } catch (error) {
@@ -297,12 +342,10 @@ export default function LeadDetailPage() {
       const token = localStorage.getItem('accessToken');
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Get current tags and determine which to add/remove
       const currentTagIds = selectedTagIds;
       const tagsToAdd = tagIds.filter(id => !currentTagIds.includes(id));
       const tagsToRemove = currentTagIds.filter(id => !tagIds.includes(id));
 
-      // Add new tags
       for (const tagId of tagsToAdd) {
         await axios.post(`/api/v1/tags/${tagId}/assign`, {
           entity_type: 'lead',
@@ -310,7 +353,6 @@ export default function LeadDetailPage() {
         }, { headers });
       }
 
-      // Remove tags
       for (const tagId of tagsToRemove) {
         await axios.post(`/api/v1/tags/${tagId}/unassign`, {
           entity_type: 'lead',
@@ -329,7 +371,6 @@ export default function LeadDetailPage() {
         description: 'Failed to update tags',
         variant: 'destructive',
       });
-      // Revert on error
       fetchLead();
     }
   };
@@ -354,11 +395,37 @@ export default function LeadDetailPage() {
     });
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getDaysInStage = () => {
+    if (!lead?.stage_changed_at) return 0;
+    return Math.floor(
+      (new Date().getTime() - new Date(lead.stage_changed_at).getTime()) /
+      (1000 * 60 * 60 * 24)
+    );
+  };
+
+  const getTotalAge = () => {
+    if (!lead?.created_at) return 0;
+    return Math.floor(
+      (new Date().getTime() - new Date(lead.created_at).getTime()) /
+      (1000 * 60 * 60 * 24)
+    );
+  };
+
   if (loading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+          <p className="text-sm text-muted-foreground">Loading lead details...</p>
         </div>
       </div>
     );
@@ -366,224 +433,422 @@ export default function LeadDetailPage() {
 
   if (!lead) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold">Lead not found</h2>
-          <p className="text-muted-foreground mt-2">The lead you're looking for doesn't exist.</p>
-          <Button className="mt-4" onClick={() => navigate('/dashboard/crm/leads')}>
-            Back to Leads
-          </Button>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] gap-4">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <User className="h-8 w-8 text-muted-foreground" />
         </div>
+        <h2 className="text-xl font-semibold">Lead not found</h2>
+        <p className="text-muted-foreground">The lead you're looking for doesn't exist.</p>
+        <Button onClick={() => navigate('/dashboard/crm/leads')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Leads
+        </Button>
       </div>
     );
   }
 
+  const stageConfig = STAGE_CONFIG[lead.stage] || STAGE_CONFIG.lead;
+  const currentStageIndex = STAGE_ORDER.indexOf(lead.stage);
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard/crm/leads')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              {lead.contact?.name || 'Unknown Contact'}
-              <Badge className={STAGE_COLORS[lead.stage]}>
-                {STAGE_LABELS[lead.stage] || lead.stage}
-              </Badge>
-            </h1>
-            <p className="text-muted-foreground">{lead.contact?.email}</p>
+    <div className="space-y-6 pb-8">
+      {/* Header Section */}
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 border shadow-sm">
+        <div className="absolute inset-0 bg-grid-slate-100 dark:bg-grid-slate-700/25 [mask-image:linear-gradient(0deg,transparent,black)]" />
+
+        <div className="relative p-6">
+          {/* Back Button & Actions */}
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard/crm/leads')}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Leads
+            </Button>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleQualifyLead}>
+                <Target className="h-4 w-4 mr-2" />
+                Auto-Qualify
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => setStageDialogOpen(true)}>
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Change Stage
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Lead
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          {/* Lead Info */}
+          <div className="flex items-start gap-5">
+            <Avatar className="h-16 w-16 border-2 border-white dark:border-slate-700 shadow-md">
+              <AvatarFallback className={cn(
+                "text-lg font-semibold",
+                stageConfig.bgColor,
+                stageConfig.color
+              )}>
+                {getInitials(lead.contact?.name || 'Unknown')}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl font-bold truncate">
+                  {lead.contact?.name || 'Unknown Contact'}
+                </h1>
+                <Badge className={cn("font-medium", stageConfig.bgColor, stageConfig.color)}>
+                  {stageConfig.icon}
+                  <span className="ml-1">{stageConfig.label}</span>
+                </Badge>
+                {lead.qualification_status === 'qualified' && (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                    Qualified
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+                {lead.contact?.email && (
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="h-4 w-4" />
+                    {lead.contact.email}
+                  </span>
+                )}
+                {lead.contact?.phone_number && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="h-4 w-4" />
+                    {lead.contact.phone_number}
+                  </span>
+                )}
+                {lead.source && (
+                  <span className="flex items-center gap-1.5">
+                    <Globe className="h-4 w-4" />
+                    {lead.source}
+                  </span>
+                )}
+              </div>
+
+              {/* Quick Stats Row */}
+              <div className="flex items-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "flex items-center justify-center w-8 h-8 rounded-lg",
+                    `bg-gradient-to-br ${getScoreGradient(lead.score)}`
+                  )}>
+                    <Star className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Score</p>
+                    <p className={cn("font-bold", getScoreColor(lead.score))}>{lead.score}/100</p>
+                  </div>
+                </div>
+
+                {lead.deal_value && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
+                      <DollarSign className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Deal Value</p>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                        ${lead.deal_value.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+                    <Timer className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Days in Stage</p>
+                    <p className="font-bold">{getDaysInStage()}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-violet-600">
+                    <CalendarDays className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Age</p>
+                    <p className="font-bold">{getTotalAge()} days</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-          <Button variant="outline" onClick={handleQualifyLead}>
-            <Target className="h-4 w-4 mr-2" />
-            Auto-Qualify
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setStageDialogOpen(true)}>
-                Change Stage
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-600"
-                onClick={() => setDeleteDialogOpen(true)}
-              >
-                Delete Lead
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+        {/* Pipeline Stepper */}
+        <div className="border-t bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4">
+          <div className="flex items-center justify-between">
+            {STAGE_ORDER.map((stage, index) => {
+              const config = STAGE_CONFIG[stage];
+              const isActive = lead.stage === stage;
+              const isPast = currentStageIndex > index || (stage === 'lost' && lead.stage === 'lost');
+              const isLost = stage === 'lost';
+
+              return (
+                <div key={stage} className="flex items-center flex-1">
+                  <button
+                    onClick={() => {
+                      setSelectedStage(stage);
+                      setStageDialogOpen(true);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 transition-all group flex-1",
+                      isActive ? "scale-105" : "hover:scale-102"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-all border-2",
+                        isActive
+                          ? cn(config.bgColor, config.color, "border-current shadow-md")
+                          : isPast
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted text-muted-foreground border-muted-foreground/20 group-hover:border-muted-foreground/40"
+                      )}
+                    >
+                      {isPast && !isActive ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        config.icon
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-xs font-medium transition-colors",
+                      isActive ? config.color : "text-muted-foreground"
+                    )}>
+                      {config.label}
+                    </span>
+                  </button>
+
+                  {index < STAGE_ORDER.length - 1 && (
+                    <div className="flex-1 max-w-[60px] px-1">
+                      <div className={cn(
+                        "h-0.5 rounded-full transition-colors",
+                        currentStageIndex > index ? "bg-primary" : "bg-muted"
+                      )} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Stage Pipeline */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Sales Pipeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            {STAGE_ORDER.map((stage, index) => (
-              <div key={stage} className="flex items-center">
-                <div
-                  className={`flex flex-col items-center cursor-pointer transition-all ${
-                    lead.stage === stage ? 'scale-110' : 'opacity-60 hover:opacity-100'
-                  }`}
-                  onClick={() => {
-                    setSelectedStage(stage);
-                    setStageDialogOpen(true);
-                  }}
-                >
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      STAGE_ORDER.indexOf(lead.stage) >= index
-                        ? stage === 'lost'
-                          ? 'bg-red-500 text-white'
-                          : stage === 'customer'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
-                    }`}
-                  >
-                    {stage === 'customer' && STAGE_ORDER.indexOf(lead.stage) >= index ? (
-                      <CheckCircle2 className="h-5 w-5" />
-                    ) : stage === 'lost' && lead.stage === 'lost' ? (
-                      <XCircle className="h-5 w-5" />
-                    ) : (
-                      <span className="text-xs font-bold">{index + 1}</span>
-                    )}
-                  </div>
-                  <span className="text-xs mt-1 font-medium">{STAGE_LABELS[stage]}</span>
-                </div>
-                {index < STAGE_ORDER.length - 1 && (
-                  <div
-                    className={`h-0.5 w-12 mx-2 ${
-                      STAGE_ORDER.indexOf(lead.stage) > index ? 'bg-primary' : 'bg-muted'
-                    }`}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
+        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          <Tabs defaultValue="overview">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="scoring">Scoring</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+              <TabsTrigger value="overview" className="gap-2">
+                <User className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="scoring" className="gap-2">
+                <Award className="h-4 w-4" />
+                Scoring
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-2">
+                <History className="h-4 w-4" />
+                Activity
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4 mt-4">
-              {/* Lead Details */}
+              {/* Lead Information */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Lead Information</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/50">
+                      <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    Lead Information
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Deal Value</Label>
-                      <p className="font-medium flex items-center gap-1">
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         <DollarSign className="h-4 w-4" />
+                        <span className="text-xs font-medium">Deal Value</span>
+                      </div>
+                      <p className="font-semibold">
                         {lead.deal_value ? `$${lead.deal_value.toLocaleString()}` : 'Not set'}
                       </p>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Source</Label>
-                      <p className="font-medium">{lead.source || 'Unknown'}</p>
+
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Globe className="h-4 w-4" />
+                        <span className="text-xs font-medium">Source</span>
+                      </div>
+                      <p className="font-semibold capitalize">{lead.source || 'Unknown'}</p>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Score</Label>
-                      <p className="font-medium flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Star className="h-4 w-4" />
+                        <span className="text-xs font-medium">Score</span>
+                      </div>
+                      <p className={cn("font-semibold", getScoreColor(lead.score))}>
                         {lead.score}/100
                       </p>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Qualification Status</Label>
+
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <ShieldCheck className="h-4 w-4" />
+                        <span className="text-xs font-medium">Qualification</span>
+                      </div>
                       <Badge
                         variant={lead.qualification_status === 'qualified' ? 'default' : 'secondary'}
+                        className="capitalize"
                       >
                         {lead.qualification_status}
                       </Badge>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Expected Close Date</Label>
-                      <p className="font-medium flex items-center gap-1">
+
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        {formatDate(lead.expected_close_date)}
-                      </p>
+                        <span className="text-xs font-medium">Expected Close</span>
+                      </div>
+                      <p className="font-semibold">{formatDate(lead.expected_close_date)}</p>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Stage Changed</Label>
-                      <p className="font-medium">{formatDateTime(lead.stage_changed_at)}</p>
+
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-xs font-medium">Stage Changed</span>
+                      </div>
+                      <p className="font-semibold text-sm">{formatDate(lead.stage_changed_at)}</p>
                     </div>
                   </div>
+
                   {lead.notes && (
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Notes</Label>
-                      <p className="mt-1 text-sm">{lead.notes}</p>
+                    <div className="mt-4 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="text-xs font-medium">Notes</span>
+                      </div>
+                      <p className="text-sm">{lead.notes}</p>
                     </div>
                   )}
+
                   {(lead.won_reason || lead.lost_reason) && (
-                    <div>
-                      <Label className="text-muted-foreground text-xs">
-                        {lead.stage === 'customer' ? 'Won Reason' : 'Lost Reason'}
-                      </Label>
-                      <p className="mt-1 text-sm">{lead.won_reason || lead.lost_reason}</p>
+                    <div className={cn(
+                      "mt-4 p-3 rounded-lg",
+                      lead.stage === 'customer'
+                        ? "bg-emerald-50 dark:bg-emerald-900/20"
+                        : "bg-red-50 dark:bg-red-900/20"
+                    )}>
+                      <div className={cn(
+                        "flex items-center gap-2 mb-2",
+                        lead.stage === 'customer'
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-red-600 dark:text-red-400"
+                      )}>
+                        {lead.stage === 'customer' ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        <span className="text-xs font-medium">
+                          {lead.stage === 'customer' ? 'Won Reason' : 'Lost Reason'}
+                        </span>
+                      </div>
+                      <p className="text-sm">{lead.won_reason || lead.lost_reason}</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Contact Details */}
+              {/* Contact Information */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Contact Information</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/50">
+                      <User className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    Contact Information
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{lead.contact?.email || '-'}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{lead.contact?.phone_number || '-'}</span>
-                  </div>
-                  <Separator />
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Lead Source</Label>
-                      <p>{lead.contact?.lead_source || '-'}</p>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <Mail className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="font-medium">{lead.contact?.email || '-'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Lifecycle Stage</Label>
-                      <p>{lead.contact?.lifecycle_stage || '-'}</p>
+
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <Phone className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone</p>
+                        <p className="font-medium">{lead.contact?.phone_number || '-'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Opt-in Status</Label>
-                      <p>{lead.contact?.opt_in_status || '-'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs">Do Not Contact</Label>
-                      <p>{lead.contact?.do_not_contact ? 'Yes' : 'No'}</p>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Lead Source</p>
+                        <p className="font-medium capitalize">{lead.contact?.lead_source || '-'}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Lifecycle Stage</p>
+                        <p className="font-medium capitalize">{lead.contact?.lifecycle_stage || '-'}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Opt-in Status</p>
+                        <p className="font-medium capitalize">{lead.contact?.opt_in_status || '-'}</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground">Do Not Contact</p>
+                        <p className={cn(
+                          "font-medium",
+                          lead.contact?.do_not_contact
+                            ? "text-red-600 dark:text-red-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        )}>
+                          {lead.contact?.do_not_contact ? 'Yes' : 'No'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -592,16 +857,26 @@ export default function LeadDetailPage() {
 
             <TabsContent value="scoring" className="space-y-4 mt-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Score Breakdown</CardTitle>
-                  <CardDescription>
-                    Overall Score: {lead.score}/100
-                    {lead.last_scored_at && (
-                      <span className="ml-2">
-                        (Last scored: {formatDateTime(lead.last_scored_at)})
-                      </span>
-                    )}
-                  </CardDescription>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <div className="p-1.5 rounded-md bg-amber-100 dark:bg-amber-900/50">
+                        <Award className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      Score Breakdown
+                    </CardTitle>
+                    <div className="text-right">
+                      <p className={cn("text-2xl font-bold", getScoreColor(lead.score))}>
+                        {lead.score}/100
+                      </p>
+                      {lead.last_scored_at && (
+                        <p className="text-xs text-muted-foreground">
+                          Last scored: {formatDate(lead.last_scored_at)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Progress value={lead.score} className="mt-3" />
                 </CardHeader>
                 <CardContent>
                   {scores.length > 0 ? (
@@ -609,18 +884,23 @@ export default function LeadDetailPage() {
                       {scores.map((score) => (
                         <div
                           key={score.id}
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                          className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border"
                         >
-                          <div>
-                            <p className="font-medium capitalize">
-                              {score.score_type.replace('_', ' ')}
-                            </p>
-                            {score.reason && (
-                              <p className="text-sm text-muted-foreground">{score.reason}</p>
-                            )}
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <Zap className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium capitalize">
+                                {score.score_type.replace(/_/g, ' ')}
+                              </p>
+                              {score.reason && (
+                                <p className="text-sm text-muted-foreground">{score.reason}</p>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-lg">{score.score_value}</p>
+                            <p className="text-xl font-bold">{score.score_value}</p>
                             <p className="text-xs text-muted-foreground">
                               {formatDate(score.created_at)}
                             </p>
@@ -629,47 +909,67 @@ export default function LeadDetailPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">
-                      No scoring history available. Click "Auto-Qualify" to generate scores.
-                    </p>
+                    <div className="text-center py-8">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                        <Award className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-muted-foreground">
+                        No scoring history available.
+                      </p>
+                      <Button variant="outline" size="sm" className="mt-3" onClick={handleQualifyLead}>
+                        <Target className="h-4 w-4 mr-2" />
+                        Run Auto-Qualify
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="activity" className="space-y-4 mt-4">
+              {/* Notes & Activities */}
+              <EntityNotes leadId={lead.id} />
+
+              {/* Timeline Card */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Activity Timeline</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-indigo-100 dark:bg-indigo-900/50">
+                      <History className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    Timeline
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex gap-3">
+                    <div className="flex gap-4">
                       <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <History className="h-4 w-4 text-primary" />
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                          <History className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="w-0.5 h-full bg-muted mt-2" />
+                        <div className="w-0.5 flex-1 bg-border mt-2" />
                       </div>
-                      <div>
+                      <div className="flex-1 pb-4">
                         <p className="font-medium">Lead Created</p>
                         <p className="text-sm text-muted-foreground">
                           {formatDateTime(lead.created_at)}
                         </p>
                       </div>
                     </div>
+
                     {lead.previous_stage && (
-                      <div className="flex gap-3">
+                      <div className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <TrendingUp className="h-4 w-4 text-blue-600" />
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center border-2 border-blue-200 dark:border-blue-800">
+                            <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <div className="w-0.5 h-full bg-muted mt-2" />
+                          <div className="w-0.5 flex-1 bg-border mt-2" />
                         </div>
-                        <div>
+                        <div className="flex-1 pb-4">
                           <p className="font-medium">
-                            Stage changed from {STAGE_LABELS[lead.previous_stage]} to{' '}
-                            {STAGE_LABELS[lead.stage]}
+                            Stage: {STAGE_CONFIG[lead.previous_stage]?.label}
+                            <ChevronRight className="h-4 w-4 inline mx-1" />
+                            {stageConfig.label}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {formatDateTime(lead.stage_changed_at)}
@@ -677,13 +977,14 @@ export default function LeadDetailPage() {
                         </div>
                       </div>
                     )}
-                    <div className="flex gap-3">
+
+                    <div className="flex gap-4">
                       <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center border-2 border-muted-foreground/20">
+                          <Clock className="h-5 w-5 text-muted-foreground" />
                         </div>
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">Last Updated</p>
                         <p className="text-sm text-muted-foreground">
                           {formatDateTime(lead.updated_at)}
@@ -697,59 +998,79 @@ export default function LeadDetailPage() {
           </Tabs>
         </div>
 
-        {/* Sidebar */}
+        {/* Right Column - Sidebar */}
         <div className="space-y-6">
+          {/* Score Card */}
+          <Card className="overflow-hidden">
+            <div className={cn(
+              "h-2 bg-gradient-to-r",
+              getScoreGradient(lead.score)
+            )} />
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                Lead Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-2">
+                <p className={cn("text-4xl font-bold", getScoreColor(lead.score))}>
+                  {lead.score}
+                </p>
+                <p className="text-sm text-muted-foreground">out of 100</p>
+              </div>
+              <Progress value={lead.score} className="mt-2" />
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                <span>Cold</span>
+                <span>Warm</span>
+                <span>Hot</span>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Quick Stats */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Quick Stats</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Quick Stats
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Score</span>
-                <span className="font-bold">{lead.score}/100</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    lead.score >= 70
-                      ? 'bg-green-500'
-                      : lead.score >= 40
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                  }`}
-                  style={{ width: `${lead.score}%` }}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Days in Stage</span>
-                <span className="font-bold">
-                  {lead.stage_changed_at
-                    ? Math.floor(
-                        (new Date().getTime() - new Date(lead.stage_changed_at).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )
-                    : '-'}
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Timer className="h-4 w-4" />
+                  Days in Stage
                 </span>
+                <span className="font-bold">{getDaysInStage()}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm">Total Age</span>
-                <span className="font-bold">
-                  {Math.floor(
-                    (new Date().getTime() - new Date(lead.created_at).getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  )}{' '}
-                  days
+              <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  Total Age
                 </span>
+                <span className="font-bold">{getTotalAge()} days</span>
               </div>
+              {lead.deal_value && (
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <span className="text-sm text-muted-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Deal Value
+                  </span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    ${lead.deal_value.toLocaleString()}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Tags */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Tags</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                Tags
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <TagSelector
@@ -763,14 +1084,14 @@ export default function LeadDetailPage() {
           {/* Custom Fields */}
           {lead.custom_fields && Object.keys(lead.custom_fields).length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Custom Fields</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {Object.entries(lead.custom_fields).map(([key, value]) => (
-                  <div key={key} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{key}</span>
-                    <span>{String(value)}</span>
+                  <div key={key} className="flex justify-between text-sm p-2 rounded-lg bg-muted/50">
+                    <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                    <span className="font-medium">{String(value)}</span>
                   </div>
                 ))}
               </CardContent>
@@ -781,23 +1102,38 @@ export default function LeadDetailPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Lead</DialogTitle>
-            <DialogDescription>Update lead information</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Edit Lead
+            </DialogTitle>
+            <DialogDescription>Update lead information and details</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="deal_value">Deal Value ($)</Label>
-              <Input
-                id="deal_value"
-                type="number"
-                value={editData.deal_value}
-                onChange={(e) => setEditData({ ...editData, deal_value: e.target.value })}
-              />
+              <Label htmlFor="deal_value" className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                Deal Value
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="deal_value"
+                  type="number"
+                  className="pl-7"
+                  placeholder="0.00"
+                  value={editData.deal_value}
+                  onChange={(e) => setEditData({ ...editData, deal_value: e.target.value })}
+                />
+              </div>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="source">Source</Label>
+              <Label htmlFor="source" className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                Source
+              </Label>
               <Select
                 value={editData.source}
                 onValueChange={(value) => setEditData({ ...editData, source: value })}
@@ -817,8 +1153,12 @@ export default function LeadDetailPage() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="expected_close_date">Expected Close Date</Label>
+              <Label htmlFor="expected_close_date" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                Expected Close Date
+              </Label>
               <Input
                 id="expected_close_date"
                 type="date"
@@ -826,10 +1166,15 @@ export default function LeadDetailPage() {
                 onChange={(e) => setEditData({ ...editData, expected_close_date: e.target.value })}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                Notes
+              </Label>
               <Textarea
                 id="notes"
+                placeholder="Add notes about this lead..."
                 value={editData.notes}
                 onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
                 rows={3}
@@ -840,21 +1185,26 @@ export default function LeadDetailPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateLead}>Save Changes</Button>
+            <Button onClick={handleUpdateLead}>
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Stage Change Dialog */}
       <Dialog open={stageDialogOpen} onOpenChange={setStageDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>Change Lead Stage</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Change Lead Stage
+            </DialogTitle>
             <DialogDescription>
               Update the stage for this lead in the sales pipeline
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>New Stage</Label>
               <Select value={selectedStage} onValueChange={setSelectedStage}>
@@ -862,14 +1212,21 @@ export default function LeadDetailPage() {
                   <SelectValue placeholder="Select stage" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STAGE_ORDER.map((stage) => (
-                    <SelectItem key={stage} value={stage}>
-                      {STAGE_LABELS[stage]}
-                    </SelectItem>
-                  ))}
+                  {STAGE_ORDER.map((stage) => {
+                    const config = STAGE_CONFIG[stage];
+                    return (
+                      <SelectItem key={stage} value={stage}>
+                        <div className="flex items-center gap-2">
+                          {config.icon}
+                          <span>{config.label}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
+
             {(selectedStage === 'customer' || selectedStage === 'lost') && (
               <div className="space-y-2">
                 <Label htmlFor="reason">
@@ -900,7 +1257,10 @@ export default function LeadDetailPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete Lead
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this lead? This action cannot be undone.
             </AlertDialogDescription>

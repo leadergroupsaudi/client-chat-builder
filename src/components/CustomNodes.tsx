@@ -354,6 +354,84 @@ export const SetStatusNode = ({ data }) => (
   </div>
 );
 
+// Color palette for classifier class handles
+const CLASSIFIER_COLORS = [
+  { bg: '!bg-blue-500 dark:!bg-blue-400', text: 'text-blue-600 dark:text-blue-400' },
+  { bg: '!bg-green-500 dark:!bg-green-400', text: 'text-green-600 dark:text-green-400' },
+  { bg: '!bg-purple-500 dark:!bg-purple-400', text: 'text-purple-600 dark:text-purple-400' },
+  { bg: '!bg-orange-500 dark:!bg-orange-400', text: 'text-orange-600 dark:text-orange-400' },
+  { bg: '!bg-cyan-500 dark:!bg-cyan-400', text: 'text-cyan-600 dark:text-cyan-400' },
+  { bg: '!bg-pink-500 dark:!bg-pink-400', text: 'text-pink-600 dark:text-pink-400' },
+];
+
+export const QuestionClassifierNode = ({ data }) => {
+  const classes = data.classes || [];
+  const hasClasses = classes.length > 0;
+  const totalHandles = hasClasses ? classes.length + 1 : 1; // +1 for default
+
+  // Calculate handle positions
+  const getHandlePosition = (index: number) => {
+    const spacing = 100 / (totalHandles + 1);
+    return `${spacing * (index + 1)}%`;
+  };
+
+  return (
+    <div className={`px-4 py-3 border-2 border-amber-200 dark:border-amber-700 rounded-xl bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/50 dark:to-yellow-950/50 shadow-lg hover:shadow-xl transition-shadow backdrop-blur-sm ${hasClasses ? 'min-w-[180px]' : ''}`}
+         style={{ minWidth: hasClasses ? `${Math.max(180, totalHandles * 60)}px` : undefined }}>
+      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-amber-500 dark:!bg-amber-400 border-2 border-white dark:border-slate-800" />
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-1.5 rounded-lg bg-amber-500 dark:bg-amber-600">
+          <HelpCircle size={16} className="text-white" />
+        </div>
+        <strong className="text-sm font-semibold text-slate-900 dark:text-white">{data.label || 'Question Classifier'}</strong>
+      </div>
+      <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+        {hasClasses ? `Classifies into ${classes.length} classes` : 'Classifies using LLM'}
+      </div>
+
+      {hasClasses ? (
+        <>
+          {/* Render handles for each class */}
+          {classes.map((cls, index) => (
+            <Handle
+              key={index}
+              type="source"
+              position={Position.Bottom}
+              id={cls.name}
+              style={{ left: getHandlePosition(index) }}
+              className={`w-3 h-3 ${CLASSIFIER_COLORS[index % CLASSIFIER_COLORS.length].bg} border-2 border-white dark:border-slate-800`}
+              title={cls.description || cls.name}
+            />
+          ))}
+          {/* Default handle */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="default"
+            style={{ left: getHandlePosition(classes.length) }}
+            className="w-3 h-3 !bg-slate-500 dark:!bg-slate-400 border-2 border-white dark:border-slate-800"
+            title="Default (no class matched)"
+          />
+          {/* Handle labels */}
+          <div className="flex justify-around mt-2 text-[10px] font-medium">
+            {classes.map((cls, index) => (
+              <span key={index} className={CLASSIFIER_COLORS[index % CLASSIFIER_COLORS.length].text}>
+                {cls.name.length > 8 ? cls.name.substring(0, 6) + '..' : cls.name}
+              </span>
+            ))}
+            <span className="text-slate-500 dark:text-slate-400">default</span>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Default output handle when no classes configured */}
+          <Handle type="source" position={Position.Bottom} id="default" className="w-3 h-3 !bg-slate-600 dark:!bg-slate-400 border-2 border-white dark:border-slate-800" />
+        </>
+      )}
+    </div>
+  );
+};
+
 // ========== TRIGGER NODES ==========
 
 export const TriggerWebSocketNode = ({ data }) => (
