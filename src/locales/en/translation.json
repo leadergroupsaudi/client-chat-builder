@@ -337,6 +337,8 @@
       "noteInput": "Type an internal note (visible only to your team)...",
       "send": "Send",
       "saveNote": "Save Note",
+      "draftSaved": "Draft saved",
+      "draftAutoSaved": "Draft auto-saved",
       "aiSuggestions": "AI Suggested Replies",
       "videoCallMessage": "I am starting a video call. Please join.",
       "toasts": {

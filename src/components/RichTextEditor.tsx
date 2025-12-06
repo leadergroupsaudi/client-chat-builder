@@ -45,26 +45,55 @@ interface RichTextEditorProps {
   onEnterKey?: () => void;
 }
 
-// Plugin to handle clearing editor when external value is set to empty
-function ClearEditorPlugin({ value }: { value: string }) {
+// Plugin to handle syncing external value with editor (for drafts and clearing)
+function SyncValuePlugin({ value }: { value: string }) {
   const [editor] = useLexicalComposerContext();
   const prevValueRef = useRef(value);
+  const isInternalChangeRef = useRef(false);
+
+  // Track internal changes to avoid overwriting user input
+  useEffect(() => {
+    return editor.registerUpdateListener(({ tags }) => {
+      // If the update was triggered by user input, mark it
+      if (!tags.has('external')) {
+        isInternalChangeRef.current = true;
+        // Reset after a short delay
+        setTimeout(() => {
+          isInternalChangeRef.current = false;
+        }, 100);
+      }
+    });
+  }, [editor]);
 
   useEffect(() => {
-    // Only clear if value changed from non-empty to empty (after sending)
-    if (prevValueRef.current !== '' && value === '') {
-      editor.update(() => {
-        const root = $getRoot();
-        const currentContent = root.getTextContent();
-        // Only clear if there's actually content to clear
-        if (currentContent.trim() !== '') {
+    // Skip if value hasn't changed
+    if (prevValueRef.current === value) return;
+
+    const prevValue = prevValueRef.current;
+    prevValueRef.current = value;
+
+    // Skip if this was triggered by internal typing
+    if (isInternalChangeRef.current) return;
+
+    editor.update(() => {
+      const root = $getRoot();
+      const currentContent = root.getTextContent().trim();
+
+      // Case 1: Clear editor (value went from non-empty to empty)
+      if (prevValue !== '' && value === '') {
+        if (currentContent !== '') {
           root.clear();
           const paragraph = $createParagraphNode();
           root.append(paragraph);
         }
-      });
-    }
-    prevValueRef.current = value;
+      }
+      // Case 2: Load draft (value changed from empty/different to new value)
+      else if (value !== '' && currentContent !== value.trim()) {
+        root.clear();
+        // Convert markdown to Lexical nodes
+        $convertFromMarkdownString(value, TRANSFORMERS);
+      }
+    }, { tag: 'external' });
   }, [value, editor]);
 
   return null;
@@ -337,7 +366,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </div>
         <HistoryPlugin />
         <OnChangePlugin onChange={handleChange} />
-        <ClearEditorPlugin value={value} />
+        <SyncValuePlugin value={value} />
         <EnterKeyPlugin onEnter={onEnterKey} />
       </div>
     </LexicalComposer>
