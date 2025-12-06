@@ -1317,6 +1317,7 @@
           "httpRequest": "طلب HTTP",
           "output": "إخراج",
           "intentRouter": "موجه النية",
+          "questionClassifier": "مصنف الأسئلة",
           "collectEntities": "جمع الكيانات",
           "checkEntity": "فحص الكيان",
           "updateContext": "تحديث السياق",
@@ -1540,6 +1541,18 @@
           "useFallback": "استخدام الاستجابة الاحتياطية",
           "saveIntentTo": "حفظ النية في متغير:",
           "saveIntentToPlaceholder": "مثال: detected_intent",
+          "questionClassifier": "مصنف الأسئلة",
+          "questionClassifierDescription": "يصنف الأسئلة باستخدام LLM ويوجه إلى مسارات مختلفة بناءً على النتيجة.",
+          "llmModel": "نموذج LLM:",
+          "classes": "فئات التصنيف",
+          "className": "اسم الفئة (مطلوب)",
+          "classDescription": "الوصف (اختياري)",
+          "addClass": "إضافة فئة",
+          "questionVariable": "متغير السؤال:",
+          "questionVariablePlaceholder": "مثال: user_message",
+          "questionVariableHelp": "متغير السياق الذي يحتوي على سؤال المستخدم للتصنيف",
+          "saveClassificationTo": "حفظ التصنيف في:",
+          "saveClassificationToPlaceholder": "مثال: classification",
           "entityCollector": "جامع الكيانات",
           "entityCollectorDescription": "استخراج وجمع الكيانات من رسائل المستخدم.",
           "entitiesToCollect": "الكيانات المراد جمعها (مفصولة بفواصل):",
@@ -1767,7 +1780,11 @@
       "avgResponseTime": "متوسط وقت الاستجابة",
       "customerSatisfaction": "رضا العملاء",
       "activeAgents": "الوكلاء النشطون",
-      "overallErrorRate": "معدل الخطأ الإجمالي"
+      "overallErrorRate": "معدل الخطأ الإجمالي",
+      "activeConversations": "المحادثات النشطة",
+      "resolutionRate": "معدل الحل",
+      "agentAvailability": "توفر الوكلاء",
+      "unattendedConversations": "غير معالجة"
     },
     "tabs": {
       "overview": "📊 نظرة عامة",

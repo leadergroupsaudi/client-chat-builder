@@ -12,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/hooks/useI18n';
+import { TagSelector, TagDisplay } from '@/components/TagSelector';
+import axios from 'axios';
 
 interface ContactProfileProps {
   sessionId: string;
@@ -25,6 +27,7 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
   const companyId = 1; // Hardcoded company ID
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Contact>>({});
+  const [tagIds, setTagIds] = useState<number[]>([]);
   const { authFetch } = useAuth();
 
   const { data: contact, isLoading } = useQuery<Contact | null>({
@@ -47,12 +50,16 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
     retry: false, // Don't retry on failure
   });
 
-  // When contact data is fetched or changes, update the form data
+  // When contact data is fetched or changes, update the form data and tags
   useEffect(() => {
     if (contact) {
       setFormData(contact);
+      // Initialize tag IDs from contact.tags
+      const contactTagIds = contact.tags?.map((t: any) => t.id) || [];
+      setTagIds(contactTagIds);
     } else {
       setFormData({}); // Reset form if no contact
+      setTagIds([]);
     }
   }, [contact]);
 
@@ -81,6 +88,56 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
         updateContactMutation.mutate(formData);
     } else {
         toast({ title: t('conversations.contact.toasts.error'), description: t('conversations.contact.toasts.missingContactId'), variant: 'destructive' });
+    }
+  };
+
+  // Handle tag changes - assign/unassign tags via API
+  const handleTagsChange = async (newTagIds: number[]) => {
+    if (!contact?.id) return;
+
+    const previousTagIds = [...tagIds];
+    setTagIds(newTagIds); // Optimistic update
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      };
+
+      // Determine which tags to add/remove
+      const tagsToAdd = newTagIds.filter(id => !previousTagIds.includes(id));
+      const tagsToRemove = previousTagIds.filter(id => !newTagIds.includes(id));
+
+      // Add new tags
+      for (const tagId of tagsToAdd) {
+        await axios.post(`/api/v1/tags/${tagId}/assign`, {
+          contact_ids: [contact.id]
+        }, { headers });
+      }
+
+      // Remove tags
+      for (const tagId of tagsToRemove) {
+        await axios.post(`/api/v1/tags/${tagId}/unassign`, {
+          contact_ids: [contact.id]
+        }, { headers });
+      }
+
+      // Refresh contact data to get updated tags
+      queryClient.invalidateQueries({ queryKey: ['contact', sessionId] });
+      toast({
+        title: t('conversations.contact.toasts.success'),
+        description: t('crm.tags.updated'),
+        variant: 'success'
+      });
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      setTagIds(previousTagIds); // Revert on error
+      toast({
+        title: t('conversations.contact.toasts.error'),
+        description: t('crm.tags.saveError'),
+        variant: 'destructive'
+      });
     }
   };
 
@@ -234,6 +291,36 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
               <p className="text-sm font-medium mt-1 dark:text-white">{formData.phone_number || t('conversations.contact.notProvided')}</p>
             )}
           </div>
+
+          {/* Tags Field */}
+          {contact && (
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 p-3 card-shadow">
+              <Label className={`text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <Tag className="h-3 w-3" />
+                {t('crm.tags.title')}
+              </Label>
+              <div className="mt-2">
+                {isEditing ? (
+                  <TagSelector
+                    entityType="contact"
+                    selectedTagIds={tagIds}
+                    onTagsChange={handleTagsChange}
+                  />
+                ) : (
+                  tagIds.length > 0 ? (
+                    <TagSelector
+                      entityType="contact"
+                      selectedTagIds={tagIds}
+                      onTagsChange={handleTagsChange}
+                      disabled={false}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('crm.tags.noTags')}</p>
+                  )
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Activity Section */}

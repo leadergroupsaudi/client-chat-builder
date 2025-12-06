@@ -23,7 +23,7 @@ import {
   LlmNode, ToolNode, ConditionNode, OutputNode, StartNode, ListenNode, PromptNode,
   KnowledgeNode, CodeNode, DataManipulationNode, HttpRequestNode, FormNode,
   IntentRouterNode, EntityCollectorNode, CheckEntityNode, UpdateContextNode,
-  TagConversationNode, AssignToAgentNode, SetStatusNode,
+  TagConversationNode, AssignToAgentNode, SetStatusNode, QuestionClassifierNode,
   TriggerWebSocketNode, TriggerWhatsAppNode, TriggerTelegramNode, TriggerInstagramNode
 } from './CustomNodes';
 import { useAuth } from "@/hooks/useAuth";
@@ -56,7 +56,7 @@ const VisualWorkflowBuilder = () => {
     // Chat-specific nodes
     intent_router: IntentRouterNode, entity_collector: EntityCollectorNode, check_entity: CheckEntityNode,
     update_context: UpdateContextNode, tag_conversation: TagConversationNode,
-    assign_to_agent: AssignToAgentNode, set_status: SetStatusNode,
+    assign_to_agent: AssignToAgentNode, set_status: SetStatusNode, question_classifier: QuestionClassifierNode,
     // Trigger nodes
     trigger_websocket: TriggerWebSocketNode, trigger_whatsapp: TriggerWhatsAppNode,
     trigger_telegram: TriggerTelegramNode, trigger_instagram: TriggerInstagramNode

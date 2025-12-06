@@ -1178,6 +1178,112 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
           </div>
         )}
 
+        {/* Question Classifier Node */}
+        {currentNode.type === 'question_classifier' && (
+          <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 className="text-base font-semibold mb-4 text-slate-900 dark:text-slate-100">{t("workflows.editor.properties.chat.questionClassifier")}</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{t("workflows.editor.properties.chat.questionClassifierDescription")}</p>
+
+            {/* LLM Model Selection */}
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.chat.llmModel")}</label>
+              <select
+                value={currentNode.data.model || 'groq/llama-3.1-8b-instant'}
+                onChange={(e) => handleDataChange('model', e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              >
+                <option value="groq/llama-3.1-8b-instant">Groq - Llama 3.1 8B (Fast)</option>
+                <option value="groq/llama-3.3-70b-versatile">Groq - Llama 3.3 70B</option>
+                <option value="openai/gpt-4o-mini">OpenAI - GPT-4o Mini</option>
+                <option value="openai/gpt-4o">OpenAI - GPT-4o</option>
+              </select>
+            </div>
+
+            {/* Classes Configuration */}
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.chat.classes")}</label>
+              <div className="space-y-2">
+                {(currentNode.data.classes || []).map((cls, index) => (
+                  <div key={index} className="p-3 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-600">
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={cls.name || ''}
+                        onChange={(e) => {
+                          const newClasses = [...(currentNode.data.classes || [])];
+                          newClasses[index] = { ...newClasses[index], name: e.target.value };
+                          handleDataChange('classes', newClasses);
+                        }}
+                        className="flex-1 px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        placeholder={t("workflows.editor.properties.chat.className")}
+                        dir={isRTL ? 'rtl' : 'ltr'}
+                      />
+                      <button
+                        onClick={() => {
+                          const newClasses = (currentNode.data.classes || []).filter((_, i) => i !== index);
+                          handleDataChange('classes', newClasses);
+                        }}
+                        className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md text-sm font-medium"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={cls.description || ''}
+                      onChange={(e) => {
+                        const newClasses = [...(currentNode.data.classes || [])];
+                        newClasses[index] = { ...newClasses[index], description: e.target.value };
+                        handleDataChange('classes', newClasses);
+                      }}
+                      className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder={t("workflows.editor.properties.chat.classDescription")}
+                      dir={isRTL ? 'rtl' : 'ltr'}
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={() => {
+                    const newClasses = [...(currentNode.data.classes || []), { name: '', description: '' }];
+                    handleDataChange('classes', newClasses);
+                  }}
+                  className="w-full px-3 py-2 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-md text-slate-600 dark:text-slate-400 hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400 text-sm font-medium transition-colors"
+                >
+                  + {t("workflows.editor.properties.chat.addClass")}
+                </button>
+              </div>
+            </div>
+
+            {/* Question Variable */}
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.chat.questionVariable")}</label>
+              <input
+                type="text"
+                value={currentNode.data.input_variable || 'user_message'}
+                onChange={(e) => handleDataChange('input_variable', e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
+                placeholder="user_message"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t("workflows.editor.properties.chat.questionVariableHelp")}</p>
+            </div>
+
+            {/* Output Variable */}
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.chat.saveClassificationTo")}</label>
+              <input
+                type="text"
+                value={currentNode.data.output_variable || 'classification'}
+                onChange={(e) => handleDataChange('output_variable', e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
+                placeholder="classification"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Entity Collector Node */}
         {currentNode.type === 'entity_collector' && (
           <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">

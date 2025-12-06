@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChatMessage, User, Contact } from '@/types';
-import { Paperclip, Send, CornerDownRight, Book, CheckCircle, Users, Video, Bot, Mic, MessageSquare, Sparkles } from 'lucide-react';
+import { Paperclip, Send, CornerDownRight, Book, CheckCircle, Users, Video, Bot, Mic, MessageSquare, Sparkles, ArrowLeft } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,8 @@ import remarkGfm from 'remark-gfm';
 interface ConversationDetailProps {
   sessionId: string;
   agentId: number;
+  readOnly?: boolean;
+  onBack?: () => void;
 }
 
 // Utility function to format date for separator
@@ -77,7 +79,7 @@ const isDifferentDay = (date1: string | Date, date2: string | Date): boolean => 
          d1.getFullYear() !== d2.getFullYear();
 };
 
-export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionId, agentId }) => {
+export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionId, agentId, readOnly = false, onBack }) => {
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const queryClient = useQueryClient();
@@ -179,6 +181,9 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
   const messages = messagesData?.pages ? [...messagesData.pages].reverse().flat() : [];
 
   useEffect(() => {
+    // Skip WebSocket connection in read-only mode
+    if (readOnly) return;
+
     if (sessionId && agentId && token) {
       ws.current = new WebSocket(`${getWebSocketUrl()}/api/v1/ws/${agentId}/${sessionId}?user_type=agent&token=${token}`);
       ws.current.onmessage = (event) => {
@@ -228,7 +233,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
         ws.current?.close();
       };
     }
-  }, [sessionId, agentId, companyId, queryClient, token]);
+  }, [sessionId, agentId, companyId, queryClient, token, readOnly]);
 
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
@@ -528,42 +533,71 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
       <div className="flex flex-col flex-grow">
         <header className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 shadow-sm">
           {/* Top Row - Title and Quick Actions */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+          <div className={`flex items-center justify-between px-6 py-4 ${!readOnly ? 'border-b border-slate-200 dark:border-slate-700' : ''}`}>
             <div className="flex items-center gap-3">
+              {/* Back button for read-only mode */}
+              {readOnly && onBack && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
               <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
                 <MessageSquare className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold dark:text-white">{t('conversations.detail.conversation')}</h2>
+                <h2 className="text-xl font-bold dark:text-white">
+                  {readOnly ? t('conversations.detail.viewConversation', { defaultValue: 'View Conversation' }) : t('conversations.detail.conversation')}
+                </h2>
                 <p className="text-xs text-muted-foreground">{t('conversations.detail.sessionId', { id: sessionId.slice(0, 12) + '...' })}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => startCallMutation.mutate()}
-                disabled={startCallMutation.isPending}
-                className="btn-hover-lift"
-              >
-                <Video className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-                {t('conversations.detail.videoCall')}
-              </Button>
-              <Button
-                size="sm"
-                variant={conversationStatus === 'resolved' ? 'outline' : 'default'}
-                onClick={() => statusMutation.mutate('resolved')}
-                disabled={statusMutation.isPending || conversationStatus === 'resolved'}
-                className={conversationStatus === 'resolved' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-blue-600 hover:bg-blue-700 text-white btn-hover-lift'}
-              >
-                <CheckCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-                {conversationStatus === 'resolved' ? t('conversations.detail.resolved') : t('conversations.detail.resolve')}
-              </Button>
+              {/* Status Badge - always visible */}
+              <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                conversationStatus === 'resolved' ? 'bg-green-100 text-green-800' :
+                conversationStatus === 'active' ? 'bg-blue-100 text-blue-800' :
+                conversationStatus === 'assigned' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {conversationStatus.charAt(0).toUpperCase() + conversationStatus.slice(1)}
+              </div>
+
+              {/* Action buttons - hidden in read-only mode */}
+              {!readOnly && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startCallMutation.mutate()}
+                    disabled={startCallMutation.isPending}
+                    className="btn-hover-lift"
+                  >
+                    <Video className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    {t('conversations.detail.videoCall')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={conversationStatus === 'resolved' ? 'outline' : 'default'}
+                    onClick={() => statusMutation.mutate('resolved')}
+                    disabled={statusMutation.isPending || conversationStatus === 'resolved'}
+                    className={conversationStatus === 'resolved' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-blue-600 hover:bg-blue-700 text-white btn-hover-lift'}
+                  >
+                    <CheckCircle className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    {conversationStatus === 'resolved' ? t('conversations.detail.resolved') : t('conversations.detail.resolve')}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Bottom Row - Controls */}
+          {/* Bottom Row - Controls (hidden in read-only mode) */}
+          {!readOnly && (
           <div className="flex items-center gap-4 px-6 py-3">
             {/* AI Toggle */}
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 card-shadow">
@@ -620,6 +654,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
               </div>
             </div>
           </div>
+          )}
         </header>
 
         <main ref={messagesContainerRef} className="flex-grow overflow-y-auto p-6 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
@@ -755,6 +790,8 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
           )}
         </main>
 
+        {/* Footer - hidden in read-only mode */}
+        {!readOnly && (
         <footer className="border-t border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 p-5 flex-shrink-0">
           <Tabs defaultValue="reply" className="w-full">
             <TabsList className="bg-white dark:bg-slate-900 rounded-lg p-1 shadow-sm border dark:border-slate-700">
@@ -868,6 +905,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
             </TabsContent>
           </Tabs>
         </footer>
+        )}
       </div>
 
       {isCallModalOpen && (
