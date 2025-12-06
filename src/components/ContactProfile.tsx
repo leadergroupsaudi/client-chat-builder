@@ -13,6 +13,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/hooks/useI18n';
 import { TagSelector, TagDisplay } from '@/components/TagSelector';
+import { EntityNotes } from '@/components/EntityNotes';
 import axios from 'axios';
 
 interface ContactProfileProps {
@@ -346,6 +347,11 @@ export const ContactProfile: React.FC<ContactProfileProps> = ({ sessionId }) => 
             )}
           </div>
         </div>
+
+        {/* Notes Section */}
+        {contact?.id && (
+          <EntityNotes contactId={contact.id} compact />
+        )}
 
         {/* Cancel Button when Editing */}
         {isEditing && (

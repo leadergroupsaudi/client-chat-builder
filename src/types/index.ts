@@ -242,3 +242,59 @@ export interface WidgetSettings {
   typing_indicator_enabled: boolean;
   response_delay_ms: number;
 }
+
+// Entity Notes types
+export type NoteType = 'note' | 'call' | 'meeting' | 'email' | 'task';
+
+export interface EntityNote {
+  id: number;
+  company_id: number;
+  contact_id?: number;
+  lead_id?: number;
+  note_type: NoteType;
+  title?: string;
+  content: string;
+  activity_date?: string;
+  duration_minutes?: number;
+  participants?: string[];
+  outcome?: string;
+  created_by: number;
+  creator_email?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntityNoteCreate {
+  contact_id?: number;
+  lead_id?: number;
+  note_type: NoteType;
+  title?: string;
+  content: string;
+  activity_date?: string;
+  duration_minutes?: number;
+  participants?: string[];
+  outcome?: string;
+}
+
+export interface EntityNoteUpdate {
+  note_type?: NoteType;
+  title?: string;
+  content?: string;
+  activity_date?: string;
+  duration_minutes?: number;
+  participants?: string[];
+  outcome?: string;
+}
+
+export interface EntityNoteList {
+  notes: EntityNote[];
+  total: number;
+}
+
+export const NOTE_TYPE_CONFIG: Record<NoteType, { label: string; icon: string; color: string; bgColor: string }> = {
+  note: { label: 'Note', icon: 'FileText', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  call: { label: 'Call', icon: 'Phone', color: 'text-green-600', bgColor: 'bg-green-100' },
+  meeting: { label: 'Meeting', icon: 'Calendar', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  email: { label: 'Email', icon: 'Mail', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  task: { label: 'Task', icon: 'CheckSquare', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+};

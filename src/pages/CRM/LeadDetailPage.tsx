@@ -57,6 +57,7 @@ import {
 import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
 import { TagSelector } from '@/components/TagSelector';
+import { EntityNotes } from '@/components/EntityNotes';
 
 interface Lead {
   id: number;
@@ -638,9 +639,13 @@ export default function LeadDetailPage() {
             </TabsContent>
 
             <TabsContent value="activity" className="space-y-4 mt-4">
+              {/* Notes & Activities */}
+              <EntityNotes leadId={lead.id} />
+
+              {/* Timeline Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Activity Timeline</CardTitle>
+                  <CardTitle>Timeline</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
