@@ -270,6 +270,16 @@
       "pending": "pending",
       "bot": "bot"
     },
+    "priority": {
+      "label": "Priority",
+      "none": "None",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent",
+      "updated": "Priority updated",
+      "updatedDesc": "Conversation priority has been updated"
+    },
     "card": {
       "unknownContact": "Unknown Contact",
       "assignedTo": "Assigned to {{email}}",

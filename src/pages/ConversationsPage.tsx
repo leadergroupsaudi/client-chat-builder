@@ -9,9 +9,9 @@ import { ConversationDetail } from '@/components/ConversationDetail';
 import { ContactProfile } from '@/components/ContactProfile';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { toast } from '@/hooks/use-toast';
-import { Session, User } from '@/types';
+import { Session, User, PRIORITY_CONFIG } from '@/types';
 import { useAuth } from "@/hooks/useAuth";
-import { MessageSquare, Phone, Globe, Instagram, Mail, Send, Search, Filter, Archive, PanelLeftClose, PanelRightOpen } from 'lucide-react'; // Icons for channels
+import { MessageSquare, Phone, Globe, Instagram, Mail, Send, Search, Filter, Archive, PanelLeftClose, PanelRightOpen, AlertTriangle, ArrowUp, Minus, ArrowDown } from 'lucide-react'; // Icons for channels
 import { getWebSocketUrl } from '@/config/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -416,6 +416,32 @@ const ConversationsPage: React.FC = () => {
     }
   };
 
+  const getPriorityIcon = (priority: number) => {
+    switch (priority) {
+      case 4: return <AlertTriangle className="h-3 w-3" />;
+      case 3: return <ArrowUp className="h-3 w-3" />;
+      case 2: return <Minus className="h-3 w-3" />;
+      case 1: return <ArrowDown className="h-3 w-3" />;
+      default: return null;
+    }
+  };
+
+  const PriorityBadge = ({ priority }: { priority: number }) => {
+    if (priority === 0) return null;
+    const config = PRIORITY_CONFIG[priority];
+    return (
+      <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${config.bgColor} ${config.color}`}>
+        {getPriorityIcon(priority)}
+        <span>{t(`conversations.priority.${config.label.toLowerCase()}`)}</span>
+      </span>
+    );
+  };
+
+  const getPriorityBorderColor = (priority?: number) => {
+    if (!priority || priority === 0) return '';
+    return PRIORITY_CONFIG[priority]?.borderColor || '';
+  };
+
   if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -427,22 +453,28 @@ const ConversationsPage: React.FC = () => {
     );
   }
 
-  // Filter sessions by search query only (tab filtering is done server-side)
+  // Filter sessions by search query and sort by priority (tab filtering is done server-side)
   const filteredSessions = useMemo(() => {
     if (!sessions) return [];
+
+    let result = sessions;
 
     // Filter by search query (client-side for instant feedback)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      return sessions.filter(session =>
+      result = sessions.filter(session =>
         session.contact_name?.toLowerCase().includes(query) ||
         session.contact_phone?.toLowerCase().includes(query) ||
         session.first_message_content?.toLowerCase().includes(query)
       );
     }
 
-    // Sessions are already sorted by the backend
-    return sessions;
+    // Sort by priority (high to low), then by timestamp (recent first)
+    return [...result].sort((a, b) => {
+      const priorityDiff = (b.priority || 0) - (a.priority || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      return new Date(b.last_message_timestamp).getTime() - new Date(a.last_message_timestamp).getTime();
+    });
   }, [sessions, searchQuery]);
 
   // Check if conversation is assigned to current user
@@ -458,6 +490,8 @@ const ConversationsPage: React.FC = () => {
     const isDisconnected = assignedToMe && !session.is_client_connected;
     const isRecentlyReopened = reopenedSessions.has(session.conversation_id);
     const hasBeenReopened = (session.reopen_count ?? 0) > 0;
+    const hasPriority = (session.priority || 0) > 0;
+    const priorityBorder = getPriorityBorderColor(session.priority);
 
     return (
       <button
@@ -468,6 +502,8 @@ const ConversationsPage: React.FC = () => {
             ? 'bg-blue-100 dark:bg-blue-900 border-l-blue-600 shadow-md'
             : assignedToMe
             ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 border-l-amber-500 hover:shadow-md ring-2 ring-amber-200 dark:ring-amber-800'
+            : hasPriority && !assignedToMe
+            ? `${getStatusColor(session.status)} ${priorityBorder} hover:shadow-sm`
             : `${getStatusColor(session.status)} hover:shadow-sm`
           }
           ${session.status === 'resolved' ? 'hover:opacity-100' : ''}
@@ -524,6 +560,9 @@ const ConversationsPage: React.FC = () => {
               >
                 {assignedToMe ? t('conversations.status.mine') : session.status}
               </Badge>
+              {hasPriority && (
+                <PriorityBadge priority={session.priority || 0} />
+              )}
               {hasBeenReopened && (
                 <Badge className={`${isRTL ? 'mr-1' : 'ml-1'} flex-shrink-0 text-xs reopened-badge border-0`}>
                   🔄 {session.reopen_count}

@@ -13,7 +13,27 @@ export interface Session {
   session_id?: string;
   first_message_content?: string;
   contact_identifier?: string;
+  priority?: number; // 0=None, 1=Low, 2=Medium, 3=High, 4=Urgent
 }
+
+// Priority level constants
+export const PRIORITY_LEVELS = {
+  NONE: 0,
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  URGENT: 4,
+} as const;
+
+export type PriorityLevel = typeof PRIORITY_LEVELS[keyof typeof PRIORITY_LEVELS];
+
+export const PRIORITY_CONFIG: Record<number, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  0: { label: 'None', color: 'text-gray-500', bgColor: 'bg-gray-100', borderColor: 'border-l-gray-300' },
+  1: { label: 'Low', color: 'text-blue-600', bgColor: 'bg-blue-100', borderColor: 'border-l-blue-500' },
+  2: { label: 'Medium', color: 'text-yellow-600', bgColor: 'bg-yellow-100', borderColor: 'border-l-yellow-500' },
+  3: { label: 'High', color: 'text-orange-600', bgColor: 'bg-orange-100', borderColor: 'border-l-orange-500' },
+  4: { label: 'Urgent', color: 'text-red-600', bgColor: 'bg-red-100', borderColor: 'border-l-red-500' },
+};
 
 export interface Agent {
   id: number;

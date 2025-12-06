@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChatMessage, User, Contact } from '@/types';
-import { Paperclip, Send, CornerDownRight, Book, CheckCircle, Users, Video, Bot, Mic, MessageSquare, Sparkles, ArrowLeft } from 'lucide-react';
+import { ChatMessage, User, Contact, PRIORITY_CONFIG } from '@/types';
+import { Paperclip, Send, CornerDownRight, Book, CheckCircle, Users, Video, Bot, Mic, MessageSquare, Sparkles, ArrowLeft, AlertTriangle, ArrowUp, Minus, ArrowDown, Flag } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -395,6 +395,36 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
     onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
   });
 
+  const priorityMutation = useMutation({
+    mutationFn: (newPriority: number) => authFetch(`/api/v1/conversations/${sessionId}/priority`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json'},
+      body: JSON.stringify({ priority: newPriority }),
+    }).then(res => { if (!res.ok) throw new Error('Failed to update priority'); return res.json(); }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions', agentId] });
+      queryClient.invalidateQueries({ queryKey: ['sessions', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['sessionDetails', sessionId] });
+      toast({
+        title: t('conversations.priority.updated', { defaultValue: 'Priority updated' }),
+        description: t('conversations.priority.updatedDesc', { defaultValue: 'Conversation priority has been updated' }),
+        variant: 'success'
+      });
+      playSuccessSound();
+    },
+    onError: (e: Error) => toast({ title: t('conversations.detail.toasts.error'), description: e.message, variant: 'destructive' }),
+  });
+
+  const getPriorityIcon = (priority: number) => {
+    switch (priority) {
+      case 4: return <AlertTriangle className="h-3 w-3" />;
+      case 3: return <ArrowUp className="h-3 w-3" />;
+      case 2: return <Minus className="h-3 w-3" />;
+      case 1: return <ArrowDown className="h-3 w-3" />;
+      default: return <Flag className="h-3 w-3" />;
+    }
+  };
+
   const handlePostNote = () => {
     if (note.trim()) sendMessageMutation.mutate({ message: note.trim(), message_type: 'note', sender: 'agent' });
   };
@@ -527,6 +557,7 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
 
   const contact: Contact | undefined = sessionDetails?.contact;
   const conversationStatus = sessionDetails?.status || 'bot';
+  const conversationPriority = sessionDetails?.priority ?? 0;
 
   return (
     <div className="flex h-full bg-white dark:bg-slate-800 card-shadow-lg rounded-lg overflow-hidden">
@@ -638,6 +669,35 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
                       </div>
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Priority Selector */}
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 card-shadow">
+              <Flag className={`h-4 w-4 ${conversationPriority > 0 ? PRIORITY_CONFIG[conversationPriority]?.color : 'text-muted-foreground'}`} />
+              <Select
+                key={`priority-${sessionId}`}
+                value={conversationPriority.toString()}
+                onValueChange={(value) => priorityMutation.mutate(parseInt(value))}
+              >
+                <SelectTrigger className="border-0 h-auto p-0 focus:ring-0 w-[120px]">
+                  <SelectValue placeholder={t('conversations.priority.label', { defaultValue: 'Priority' })} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, 1, 2, 3, 4].map((priority) => {
+                    const config = PRIORITY_CONFIG[priority];
+                    return (
+                      <SelectItem key={priority} value={priority.toString()}>
+                        <div className="flex items-center gap-2">
+                          <span className={config.color}>{getPriorityIcon(priority)}</span>
+                          <span className={`text-sm ${config.color}`}>
+                            {t(`conversations.priority.${config.label.toLowerCase()}`, { defaultValue: config.label })}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
