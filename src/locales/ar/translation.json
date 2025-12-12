@@ -1312,6 +1312,9 @@
         "resourceLoadFailed": "فشل تحميل الموارد."
       },
       "sidebar": {
+        "title": "العقد",
+        "expand": "توسيع الشريط الجانبي",
+        "collapse": "طي الشريط الجانبي",
         "triggers": "المشغلات",
         "coreNodes": "العقد الأساسية",
         "chatConversation": "الدردشة والمحادثة",

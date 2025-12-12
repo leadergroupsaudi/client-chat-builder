@@ -1336,6 +1336,9 @@
         "resourceLoadFailed": "Failed to load resources."
       },
       "sidebar": {
+        "title": "Nodes",
+        "expand": "Expand sidebar",
+        "collapse": "Collapse sidebar",
         "triggers": "Triggers",
         "coreNodes": "Core Nodes",
         "chatConversation": "Chat & Conversation",
