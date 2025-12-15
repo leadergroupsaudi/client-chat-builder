@@ -191,6 +191,35 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
     handleParamsChange('fields', newFields);
   };
 
+  // Prompt node option helpers (key-value pairs)
+  const getOptionsArray = (): Array<{key: string; value: string}> => {
+    const options = currentNode?.data?.params?.options;
+    if (!options) return [];
+    if (Array.isArray(options)) return options;
+    // Convert legacy comma-separated string to key-value array
+    if (typeof options === 'string') {
+      return options.split(',').filter(opt => opt.trim()).map(opt => ({ key: opt.trim(), value: opt.trim() }));
+    }
+    return [];
+  };
+
+  const handleOptionChange = (index: number, field: 'key' | 'value', value: string) => {
+    const newOptions = [...getOptionsArray()];
+    newOptions[index] = { ...newOptions[index], [field]: value };
+    handleParamsChange('options', newOptions);
+  };
+
+  const handleAddOption = () => {
+    const newOptions = [...getOptionsArray(), { key: '', value: '' }];
+    handleParamsChange('options', newOptions);
+  };
+
+  const handleRemoveOption = (index: number) => {
+    const newOptions = [...getOptionsArray()];
+    newOptions.splice(index, 1);
+    handleParamsChange('options', newOptions);
+  };
+
   const onToolChange = (toolName) => {
     const tool = tools.find(t => t.name === toolName);
     setNodes(nds => nds.map(n => {
@@ -853,20 +882,104 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
                 {t("workflows.editor.properties.saveResponseHelp")} <code className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-xs">{`{{context.${(currentNode.data.params?.save_to_variable) || 'variable_name'}}}`}</code>
               </p>
             </div>
+            {/* Options Mode Selector */}
             <div className="mb-4">
-              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.optionsCommaSeparated")}</label>
-              <input
-                type="text"
-                value={(currentNode.data.params?.options) || ''}
-                onChange={(e) => handleParamsChange('options', e.target.value)}
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">
+                {t("workflows.editor.properties.optionsInputMode")}
+              </label>
+              <select
+                value={(currentNode.data.params?.options_mode) || 'manual'}
+                onChange={(e) => handleParamsChange('options_mode', e.target.value)}
                 className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                placeholder={t("workflows.editor.properties.optionsPlaceholder")}
                 dir={isRTL ? 'rtl' : 'ltr'}
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                {t("workflows.editor.properties.optionsHelp")}
-              </p>
+              >
+                <option value="manual">{t("workflows.editor.properties.optionsModeManual")}</option>
+                <option value="variable">{t("workflows.editor.properties.optionsModeVariable")}</option>
+              </select>
             </div>
+
+            {/* Manual Mode: Dynamic Key-Value Rows */}
+            {(currentNode.data.params?.options_mode || 'manual') === 'manual' && (
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">
+                  {t("workflows.editor.properties.optionsKeyValue")}
+                </label>
+                {getOptionsArray().map((option: {key: string; value: string}, index: number) => (
+                  <div key={index} className="border border-slate-300 dark:border-slate-600 rounded-md p-3 mb-3 bg-white dark:bg-slate-900">
+                    {/* Header with Option # and Remove button */}
+                    <div className="flex justify-between items-center mb-3">
+                      <strong className="text-sm text-slate-900 dark:text-slate-100">
+                        {t("workflows.editor.properties.optionNumber", { number: index + 1 })}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(index)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-transparent border-none cursor-pointer text-sm"
+                      >
+                        {t("workflows.editor.properties.removeOption")}
+                      </button>
+                    </div>
+                    {/* Key input with label */}
+                    <div className="mb-2">
+                      <label className="block mb-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {t("workflows.editor.properties.optionKeyLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        value={option.key || ''}
+                        onChange={(e) => handleOptionChange(index, 'key', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                        placeholder={t("workflows.editor.properties.optionKeyPlaceholder")}
+                        dir={isRTL ? 'rtl' : 'ltr'}
+                      />
+                    </div>
+                    {/* Value input with label */}
+                    <div>
+                      <label className="block mb-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {t("workflows.editor.properties.optionValueLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        value={option.value || ''}
+                        onChange={(e) => handleOptionChange(index, 'value', e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                        placeholder={t("workflows.editor.properties.optionValuePlaceholder")}
+                        dir={isRTL ? 'rtl' : 'ltr'}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleAddOption()}
+                  className="w-full py-2 bg-blue-50 dark:bg-blue-950/30 border border-dashed border-blue-300 dark:border-blue-700 rounded cursor-pointer text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/50 transition-colors text-sm font-medium"
+                >
+                  {t("workflows.editor.properties.addOption")}
+                </button>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  {t("workflows.editor.properties.optionsKeyValueHelp")}
+                </p>
+              </div>
+            )}
+
+            {/* Variable Mode: Variable Reference Input */}
+            {currentNode.data.params?.options_mode === 'variable' && (
+              <div className="mb-4">
+                <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">
+                  {t("workflows.editor.properties.optionsVariable")}
+                </label>
+                <VariableInput
+                  value={(currentNode.data.params?.options_variable) || ''}
+                  onChange={(e) => handleParamsChange('options_variable', e.target.value)}
+                  placeholder={t("workflows.editor.properties.optionsVariablePlaceholder")}
+                  availableVars={availableVariables}
+                  isRTL={isRTL}
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  {t("workflows.editor.properties.optionsVariableHelp")}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

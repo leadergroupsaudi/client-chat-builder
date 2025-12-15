@@ -215,17 +215,31 @@ export const WidgetUI = ({
                   </div>
                   {msg.options && msg.options.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {msg.options.map((option, index) => (
-                        <Button
-                          key={index}
-                          onClick={() => onSendMessage(option)}
-                          variant="outline"
-                          size="sm"
-                          className={cn('rounded-full', dark_mode ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' : 'bg-gray-100 hover:bg-gray-200 border-gray-300')}
-                        >
-                          {option}
-                        </Button>
-                      ))}
+                      {msg.options.map((option, index) => {
+                        // Safely extract display text and key - always ensure string output
+                        let displayText: string;
+                        let keyValue: string;
+
+                        if (option && typeof option === 'object' && 'key' in option && 'value' in option) {
+                          displayText = String((option as {key: string; value: string}).value || (option as {key: string; value: string}).key || '');
+                          keyValue = String((option as {key: string; value: string}).key || '');
+                        } else {
+                          displayText = String(option || '');
+                          keyValue = String(option || '');
+                        }
+
+                        return (
+                          <Button
+                            key={index}
+                            onClick={() => onSendMessage(keyValue)}
+                            variant="outline"
+                            size="sm"
+                            className={cn('rounded-full', dark_mode ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' : 'bg-gray-100 hover:bg-gray-200 border-gray-300')}
+                          >
+                            {displayText}
+                          </Button>
+                        );
+                      })}
                     </div>
                   )}
                   {msg.type === 'video_call_invitation' && (<Button onClick={() => window.open(msg.videoCallUrl, '_blank', 'width=800,height=600')} className="mt-2 w-full" style={{background: primary_color, color: 'white'}}>Join Video Call</Button>)}
