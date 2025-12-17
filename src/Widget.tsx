@@ -216,6 +216,9 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
+  // Expected input type constraint from workflow Listen node
+  const [expectedInputType, setExpectedInputType] = useState<'any' | 'text' | 'attachment' | 'location'>('any');
+
   const audioPlaybackTimer = useRef<NodeJS.Timeout | null>(null);
   const incomingAudioChunks = useRef<Blob[]>([]);
   const audioQueue = useRef<Blob[]>([]); // Queue of complete audio blobs to play
@@ -354,6 +357,13 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         return;
       }
 
+      // Handle input constraint from workflow Listen node
+      if (data.message_type === 'input_constraint') {
+        setExpectedInputType(data.expected_input_type || 'any');
+        console.log('[Widget] Input constraint received:', data.expected_input_type);
+        return;
+      }
+
       if (data.message_type === 'tool_use') {
         setIsUsingTool(true);
         return;
@@ -453,6 +463,11 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
       // Increment unread count if minimized and message is from agent/system
       if (isMinimized && (data.sender === 'agent' || data.sender === 'system')) {
         setUnreadCount(prev => prev + 1);
+      }
+
+      // Reset input constraint when workflow continues (agent sends regular message)
+      if (data.sender === 'agent' && data.message_type !== 'input_constraint') {
+        setExpectedInputType('any');
       }
 
       setMessages(prev => {
@@ -996,6 +1011,22 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   const handleSendMessage = async (text: string, payload?: any) => {
     const messageText = text.trim();
     if (!messageText && !payload && !selectedFile && !selectedLocation) return;
+
+    // Validate input type constraint
+    if (expectedInputType !== 'any') {
+      if (expectedInputType === 'attachment' && !selectedFile) {
+        console.log('[Widget] Validation failed: Attachment expected');
+        return;
+      }
+      if (expectedInputType === 'location' && !selectedLocation) {
+        console.log('[Widget] Validation failed: Location expected');
+        return;
+      }
+      if (expectedInputType === 'text' && (selectedFile || selectedLocation)) {
+        console.log('[Widget] Validation failed: Text only expected');
+        return;
+      }
+    }
 
     // Build attachments array
     let attachments: Attachment[] = [];
@@ -1720,9 +1751,17 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyPress={e => e.key === 'Enter' && handleSendMessage(inputValue)}
-                    placeholder={input_placeholder}
+                    disabled={expectedInputType === 'attachment' || expectedInputType === 'location'}
+                    placeholder={
+                      expectedInputType === 'attachment' ? 'Please attach an image' :
+                      expectedInputType === 'location' ? 'Please share your location' :
+                      input_placeholder
+                    }
                     className={cn(
                       'flex-grow bg-transparent outline-none text-sm min-w-0',
+                      (expectedInputType === 'attachment' || expectedInputType === 'location')
+                        ? 'opacity-50 cursor-not-allowed'
+                        : '',
                       dark_mode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400'
                     )}
                   />
@@ -1739,22 +1778,29 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
                     <>
                       <button
                         onClick={() => fileInputRef.current?.click()}
+                        disabled={expectedInputType !== 'any' && expectedInputType !== 'attachment'}
                         className={cn(
                           'p-1.5 rounded-full transition-colors',
-                          dark_mode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
+                          (expectedInputType !== 'any' && expectedInputType !== 'attachment')
+                            ? 'opacity-40 cursor-not-allowed text-gray-400'
+                            : (dark_mode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500')
                         )}
-                        title="Attach image"
+                        title={expectedInputType === 'text' ? 'Text input expected' :
+                               expectedInputType === 'location' ? 'Location input expected' : 'Attach image'}
                       >
                         <ImagePlus size={20} />
                       </button>
                       <button
                         onClick={handleLocationClick}
-                        disabled={isGettingLocation}
+                        disabled={isGettingLocation || (expectedInputType !== 'any' && expectedInputType !== 'location')}
                         className={cn(
                           'p-1.5 rounded-full transition-colors',
-                          dark_mode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
+                          (expectedInputType !== 'any' && expectedInputType !== 'location')
+                            ? 'opacity-40 cursor-not-allowed text-gray-400'
+                            : (dark_mode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500')
                         )}
-                        title="Share location"
+                        title={expectedInputType === 'text' ? 'Text input expected' :
+                               expectedInputType === 'attachment' ? 'Image input expected' : 'Share location'}
                       >
                         {isGettingLocation ? <Loader2 className="animate-spin" size={20} /> : <MapPin size={20} />}
                       </button>
