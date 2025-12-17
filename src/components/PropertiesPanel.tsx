@@ -815,6 +815,25 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
                 dir={isRTL ? 'rtl' : 'ltr'}
               />
             </div>
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">
+                {t("workflows.editor.properties.expectedInputType") || "Expected Input Type"}
+              </label>
+              <select
+                value={(currentNode.data.params?.expected_input_type) || 'any'}
+                onChange={(e) => handleParamsChange('expected_input_type', e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              >
+                <option value="any">{t("workflows.editor.properties.inputTypeAny") || "Any (Text, Image, or Location)"}</option>
+                <option value="text">{t("workflows.editor.properties.inputTypeText") || "Text Only"}</option>
+                <option value="attachment">{t("workflows.editor.properties.inputTypeAttachment") || "Image/Attachment Only"}</option>
+                <option value="location">{t("workflows.editor.properties.inputTypeLocation") || "Location Only"}</option>
+              </select>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                {t("workflows.editor.properties.expectedInputTypeHelp") || "Widget will disable unavailable input options based on this setting."}
+              </p>
+            </div>
             {/* Data Format Hint */}
             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
               <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-2">{t("workflows.editor.properties.listenDataFormatTitle")}</p>
