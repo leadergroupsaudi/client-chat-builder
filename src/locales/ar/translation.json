@@ -1428,6 +1428,8 @@
         "addReturnVariable": "إضافة متغير إرجاع",
         "pythonCode": "كود Python:",
         "pythonCodePlaceholder": "# المعاملات متاحة مباشرة\n# مثال: إذا أضفت 'data' كمعامل:\nresult = data['field'] * 2",
+        "expandCodeEditor": "توسيع المحرر",
+        "codeEditorModalTitle": "محرر كود Python",
         "codePlaceholder": "مثال: print('Hello, World!') result = context.user_input * 2",
         "listenForInput": "الاستماع للمدخلات",
         "saveUserInput": "حفظ مدخلات المستخدم في متغير:",

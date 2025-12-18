@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
+import { Maximize2 } from 'lucide-react';
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from '@/hooks/useI18n';
+import { CodeEditorModal } from './CodeEditorModal';
 
 const VariableInput = ({ value, onChange, placeholder, availableVars, isRTL }) => {
   const { t } = useI18n();
@@ -66,6 +68,7 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
   const [tools, setTools] = useState([]);
   const [knowledgeBases, setKnowledgeBases] = useState([]);
   const [agents, setAgents] = useState([]);
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const { authFetch } = useAuth();
 
   // Inline styles for compatibility
@@ -788,7 +791,16 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
 
             {/* Python Code Section */}
             <div className="mb-4">
-              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.pythonCode")}</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="font-medium text-sm text-slate-700 dark:text-slate-300">{t("workflows.editor.properties.pythonCode")}</label>
+                <button
+                  onClick={() => setIsCodeModalOpen(true)}
+                  title={t("workflows.editor.properties.expandCodeEditor", { defaultValue: "Expand Editor" })}
+                  className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                >
+                  <Maximize2 size={16} />
+                </button>
+              </div>
               <textarea
                 value={currentNode.data.code || ''}
                 onChange={(e) => handleDataChange('code', e.target.value)}
@@ -798,6 +810,14 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
                 dir="ltr"
               />
             </div>
+
+            {/* Code Editor Modal */}
+            <CodeEditorModal
+              isOpen={isCodeModalOpen}
+              onClose={() => setIsCodeModalOpen(false)}
+              value={currentNode.data.code || ''}
+              onChange={(code) => handleDataChange('code', code)}
+            />
           </div>
         )}
 

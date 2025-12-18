@@ -1453,6 +1453,8 @@
         "addReturnVariable": "Add Return Variable",
         "pythonCode": "Python Code:",
         "pythonCodePlaceholder": "# Your arguments are available directly\n# e.g., if you added 'data' as argument:\nresult = data['field'] * 2",
+        "expandCodeEditor": "Expand Editor",
+        "codeEditorModalTitle": "Python Code Editor",
         "codePlaceholder": "e.g., print('Hello, World!') result = context.user_input * 2",
         "listenForInput": "Listen for Input",
         "saveUserInput": "Save User Input to Variable:",
