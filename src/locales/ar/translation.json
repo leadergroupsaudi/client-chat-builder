@@ -1881,6 +1881,44 @@
       "qnaError": "فشل إنشاء الأسئلة والأجوبة"
     }
   },
+  "workflowTemplates": {
+    "title": "قوالب سير العمل",
+    "newFromTemplate": "من قالب",
+    "saveAsTemplate": "حفظ كقالب",
+    "selectTemplate": "اختر قالبًا",
+    "searchPlaceholder": "البحث في القوالب...",
+    "categories": {
+      "all": "جميع القوالب",
+      "custom": "قوالبي"
+    },
+    "systemTemplates": "قوالب النظام",
+    "workflowName": "اسم سير العمل",
+    "workflowNamePlaceholder": "أدخل اسمًا لسير العمل",
+    "useTemplate": "استخدام القالب",
+    "startFromScratch": "البدء من الصفر",
+    "noTemplatesFound": "لم يتم العثور على قوالب",
+    "usedTimes": "استُخدم {{count}} مرة",
+    "systemTemplate": "قالب النظام",
+    "companyTemplate": "قالبي",
+    "toasts": {
+      "templateSaved": "تم حفظ سير العمل كقالب بنجاح!",
+      "workflowCreated": "تم إنشاء سير العمل من القالب بنجاح!"
+    },
+    "saveModal": {
+      "title": "حفظ كقالب",
+      "nameLabel": "اسم القالب",
+      "namePlaceholder": "أدخل اسم القالب",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "صف ما يفعله هذا القالب...",
+      "categoryLabel": "الفئة",
+      "categoryPlaceholder": "اختر فئة",
+      "customCategory": "فئة مخصصة",
+      "customCategoryLabel": "اسم الفئة المخصصة",
+      "customCategoryPlaceholder": "أدخل اسم الفئة المخصصة",
+      "info": "سيتم حفظ هذا القالب وسيكون متاحًا لإنشاء سير عمل جديدة في شركتك.",
+      "saveButton": "حفظ القالب"
+    }
+  },
   "reports": {
     "title": "التحليلات والتقارير",
     "subtitle": "تتبع الأداء والرؤى عبر جميع وكلائك",

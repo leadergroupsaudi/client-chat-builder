@@ -11,7 +11,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Copy, PlusCircle, Trash2, WorkflowIcon, Sparkles, Upload, Download } from 'lucide-react';
+import { Edit, Copy, PlusCircle, Trash2, WorkflowIcon, Sparkles, Upload, Download, LayoutTemplate } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,11 +31,13 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import CreateWorkflowDialog from '@/components/CreateWorkflowDialog'; // Assuming this component exists
+import WorkflowTemplateModal from '@/components/WorkflowTemplateModal';
 
 const WorkflowManagementPage = () => {
   const { t, isRTL } = useI18n();
   const [workflows, setWorkflows] = useState([]);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isTemplateModalOpen, setTemplateModalOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importData, setImportData] = useState<any>(null);
@@ -228,6 +230,10 @@ const WorkflowManagementPage = () => {
         onClose={() => setCreateDialogOpen(false)}
         onSubmit={handleCreateWorkflow}
       />
+      <WorkflowTemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+      />
       <div className={`container mx-auto p-6 max-w-7xl text-left`}>
         {/* Enhanced Header */}
         <div className="mb-8">
@@ -250,6 +256,17 @@ const WorkflowManagementPage = () => {
                 >
                   <Upload className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                   {t("workflows.importWorkflow") || "Import"}
+                </Button>
+              </Permission>
+              <Permission permission="workflow:create">
+                <Button
+                  onClick={() => setTemplateModalOpen(true)}
+                  size="lg"
+                  variant="outline"
+                  className={`border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}
+                >
+                  <LayoutTemplate className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                  {t("workflowTemplates.newFromTemplate") || "From Template"}
                 </Button>
               </Permission>
               <Permission permission="workflow:create">

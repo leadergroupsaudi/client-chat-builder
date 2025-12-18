@@ -12,13 +12,14 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
-import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings } from 'lucide-react';
+import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings, LayoutTemplate } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
 import { WorkflowDetailsDialog } from './WorkflowDetailsDialog';
 import { WorkflowSettings } from './WorkflowSettings';
+import SaveAsTemplateModal from './SaveAsTemplateModal';
 import {
   LlmNode, ToolNode, ConditionNode, OutputNode, StartNode, ListenNode, PromptNode,
   KnowledgeNode, CodeNode, DataManipulationNode, HttpRequestNode, FormNode,
@@ -44,6 +45,7 @@ const VisualWorkflowBuilder = () => {
   const [workflow, setWorkflow] = useState(null);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isSaveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
 
   const { workflowId } = useParams();
   const navigate = useNavigate();
@@ -293,6 +295,14 @@ const VisualWorkflowBuilder = () => {
         onOpenChange={setShowSettings}
         workflowId={workflow?.id}
       />
+      {workflow?.id && (
+        <SaveAsTemplateModal
+          isOpen={isSaveAsTemplateOpen}
+          onClose={() => setSaveAsTemplateOpen(false)}
+          workflowId={workflow.id}
+          workflowName={workflow.name || ''}
+        />
+      )}
       <div className="dndflow h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
         {/* Enhanced Toolbar */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -329,6 +339,17 @@ const VisualWorkflowBuilder = () => {
                 <Settings className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 {t("workflows.editor.settingsButton")}
               </Button>
+              {workflow?.id && (
+                <Button
+                  onClick={() => setSaveAsTemplateOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 btn-hover-lift"
+                >
+                  <LayoutTemplate className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                  {t("workflowTemplates.saveAsTemplate")}
+                </Button>
+              )}
               <Button
                 onClick={() => saveWorkflow()}
                 size="sm"

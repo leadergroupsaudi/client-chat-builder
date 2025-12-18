@@ -1906,6 +1906,44 @@
       "qnaError": "Failed to generate Q&A"
     }
   },
+  "workflowTemplates": {
+    "title": "Workflow Templates",
+    "newFromTemplate": "From Template",
+    "saveAsTemplate": "Save as Template",
+    "selectTemplate": "Select a Template",
+    "searchPlaceholder": "Search templates...",
+    "categories": {
+      "all": "All Templates",
+      "custom": "My Templates"
+    },
+    "systemTemplates": "System Templates",
+    "workflowName": "Workflow Name",
+    "workflowNamePlaceholder": "Enter a name for your workflow",
+    "useTemplate": "Use Template",
+    "startFromScratch": "Start from Scratch",
+    "noTemplatesFound": "No templates found",
+    "usedTimes": "Used {{count}} times",
+    "systemTemplate": "System Template",
+    "companyTemplate": "My Template",
+    "toasts": {
+      "templateSaved": "Workflow saved as template successfully!",
+      "workflowCreated": "Workflow created from template successfully!"
+    },
+    "saveModal": {
+      "title": "Save as Template",
+      "nameLabel": "Template Name",
+      "namePlaceholder": "Enter template name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Describe what this template does...",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Select a category",
+      "customCategory": "Custom Category",
+      "customCategoryLabel": "Custom Category Name",
+      "customCategoryPlaceholder": "Enter custom category name",
+      "info": "This template will be saved and available for creating new workflows in your company.",
+      "saveButton": "Save Template"
+    }
+  },
   "reports": {
     "title": "Analytics & Reports",
     "subtitle": "Track performance and insights across all your agents",
