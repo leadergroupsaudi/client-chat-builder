@@ -4,18 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Permission } from "@/components/Permission";
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
-  Shield, 
+import { InviteUserModal } from "@/components/InviteUserModal";
+import {
+  Users,
+  UserPlus,
+  Search,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Shield,
   Mail,
   Plus,
   Badge,
-  Check
+  Check,
+  Send
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,6 +61,7 @@ export const TeamManagement = () => {
   const [isRoleModalOpen, setRoleModalOpen] = useState(false);
   const [isEditTeamModalOpen, setEditTeamModalOpen] = useState(false);
   const [isEditUserModalOpen, setEditUserModalOpen] = useState(false);
+  const [isInviteUserModalOpen, setInviteUserModalOpen] = useState(false);
 
   const [selectedTeamForMember, setSelectedTeamForMember] = useState<Team | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -525,13 +528,21 @@ export const TeamManagement = () => {
                   />
                 </div>
                 <Permission permission="user:create">
-                  <Dialog open={isAddUserModalOpen} onOpenChange={setAddUserModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button className={`flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white btn-hover-lift`}>
-                        <UserPlus className="h-4 w-4" />
-                        {t('teamManagement.addUser')}
-                      </Button>
-                    </DialogTrigger>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => setInviteUserModalOpen(true)}
+                      className={`flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white btn-hover-lift`}
+                    >
+                      <Send className="h-4 w-4" />
+                      {t('teamManagement.inviteUser')}
+                    </Button>
+                    <Dialog open={isAddUserModalOpen} onOpenChange={setAddUserModalOpen}>
+                      <DialogTrigger asChild>
+                        <Button className={`flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white btn-hover-lift`}>
+                          <UserPlus className="h-4 w-4" />
+                          {t('teamManagement.addUser')}
+                        </Button>
+                      </DialogTrigger>
                   <DialogContent className="dark:bg-slate-800 dark:border-slate-700" dir={isRTL ? 'rtl' : 'ltr'}>
                     <DialogHeader>
                       <DialogTitle className="dark:text-white">{t('teamManagement.dialogs.addUser.title')}</DialogTitle>
@@ -574,6 +585,7 @@ export const TeamManagement = () => {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                  </div>
               </Permission>
               </div>
               <Card className="border border-slate-200 dark:border-slate-700 dark:bg-slate-900/50">
@@ -1311,6 +1323,12 @@ export const TeamManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invite User Modal */}
+      <InviteUserModal
+        isOpen={isInviteUserModalOpen}
+        onClose={() => setInviteUserModalOpen(false)}
+      />
     </div>
   );
 };

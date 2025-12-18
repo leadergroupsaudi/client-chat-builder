@@ -496,6 +496,7 @@
     },
     "searchPlaceholder": "Search users by email...",
     "addUser": "Add User",
+    "inviteUser": "Invite User",
     "createTeam": "Create Team",
     "createRole": "Create Role",
     "addMember": "Add Member",
@@ -591,6 +592,70 @@
         "saving": "Saving..."
       }
     }
+  },
+  "invitations": {
+    "title": "Invite User",
+    "sendInvitation": "Send New Invitation",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "user@example.com",
+    "roleLabel": "Role (Optional)",
+    "rolePlaceholder": "Select a role...",
+    "sendButton": "Send Invitation",
+    "sending": "Sending...",
+    "invitationCreated": "Invitation created! Share this link:",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "pendingInvitations": "Pending Invitations",
+    "noPendingInvitations": "No pending invitations",
+    "loading": "Loading invitations...",
+    "expired": "Expired",
+    "expiresIn": "Expires {{time}}",
+    "resend": "Resend",
+    "revoke": "Revoke",
+    "toasts": {
+      "invitationSent": "Invitation sent successfully!",
+      "invitationResent": "Invitation resent successfully!",
+      "invitationRevoked": "Invitation revoked successfully!",
+      "linkCopied": "Invitation link copied to clipboard!"
+    }
+  },
+  "acceptInvitation": {
+    "title": "Join the Team",
+    "subtitle": "Complete your account setup to get started",
+    "validating": "Validating invitation...",
+    "invalid": {
+      "title": "Invalid Invitation",
+      "description": "This invitation link is invalid or has expired.",
+      "contactAdmin": "Please contact your administrator for a new invitation."
+    },
+    "success": {
+      "title": "Account Created!",
+      "description": "Your account has been created successfully.",
+      "redirecting": "Redirecting to login..."
+    },
+    "errors": {
+      "title": "Error",
+      "noToken": "No invitation token provided.",
+      "validationFailed": "Failed to validate invitation.",
+      "acceptFailed": "Failed to create account.",
+      "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least 8 characters."
+    },
+    "form": {
+      "email": "Email",
+      "firstName": "First Name",
+      "firstNamePlaceholder": "John",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Doe",
+      "password": "Password",
+      "passwordHint": "Must be at least 8 characters",
+      "confirmPassword": "Confirm Password",
+      "createAccount": "Create Account",
+      "creating": "Creating account..."
+    },
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in",
+    "goToLogin": "Go to Login"
   },
   "settings": {
     "title": "Settings",

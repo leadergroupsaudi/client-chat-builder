@@ -492,6 +492,7 @@
     },
     "searchPlaceholder": "البحث عن المستخدمين بالبريد الإلكتروني...",
     "addUser": "إضافة مستخدم",
+    "inviteUser": "دعوة مستخدم",
     "createTeam": "إنشاء فريق",
     "createRole": "إنشاء دور",
     "addMember": "إضافة عضو",
@@ -587,6 +588,70 @@
         "saving": "جاري الحفظ..."
       }
     }
+  },
+  "invitations": {
+    "title": "دعوة مستخدم",
+    "sendInvitation": "إرسال دعوة جديدة",
+    "emailLabel": "عنوان البريد الإلكتروني",
+    "emailPlaceholder": "user@example.com",
+    "roleLabel": "الدور (اختياري)",
+    "rolePlaceholder": "اختر دورًا...",
+    "sendButton": "إرسال الدعوة",
+    "sending": "جاري الإرسال...",
+    "invitationCreated": "تم إنشاء الدعوة! شارك هذا الرابط:",
+    "copyLink": "نسخ الرابط",
+    "copied": "تم النسخ!",
+    "pendingInvitations": "الدعوات المعلقة",
+    "noPendingInvitations": "لا توجد دعوات معلقة",
+    "loading": "جاري تحميل الدعوات...",
+    "expired": "منتهية الصلاحية",
+    "expiresIn": "تنتهي {{time}}",
+    "resend": "إعادة الإرسال",
+    "revoke": "إلغاء",
+    "toasts": {
+      "invitationSent": "تم إرسال الدعوة بنجاح!",
+      "invitationResent": "تم إعادة إرسال الدعوة بنجاح!",
+      "invitationRevoked": "تم إلغاء الدعوة بنجاح!",
+      "linkCopied": "تم نسخ رابط الدعوة إلى الحافظة!"
+    }
+  },
+  "acceptInvitation": {
+    "title": "انضم إلى الفريق",
+    "subtitle": "أكمل إعداد حسابك للبدء",
+    "validating": "جاري التحقق من الدعوة...",
+    "invalid": {
+      "title": "دعوة غير صالحة",
+      "description": "رابط الدعوة هذا غير صالح أو منتهي الصلاحية.",
+      "contactAdmin": "يرجى الاتصال بالمسؤول للحصول على دعوة جديدة."
+    },
+    "success": {
+      "title": "تم إنشاء الحساب!",
+      "description": "تم إنشاء حسابك بنجاح.",
+      "redirecting": "جاري التوجيه إلى تسجيل الدخول..."
+    },
+    "errors": {
+      "title": "خطأ",
+      "noToken": "لم يتم توفير رمز الدعوة.",
+      "validationFailed": "فشل التحقق من الدعوة.",
+      "acceptFailed": "فشل إنشاء الحساب.",
+      "passwordMismatch": "كلمات المرور غير متطابقة.",
+      "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل."
+    },
+    "form": {
+      "email": "البريد الإلكتروني",
+      "firstName": "الاسم الأول",
+      "firstNamePlaceholder": "أحمد",
+      "lastName": "اسم العائلة",
+      "lastNamePlaceholder": "محمد",
+      "password": "كلمة المرور",
+      "passwordHint": "يجب أن تكون 8 أحرف على الأقل",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "createAccount": "إنشاء حساب",
+      "creating": "جاري إنشاء الحساب..."
+    },
+    "alreadyHaveAccount": "هل لديك حساب بالفعل؟",
+    "signIn": "تسجيل الدخول",
+    "goToLogin": "الذهاب إلى تسجيل الدخول"
   },
   "settings": {
     "title": "الإعدادات",
