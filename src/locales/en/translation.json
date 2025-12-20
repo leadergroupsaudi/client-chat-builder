@@ -1213,6 +1213,7 @@
     "versions": "VERSIONS",
     "version": "version",
     "versionsPlural": "versions",
+    "usedAsSubworkflowBy": "Used as subworkflow by",
     "versionLabel": "Version {{number}}",
     "createNewVersion": "Create New Version",
     "active": "Active",
@@ -1385,6 +1386,8 @@
       "settingsButton": "Settings",
       "saveButton": "Save Workflow",
       "activebadge": "Active",
+      "usedAsSubworkflow": "This workflow is used as a subworkflow by",
+      "subworkflowWarning": "Changes to this workflow will affect all parent workflows",
       "versionBadge": "v{{version}}",
       "validation": {
         "cannotSave": "Cannot save workflow. Please fix the following issues:",
@@ -1434,7 +1437,8 @@
           "updateContext": "Update Context",
           "tagConversation": "Tag Conversation",
           "assignToAgent": "Assign to Agent",
-          "setStatus": "Set Status"
+          "setStatus": "Set Status",
+          "subworkflow": "Subworkflow"
         }
       },
       "properties": {
@@ -1511,6 +1515,16 @@
         "codeArgumentsHint": "Define input arguments that will be available in your code",
         "codeArgumentName": "Argument name",
         "codeArgumentValue": "Value or variable",
+        "subworkflowConfiguration": "Subworkflow Configuration",
+        "subworkflowDescription": "Execute another workflow as part of this workflow. The subworkflow inherits the current context.",
+        "selectWorkflow": "Select Workflow",
+        "selectWorkflowPlaceholder": "Select a workflow...",
+        "noSubworkflowsAvailable": "No other workflows available. Create another workflow first.",
+        "outputVariable": "Output Variable",
+        "outputVariableHint": "Access subworkflow results via {{context.subworkflow_result.output}}",
+        "note": "Note",
+        "subworkflowPauseNote": "If the subworkflow pauses for user input, the parent workflow will also pause. Maximum nesting depth: 5 levels.",
+        "subworkflowHasTriggersWarning": "This workflow has its own triggers and can also run standalone. Changes may affect both contexts.",
         "addArgument": "Add Argument",
         "returnVariables": "Return Variables",
         "returnVariablesHint": "Variables to return and store in context after execution",

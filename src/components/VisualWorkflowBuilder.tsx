@@ -12,7 +12,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
-import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings, LayoutTemplate } from 'lucide-react';
+import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings, LayoutTemplate, Layers, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import Sidebar from './Sidebar';
@@ -25,7 +25,7 @@ import {
   KnowledgeNode, CodeNode, DataManipulationNode, HttpRequestNode, FormNode,
   IntentRouterNode, EntityCollectorNode, CheckEntityNode, UpdateContextNode,
   TagConversationNode, AssignToAgentNode, SetStatusNode, QuestionClassifierNode,
-  ExtractEntitiesNode,
+  ExtractEntitiesNode, SubworkflowNode,
   TriggerWebSocketNode, TriggerWhatsAppNode, TriggerTelegramNode, TriggerInstagramNode
 } from './CustomNodes';
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +46,7 @@ const VisualWorkflowBuilder = () => {
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isSaveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
+  const [usedByWorkflows, setUsedByWorkflows] = useState<{id: number, name: string}[]>([]);
 
   const { workflowId } = useParams();
   const navigate = useNavigate();
@@ -61,6 +62,8 @@ const VisualWorkflowBuilder = () => {
     update_context: UpdateContextNode, tag_conversation: TagConversationNode,
     assign_to_agent: AssignToAgentNode, set_status: SetStatusNode, question_classifier: QuestionClassifierNode,
     extract_entities: ExtractEntitiesNode,
+    // Subworkflow node
+    subworkflow: SubworkflowNode,
     // Trigger nodes
     trigger_websocket: TriggerWebSocketNode, trigger_whatsapp: TriggerWhatsAppNode,
     trigger_telegram: TriggerTelegramNode, trigger_instagram: TriggerInstagramNode
@@ -77,6 +80,13 @@ const VisualWorkflowBuilder = () => {
         if (data.visual_steps) {
           setNodes(data.visual_steps.nodes || initialNodes);
           setEdges(data.visual_steps.edges || []);
+        }
+
+        // Fetch workflows that use this as a subworkflow
+        const usedByResponse = await authFetch(`/api/v1/workflows/${workflowId}/used-by`);
+        if (usedByResponse.ok) {
+          const usedByData = await usedByResponse.json();
+          setUsedByWorkflows(usedByData);
         }
       } catch (error) {
         toast.error(t("workflows.editor.toasts.loadFailed"));
@@ -361,6 +371,22 @@ const VisualWorkflowBuilder = () => {
           </div>
         </div>
 
+        {/* Subworkflow Usage Banner */}
+        {usedByWorkflows.length > 0 && (
+          <div className="mx-4 mb-2 p-3 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-lg flex items-center gap-3">
+            <Layers className="h-5 w-5 text-violet-600 dark:text-violet-400 flex-shrink-0" />
+            <div className="flex-1">
+              <span className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                {t("workflows.editor.usedAsSubworkflow") || "This workflow is used as a subworkflow by"}:
+              </span>
+              <span className="text-sm text-violet-600 dark:text-violet-300 ml-1">
+                {usedByWorkflows.map(w => w.name).join(', ')}
+              </span>
+            </div>
+            <AlertTriangle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0" title={t("workflows.editor.subworkflowWarning") || "Changes to this workflow will affect all parent workflows"} />
+          </div>
+        )}
+
         {/* Main Workflow Canvas */}
         <div className="flex-grow flex overflow-hidden">
           <ReactFlowProvider>
@@ -405,7 +431,7 @@ const VisualWorkflowBuilder = () => {
             </div>
             {/* Enhanced Properties Panel */}
             <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-y-auto">
-              <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} />
+              <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} workflowId={workflowId} />
               {workflow && workflow.id && (
                 <Comments workflowId={workflow.id} />
               )}

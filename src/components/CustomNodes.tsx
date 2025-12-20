@@ -4,7 +4,7 @@ import { Handle, Position } from 'reactflow';
 import {
   Bot, Cog, GitBranch, MessageSquare, Ear, HelpCircle, BookOpen, Code,
   SquareStack, Globe, ClipboardList, Target, Notebook, CheckCircle,
-  Database, Tag, UserPlus, Activity, Zap, Phone, Send, Instagram, Wifi
+  Database, Tag, UserPlus, Activity, Zap, Phone, Send, Instagram, Wifi, Layers
 } from 'lucide-react';
 
 export const LlmNode = ({ data }) => (
@@ -447,6 +447,29 @@ export const ExtractEntitiesNode = ({ data }) => {
       </div>
       <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">
         {hasEntities ? `Extract ${entities.length} ${entities.length === 1 ? 'entity' : 'entities'}` : 'LLM-powered extraction'}
+      </div>
+      <Handle type="source" position={Position.Bottom} id="output" className="w-3 h-3 !bg-slate-600 dark:!bg-slate-400 border-2 border-white dark:border-slate-800" />
+      <Handle type="source" position={Position.Right} id="error" className="w-3 h-3 !bg-red-500 dark:!bg-red-400 border-2 border-white dark:border-slate-800" />
+    </div>
+  );
+};
+
+// ========== SUBWORKFLOW NODE ==========
+
+export const SubworkflowNode = ({ data }) => {
+  const workflowName = data.subworkflow_name || 'Select Workflow';
+
+  return (
+    <div className="px-4 py-3 border-2 border-violet-200 dark:border-violet-700 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 shadow-lg hover:shadow-xl transition-shadow backdrop-blur-sm min-w-[160px]">
+      <Handle type="target" position={Position.Top} className="w-3 h-3 !bg-violet-500 dark:!bg-violet-400 border-2 border-white dark:border-slate-800" />
+      <div className="flex items-center gap-2 mb-2">
+        <div className="p-1.5 rounded-lg bg-violet-500 dark:bg-violet-600">
+          <Layers size={16} className="text-white" />
+        </div>
+        <strong className="text-sm font-semibold text-slate-900 dark:text-white">{data.label || 'Subworkflow'}</strong>
+      </div>
+      <div className="text-xs text-slate-600 dark:text-slate-400 font-medium truncate max-w-[140px]" title={workflowName}>
+        {workflowName}
       </div>
       <Handle type="source" position={Position.Bottom} id="output" className="w-3 h-3 !bg-slate-600 dark:!bg-slate-400 border-2 border-white dark:border-slate-800" />
       <Handle type="source" position={Position.Right} id="error" className="w-3 h-3 !bg-red-500 dark:!bg-red-400 border-2 border-white dark:border-slate-800" />

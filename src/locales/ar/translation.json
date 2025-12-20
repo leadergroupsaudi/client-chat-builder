@@ -1192,6 +1192,7 @@
     "versions": "الإصدارات",
     "version": "إصدار",
     "versionsPlural": "إصدارات",
+    "usedAsSubworkflowBy": "مستخدم كسير عمل فرعي بواسطة",
     "versionLabel": "الإصدار {{number}}",
     "createNewVersion": "إنشاء إصدار جديد",
     "active": "نشط",
@@ -1362,6 +1363,8 @@
       "saveButton": "حفظ سير العمل",
       "activebadge": "نشط",
       "versionBadge": "إصدار {{version}}",
+      "usedAsSubworkflow": "يُستخدم سير العمل هذا كسير عمل فرعي بواسطة",
+      "subworkflowWarning": "ستؤثر التغييرات على سير العمل هذا على جميع سير العمل الرئيسية",
       "validation": {
         "cannotSave": "لا يمكن حفظ سير العمل. يرجى إصلاح المشكلات التالية:",
         "missingStartNode": "عقدة البداية أو عقدة التشغيل مفقودة (WebSocket، WhatsApp، Telegram، Instagram)",
@@ -1409,7 +1412,8 @@
           "updateContext": "تحديث السياق",
           "tagConversation": "وسم المحادثة",
           "assignToAgent": "تعيين لوكيل",
-          "setStatus": "تعيين الحالة"
+          "setStatus": "تعيين الحالة",
+          "subworkflow": "سير عمل فرعي"
         }
       },
       "properties": {
@@ -1486,6 +1490,16 @@
         "codeArgumentsHint": "حدد معاملات الإدخال التي ستكون متاحة في الكود الخاص بك",
         "codeArgumentName": "اسم المعامل",
         "codeArgumentValue": "القيمة أو المتغير",
+        "subworkflowConfiguration": "تكوين سير العمل الفرعي",
+        "subworkflowDescription": "تنفيذ سير عمل آخر كجزء من سير العمل هذا. يرث سير العمل الفرعي السياق الحالي.",
+        "selectWorkflow": "اختر سير العمل",
+        "selectWorkflowPlaceholder": "اختر سير عمل...",
+        "noSubworkflowsAvailable": "لا توجد سير عمل أخرى متاحة. أنشئ سير عمل آخر أولاً.",
+        "outputVariable": "متغير الإخراج",
+        "outputVariableHint": "الوصول إلى نتائج سير العمل الفرعي عبر {{context.subworkflow_result.output}}",
+        "note": "ملاحظة",
+        "subworkflowPauseNote": "إذا توقف سير العمل الفرعي لانتظار مدخلات المستخدم، فسيتوقف سير العمل الرئيسي أيضاً. الحد الأقصى لعمق التداخل: 5 مستويات.",
+        "subworkflowHasTriggersWarning": "لدى سير العمل هذا مشغلاته الخاصة ويمكن تشغيله بشكل مستقل. قد تؤثر التغييرات على كلا السياقين.",
         "addArgument": "إضافة معامل",
         "returnVariables": "متغيرات الإرجاع",
         "returnVariablesHint": "المتغيرات التي سيتم إرجاعها وتخزينها في السياق بعد التنفيذ",

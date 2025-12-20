@@ -63,11 +63,12 @@ const VariableInput = ({ value, onChange, placeholder, availableVars, isRTL }) =
     );
 };
 
-const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
+const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode, workflowId }) => {
   const { t, isRTL } = useI18n();
   const [tools, setTools] = useState([]);
   const [knowledgeBases, setKnowledgeBases] = useState([]);
   const [agents, setAgents] = useState([]);
+  const [availableSubworkflows, setAvailableSubworkflows] = useState([]);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const { authFetch } = useAuth();
 
@@ -148,6 +149,23 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
     };
     fetchResources();
   }, [authFetch]);
+
+  // Fetch available subworkflows when workflowId changes
+  useEffect(() => {
+    const fetchSubworkflows = async () => {
+      if (!workflowId) return;
+      try {
+        const response = await authFetch(`/api/v1/workflows/${workflowId}/available-subworkflows`);
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableSubworkflows(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch available subworkflows');
+      }
+    };
+    fetchSubworkflows();
+  }, [workflowId, authFetch]);
 
   const handleDataChange = (key, value) => {
     if (!currentNode) return;
@@ -1621,6 +1639,85 @@ const PropertiesPanel = ({ selectedNode, nodes, setNodes, deleteNode }) => {
                 dir={isRTL ? 'rtl' : 'ltr'}
               />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Message shown when asking user for missing entities. Use {'{entity_description}'} and {'{entity_name}'} placeholders.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Subworkflow Node */}
+        {currentNode.type === 'subworkflow' && (
+          <div className="mb-5 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 className="text-base font-semibold mb-4 text-slate-900 dark:text-slate-100">
+              {t("workflows.editor.properties.subworkflowConfiguration") || "Subworkflow Configuration"}
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+              {t("workflows.editor.properties.subworkflowDescription") || "Execute another workflow as part of this workflow. The subworkflow inherits the current context."}
+            </p>
+
+            {/* Workflow Selection */}
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">
+                {t("workflows.editor.properties.selectWorkflow") || "Select Workflow"}
+              </label>
+              <select
+                value={currentNode.data.subworkflow_id || ''}
+                onChange={(e) => {
+                  const selectedId = e.target.value ? parseInt(e.target.value) : null;
+                  const selectedWorkflow = availableSubworkflows.find(w => w.id === selectedId);
+                  handleDataChange('subworkflow_id', selectedId);
+                  handleDataChange('subworkflow_name', selectedWorkflow?.name || null);
+                }}
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-violet-400"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              >
+                <option value="">{t("workflows.editor.properties.selectWorkflowPlaceholder") || "Select a workflow..."}</option>
+                {availableSubworkflows.map(wf => (
+                  <option key={wf.id} value={wf.id}>{wf.name}</option>
+                ))}
+              </select>
+              {availableSubworkflows.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  {t("workflows.editor.properties.noSubworkflowsAvailable") || "No other workflows available. Create another workflow first."}
+                </p>
+              )}
+              {/* Warning for subworkflows with triggers */}
+              {currentNode.data.subworkflow_id && (() => {
+                const selectedWf = availableSubworkflows.find(w => w.id === currentNode.data.subworkflow_id);
+                return selectedWf?.has_triggers ? (
+                  <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1">
+                      <span className="font-bold">⚠</span>
+                      <span>
+                        {t("workflows.editor.properties.subworkflowHasTriggersWarning") || "This workflow has its own triggers and can also run standalone. Changes may affect both contexts."}
+                      </span>
+                    </p>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+
+            {/* Output Variable */}
+            <div className="mb-4">
+              <label className="block mb-2 font-medium text-sm text-slate-700 dark:text-slate-300">
+                {t("workflows.editor.properties.outputVariable") || "Output Variable"}
+              </label>
+              <input
+                type="text"
+                value={currentNode.data.output_variable || 'subworkflow_result'}
+                onChange={(e) => handleDataChange('output_variable', e.target.value)}
+                placeholder="subworkflow_result"
+                className="w-full px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:focus:ring-violet-400"
+                dir="ltr"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {t("workflows.editor.properties.outputVariableHint") || "Access subworkflow results via {{context.subworkflow_result.output}}"}
+              </p>
+            </div>
+
+            {/* Info Box */}
+            <div className="p-3 bg-violet-50 dark:bg-violet-900/20 rounded border border-violet-200 dark:border-violet-700">
+              <p className="text-xs text-violet-700 dark:text-violet-300">
+                <strong>{t("workflows.editor.properties.note") || "Note"}:</strong> {t("workflows.editor.properties.subworkflowPauseNote") || "If the subworkflow pauses for user input, the parent workflow will also pause. Maximum nesting depth: 5 levels."}
+              </p>
             </div>
           </div>
         )}
