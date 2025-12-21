@@ -20,7 +20,7 @@ const DraggableNode = ({ type, label, icon, nodeData, isRTL, isCollapsed = false
 
   return (
     <div
-      className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'p-3'} mb-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 cursor-grab hover:bg-slate-50 dark:hover:bg-slate-750 hover:shadow-md transition-all text-slate-800 dark:text-slate-200`}
+      className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'p-3'} mb-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 cursor-grab hover:scale-105 hover:shadow-lg transition-all duration-150 text-slate-800 dark:text-slate-200`}
       onDragStart={(event) => onDragStart(event, type)}
       draggable
       title={isCollapsed ? label : undefined}

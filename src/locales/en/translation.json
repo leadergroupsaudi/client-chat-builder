@@ -1472,6 +1472,8 @@
         "codeLanguage": "Language:",
         "codeEditor": "Code:",
         "deleteNode": "Delete Node",
+        "expand": "Expand properties panel",
+        "collapse": "Collapse properties panel",
         "intentPlaceholder": "e.g., greeting, order_status",
         "entityPlaceholder": "e.g., order_number, email",
         "contextVariable": "Context Variable:",

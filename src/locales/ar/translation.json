@@ -1447,6 +1447,8 @@
         "codeLanguage": "اللغة:",
         "codeEditor": "الكود:",
         "deleteNode": "حذف العقدة",
+        "expand": "توسيع لوحة الخصائص",
+        "collapse": "طي لوحة الخصائص",
         "intentPlaceholder": "مثال: greeting, order_status",
         "entityPlaceholder": "مثال: order_number, email",
         "contextVariable": "متغير السياق:",

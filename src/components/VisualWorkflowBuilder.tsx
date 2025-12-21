@@ -12,8 +12,10 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
-import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings, LayoutTemplate, Layers, AlertTriangle } from 'lucide-react';
+import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings, LayoutTemplate, Layers, AlertTriangle, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { ImperativePanelHandle } from 'react-resizable-panels';
 
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
@@ -52,6 +54,46 @@ const VisualWorkflowBuilder = () => {
   const navigate = useNavigate();
   const reactFlowWrapper = useRef(null);
   const { authFetch } = useAuth();
+
+  // Properties Panel resize state
+  const propertiesPanelRef = useRef<ImperativePanelHandle>(null);
+  const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(() => {
+    const saved = localStorage.getItem('workflowBuilder.propertiesPanel.collapsed');
+    return saved === 'true';
+  });
+
+  // Properties Panel constants
+  const PROPERTIES_PANEL_STORAGE_KEY = 'workflowBuilder.propertiesPanel.size';
+  const DEFAULT_PANEL_SIZE = 25;
+  const MIN_PANEL_SIZE = 15;
+  const MAX_PANEL_SIZE = 40;
+
+  // Get saved panel size
+  const getSavedPanelSize = useCallback(() => {
+    const saved = localStorage.getItem(PROPERTIES_PANEL_STORAGE_KEY);
+    return saved ? parseFloat(saved) : DEFAULT_PANEL_SIZE;
+  }, []);
+
+  // Handle panel resize
+  const handlePanelResize = useCallback((size: number) => {
+    localStorage.setItem(PROPERTIES_PANEL_STORAGE_KEY, String(size));
+  }, []);
+
+  // Toggle properties panel collapse/expand
+  const togglePropertiesPanel = useCallback(() => {
+    const panel = propertiesPanelRef.current;
+    if (panel) {
+      if (panel.isCollapsed()) {
+        panel.expand();
+        setIsPropertiesPanelCollapsed(false);
+        localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'false');
+      } else {
+        panel.collapse();
+        setIsPropertiesPanelCollapsed(true);
+        localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'true');
+      }
+    }
+  }, []);
 
   const nodeTypes = useMemo(() => ({
     llm: LlmNode, tool: ToolNode, condition: ConditionNode, response: OutputNode,
@@ -388,54 +430,99 @@ const VisualWorkflowBuilder = () => {
         )}
 
         {/* Main Workflow Canvas */}
-        <div className="flex-grow flex overflow-hidden">
+        <div className="flex-grow flex overflow-hidden relative">
           <ReactFlowProvider>
             <Sidebar />
-            <div className="flex-grow h-full workflow-canvas" ref={reactFlowWrapper}>
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onInit={setReactFlowInstance}
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-                onNodeClick={onNodeClick}
-                onPaneClick={onPaneClick}
-                fitView
-                nodeTypes={nodeTypes}
-                deleteKeyCode={['Backspace', 'Delete']}
-                defaultEdgeOptions={{
-                  type: 'smoothstep',
-                  animated: true,
-                  style: { stroke: '#8b5cf6', strokeWidth: 2.5 },
+            <ResizablePanelGroup direction="horizontal" className="flex-grow">
+
+              {/* ReactFlow Canvas Panel */}
+              <ResizablePanel defaultSize={100 - getSavedPanelSize()} minSize={50}>
+                <div className="h-full workflow-canvas" ref={reactFlowWrapper}>
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onInit={setReactFlowInstance}
+                    onDrop={onDrop}
+                    onDragOver={onDragOver}
+                    onNodeClick={onNodeClick}
+                    onPaneClick={onPaneClick}
+                    fitView
+                    nodeTypes={nodeTypes}
+                    deleteKeyCode={['Backspace', 'Delete']}
+                    defaultEdgeOptions={{
+                      type: 'smoothstep',
+                      animated: true,
+                      style: { stroke: '#8b5cf6', strokeWidth: 2.5 },
+                    }}
+                    className="dark:bg-slate-900"
+                  >
+                    <Controls className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 [&_button]:dark:text-white [&_button]:dark:hover:bg-slate-700" />
+                    <MiniMap
+                      className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700"
+                      nodeColor={(node) => {
+                        if (node.type === 'start') return '#10b981';
+                        if (node.type === 'response') return '#ef4444';
+                        if (node.type === 'llm') return '#6366f1';
+                        if (node.type === 'tool') return '#10b981';
+                        if (node.type === 'condition') return '#f59e0b';
+                        return '#8b5cf6';
+                      }}
+                      maskColor="rgb(15, 23, 42, 0.7)"
+                    />
+                    <Background variant="dots" gap={20} size={1} color="#94a3b8" className="dark:opacity-30" />
+                  </ReactFlow>
+                </div>
+              </ResizablePanel>
+
+              {/* Resize Handle */}
+              <ResizableHandle withHandle className="bg-slate-200 dark:bg-slate-700 hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors" />
+
+              {/* Properties Panel */}
+              <ResizablePanel
+                ref={propertiesPanelRef}
+                defaultSize={getSavedPanelSize()}
+                minSize={MIN_PANEL_SIZE}
+                maxSize={MAX_PANEL_SIZE}
+                collapsible
+                collapsedSize={0}
+                onResize={handlePanelResize}
+                onCollapse={() => {
+                  setIsPropertiesPanelCollapsed(true);
+                  localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'true');
                 }}
-                className="dark:bg-slate-900"
+                onExpand={() => {
+                  setIsPropertiesPanelCollapsed(false);
+                  localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'false');
+                }}
               >
-                <Controls className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 [&_button]:dark:text-white [&_button]:dark:hover:bg-slate-700" />
-                <MiniMap
-                  className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700"
-                  nodeColor={(node) => {
-                    if (node.type === 'start') return '#10b981';
-                    if (node.type === 'response') return '#ef4444';
-                    if (node.type === 'llm') return '#6366f1';
-                    if (node.type === 'tool') return '#10b981';
-                    if (node.type === 'condition') return '#f59e0b';
-                    return '#8b5cf6';
-                  }}
-                  maskColor="rgb(15, 23, 42, 0.7)"
-                />
-                <Background variant="dots" gap={20} size={1} color="#94a3b8" className="dark:opacity-30" />
-              </ReactFlow>
-            </div>
-            {/* Enhanced Properties Panel */}
-            <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-y-auto">
-              <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} workflowId={workflowId} />
-              {workflow && workflow.id && (
-                <Comments workflowId={workflow.id} />
-              )}
-            </div>
+                <div className="h-full border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-hidden flex flex-col">
+                  {/* Panel Content */}
+                  <div className="flex-1 overflow-y-auto">
+                    <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} workflowId={workflowId} />
+                    {workflow && workflow.id && (
+                      <Comments workflowId={workflow.id} />
+                    )}
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+
+            {/* Collapse Toggle Button - Always visible on the edge */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={togglePropertiesPanel}
+              className={`absolute top-4 z-20 h-8 w-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 ${isRTL ? 'left-0 rounded-r-md rounded-l-none' : 'right-0 rounded-l-md rounded-r-none'}`}
+              title={isPropertiesPanelCollapsed ? t("workflows.editor.properties.expand") : t("workflows.editor.properties.collapse")}
+            >
+              {isRTL
+                ? (isPropertiesPanelCollapsed ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />)
+                : (isPropertiesPanelCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />)
+              }
+            </Button>
           </ReactFlowProvider>
         </div>
       </div>
