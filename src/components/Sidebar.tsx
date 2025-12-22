@@ -3,7 +3,7 @@ import {
   Bot, Cog, GitBranch, MessageSquare, Ear, HelpCircle, BookOpen, Code,
   SquareStack, Globe, ClipboardList, Wrench, ChevronDown, ChevronRight,
   Target, Notebook, CheckCircle, Database, Tag, UserPlus, Activity,
-  Zap, Wifi, Phone, Send, Instagram, PanelLeftClose, PanelLeft
+  Zap, Wifi, Phone, Send, Instagram, PanelLeftClose, PanelLeft, Layers
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ const DraggableNode = ({ type, label, icon, nodeData, isRTL, isCollapsed = false
 
   return (
     <div
-      className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'p-3'} mb-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 cursor-grab hover:bg-slate-50 dark:hover:bg-slate-750 hover:shadow-md transition-all text-slate-800 dark:text-slate-200`}
+      className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'p-3'} mb-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 cursor-grab hover:scale-105 hover:shadow-lg transition-all duration-150 text-slate-800 dark:text-slate-200`}
       onDragStart={(event) => onDragStart(event, type)}
       draggable
       title={isCollapsed ? label : undefined}
@@ -127,6 +127,7 @@ const Sidebar = () => {
         <DraggableNode type="data_manipulation" label={t("workflows.editor.sidebar.nodes.dataManipulation")} icon={<SquareStack size={20} />} nodeData={{}} isRTL={isRTL} isCollapsed={isCollapsed} />
         <DraggableNode type="http_request" label={t("workflows.editor.sidebar.nodes.httpRequest")} icon={<Globe size={20} />} nodeData={{}} isRTL={isRTL} isCollapsed={isCollapsed} />
         <DraggableNode type="extract_entities" label="Extract Entities" icon={<Target size={20} />} nodeData={{}} isRTL={isRTL} isCollapsed={isCollapsed} />
+        <DraggableNode type="subworkflow" label={t("workflows.editor.sidebar.nodes.subworkflow") || "Subworkflow"} icon={<Layers size={20} />} nodeData={{}} isRTL={isRTL} isCollapsed={isCollapsed} />
         <DraggableNode type="response" label={t("workflows.editor.sidebar.nodes.output")} icon={<MessageSquare size={20} />} nodeData={{}} isRTL={isRTL} isCollapsed={isCollapsed} />
       </AccordionSection>
 

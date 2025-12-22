@@ -496,6 +496,7 @@
     },
     "searchPlaceholder": "Search users by email...",
     "addUser": "Add User",
+    "inviteUser": "Invite User",
     "createTeam": "Create Team",
     "createRole": "Create Role",
     "addMember": "Add Member",
@@ -591,6 +592,70 @@
         "saving": "Saving..."
       }
     }
+  },
+  "invitations": {
+    "title": "Invite User",
+    "sendInvitation": "Send New Invitation",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "user@example.com",
+    "roleLabel": "Role (Optional)",
+    "rolePlaceholder": "Select a role...",
+    "sendButton": "Send Invitation",
+    "sending": "Sending...",
+    "invitationCreated": "Invitation created! Share this link:",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "pendingInvitations": "Pending Invitations",
+    "noPendingInvitations": "No pending invitations",
+    "loading": "Loading invitations...",
+    "expired": "Expired",
+    "expiresIn": "Expires {{time}}",
+    "resend": "Resend",
+    "revoke": "Revoke",
+    "toasts": {
+      "invitationSent": "Invitation sent successfully!",
+      "invitationResent": "Invitation resent successfully!",
+      "invitationRevoked": "Invitation revoked successfully!",
+      "linkCopied": "Invitation link copied to clipboard!"
+    }
+  },
+  "acceptInvitation": {
+    "title": "Join the Team",
+    "subtitle": "Complete your account setup to get started",
+    "validating": "Validating invitation...",
+    "invalid": {
+      "title": "Invalid Invitation",
+      "description": "This invitation link is invalid or has expired.",
+      "contactAdmin": "Please contact your administrator for a new invitation."
+    },
+    "success": {
+      "title": "Account Created!",
+      "description": "Your account has been created successfully.",
+      "redirecting": "Redirecting to login..."
+    },
+    "errors": {
+      "title": "Error",
+      "noToken": "No invitation token provided.",
+      "validationFailed": "Failed to validate invitation.",
+      "acceptFailed": "Failed to create account.",
+      "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least 8 characters."
+    },
+    "form": {
+      "email": "Email",
+      "firstName": "First Name",
+      "firstNamePlaceholder": "John",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Doe",
+      "password": "Password",
+      "passwordHint": "Must be at least 8 characters",
+      "confirmPassword": "Confirm Password",
+      "createAccount": "Create Account",
+      "creating": "Creating account..."
+    },
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in",
+    "goToLogin": "Go to Login"
   },
   "settings": {
     "title": "Settings",
@@ -1026,6 +1091,8 @@
     "small": "Small",
     "medium": "Medium",
     "large": "Large",
+    "width": "Width",
+    "height": "Height",
     "fontFamily": "Font Family",
     "borderRadius": "Border Radius",
     "zIndex": "Z-Index",
@@ -1148,6 +1215,7 @@
     "versions": "VERSIONS",
     "version": "version",
     "versionsPlural": "versions",
+    "usedAsSubworkflowBy": "Used as subworkflow by",
     "versionLabel": "Version {{number}}",
     "createNewVersion": "Create New Version",
     "active": "Active",
@@ -1320,6 +1388,8 @@
       "settingsButton": "Settings",
       "saveButton": "Save Workflow",
       "activebadge": "Active",
+      "usedAsSubworkflow": "This workflow is used as a subworkflow by",
+      "subworkflowWarning": "Changes to this workflow will affect all parent workflows",
       "versionBadge": "v{{version}}",
       "validation": {
         "cannotSave": "Cannot save workflow. Please fix the following issues:",
@@ -1369,7 +1439,8 @@
           "updateContext": "Update Context",
           "tagConversation": "Tag Conversation",
           "assignToAgent": "Assign to Agent",
-          "setStatus": "Set Status"
+          "setStatus": "Set Status",
+          "subworkflow": "Subworkflow"
         }
       },
       "properties": {
@@ -1401,6 +1472,8 @@
         "codeLanguage": "Language:",
         "codeEditor": "Code:",
         "deleteNode": "Delete Node",
+        "expand": "Expand properties panel",
+        "collapse": "Collapse properties panel",
         "intentPlaceholder": "e.g., greeting, order_status",
         "entityPlaceholder": "e.g., order_number, email",
         "contextVariable": "Context Variable:",
@@ -1446,6 +1519,16 @@
         "codeArgumentsHint": "Define input arguments that will be available in your code",
         "codeArgumentName": "Argument name",
         "codeArgumentValue": "Value or variable",
+        "subworkflowConfiguration": "Subworkflow Configuration",
+        "subworkflowDescription": "Execute another workflow as part of this workflow. The subworkflow inherits the current context.",
+        "selectWorkflow": "Select Workflow",
+        "selectWorkflowPlaceholder": "Select a workflow...",
+        "noSubworkflowsAvailable": "No other workflows available. Create another workflow first.",
+        "outputVariable": "Output Variable",
+        "outputVariableHint": "Access subworkflow results via {{context.subworkflow_result.output}}",
+        "note": "Note",
+        "subworkflowPauseNote": "If the subworkflow pauses for user input, the parent workflow will also pause. Maximum nesting depth: 5 levels.",
+        "subworkflowHasTriggersWarning": "This workflow has its own triggers and can also run standalone. Changes may affect both contexts.",
         "addArgument": "Add Argument",
         "returnVariables": "Return Variables",
         "returnVariablesHint": "Variables to return and store in context after execution",
@@ -1453,6 +1536,8 @@
         "addReturnVariable": "Add Return Variable",
         "pythonCode": "Python Code:",
         "pythonCodePlaceholder": "# Your arguments are available directly\n# e.g., if you added 'data' as argument:\nresult = data['field'] * 2",
+        "expandCodeEditor": "Expand Editor",
+        "codeEditorModalTitle": "Python Code Editor",
         "codePlaceholder": "e.g., print('Hello, World!') result = context.user_input * 2",
         "listenForInput": "Listen for Input",
         "saveUserInput": "Save User Input to Variable:",
@@ -1837,6 +1922,44 @@
       "qnaSuccess": "Q&A generated successfully!",
       "qnaSuccessDesc": "Review the generated content and save changes.",
       "qnaError": "Failed to generate Q&A"
+    }
+  },
+  "workflowTemplates": {
+    "title": "Workflow Templates",
+    "newFromTemplate": "From Template",
+    "saveAsTemplate": "Save as Template",
+    "selectTemplate": "Select a Template",
+    "searchPlaceholder": "Search templates...",
+    "categories": {
+      "all": "All Templates",
+      "custom": "My Templates"
+    },
+    "systemTemplates": "System Templates",
+    "workflowName": "Workflow Name",
+    "workflowNamePlaceholder": "Enter a name for your workflow",
+    "useTemplate": "Use Template",
+    "startFromScratch": "Start from Scratch",
+    "noTemplatesFound": "No templates found",
+    "usedTimes": "Used {{count}} times",
+    "systemTemplate": "System Template",
+    "companyTemplate": "My Template",
+    "toasts": {
+      "templateSaved": "Workflow saved as template successfully!",
+      "workflowCreated": "Workflow created from template successfully!"
+    },
+    "saveModal": {
+      "title": "Save as Template",
+      "nameLabel": "Template Name",
+      "namePlaceholder": "Enter template name",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Describe what this template does...",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Select a category",
+      "customCategory": "Custom Category",
+      "customCategoryLabel": "Custom Category Name",
+      "customCategoryPlaceholder": "Enter custom category name",
+      "info": "This template will be saved and available for creating new workflows in your company.",
+      "saveButton": "Save Template"
     }
   },
   "reports": {

@@ -36,6 +36,8 @@ interface WidgetSettings {
   bot_message_text_color: string;
   time_color?: string;
   widget_size: 'small' | 'medium' | 'large';
+  widget_width?: number;  // Custom width in px (overrides widget_size)
+  widget_height?: number; // Custom height in px (overrides widget_size)
   show_header: boolean;
   dark_mode: boolean;
   typing_indicator_enabled: boolean;
@@ -473,12 +475,18 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
       setMessages(prev => {
         // For user messages from backend, check if we have an optimistic version to replace
         if (data.sender === 'user' && data.id) {
-          // Find the most recent temp message with matching content
-          const tempMessageIndex = prev.findIndex(msg =>
-            msg.id.toString().startsWith('temp_') &&  // Is a temp message
-            msg.sender === 'user' &&                   // From user
-            msg.text === data.message                  // Same content
-          );
+          // Find the most recent temp message to replace
+          const tempMessageIndex = prev.findIndex(msg => {
+            if (!msg.id.toString().startsWith('temp_')) return false;  // Must be temp
+            if (msg.sender !== 'user') return false;                    // Must be from user
+
+            // Match by content OR by attachments (for attachment-only messages)
+            const textMatches = msg.text === data.message;
+            const bothHaveAttachments = msg.attachments && msg.attachments.length > 0 && data.attachments && data.attachments.length > 0;
+            const isAttachmentOnlyMessage = (!msg.text || msg.text === '') && bothHaveAttachments;
+
+            return textMatches || isAttachmentOnlyMessage;
+          });
 
           if (tempMessageIndex !== -1) {
             // Replace temp message with real one from backend
@@ -1044,28 +1052,21 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
 
     // Add location attachment if location is selected
     if (selectedLocation) {
+      const locationData = {
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude
+      };
       attachments.push({
         file_name: 'location',
         file_type: 'application/geo+json',
-        file_size: 0,
-        location: {
-          latitude: selectedLocation.latitude,
-          longitude: selectedLocation.longitude
-        }
+        file_size: new Blob([JSON.stringify(locationData)]).size,
+        location: locationData
       });
     }
 
     // Build display text for optimistic message
-    let displayText = messageText;
-    if (!displayText) {
-      if (selectedFile && selectedLocation) {
-        displayText = `[Image: ${selectedFile.name}] [Location]`;
-      } else if (selectedFile) {
-        displayText = `[Image: ${selectedFile.name}]`;
-      } else if (selectedLocation) {
-        displayText = `[Location: ${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}]`;
-      }
-    }
+    // If there's no text but there are attachments, show preview only (no placeholder text)
+    let displayText = messageText || '';
 
     // OPTIMISTIC UPDATE: Show user message immediately
     const optimisticMessage: Message = {
@@ -1080,10 +1081,14 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
 
     // Send to backend
     const messageToSend: any = {
-      message: payload || messageText,
+      message: messageText,  // Always send display text as message
       message_type: 'message',
       sender: 'user'
     };
+    // If payload exists (option key), include it separately for workflow variable storage
+    if (payload) {
+      messageToSend.option_key = payload;
+    }
     if (attachments.length > 0) {
       messageToSend.attachments = attachments;
       console.log('[Widget] Sending message with attachments:', attachments.length, 'item(s)');
@@ -1150,7 +1155,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   };
 
   if (isLoading || !settings || !localizedTexts) return null;
-  const { position, primary_color, agent_avatar_url, widget_size, border_radius, dark_mode, show_header, user_message_color, user_message_text_color, bot_message_color, bot_message_text_color, time_color } = settings;
+  const { position, primary_color, agent_avatar_url, widget_size, widget_width, widget_height, border_radius, dark_mode, show_header, user_message_color, user_message_text_color, bot_message_color, bot_message_text_color, time_color } = settings;
 
   // Extract localized texts
   const { welcome_message, header_title, input_placeholder, proactive_message } = localizedTexts;
@@ -1158,7 +1163,10 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   // Position priority: data-position attribute > meta.position > direct position field > default
   const widgetPosition = positionOverride || settings.meta?.position || position || 'bottom-right';
   const [vertical, horizontal] = widgetPosition.split('-');
-  const size = widgetSizes[widget_size] || widgetSizes.medium;
+  // Prioritize custom dimensions over presets
+  const size = (widget_width && widget_height)
+    ? { width: widget_width, height: widget_height }
+    : widgetSizes[widget_size] || widgetSizes.medium;
 
   // RTL can be overridden by embed code data attribute, otherwise check if language is RTL, otherwise use setting from meta
   // Use != null to check for both null and undefined
@@ -1602,7 +1610,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
                       return (
                         <Button
                           key={index}
-                          onClick={() => handleSendMessage(keyValue)}
+                          onClick={() => handleSendMessage(displayText, keyValue)}
                           variant="outline"
                           size="sm"
                           className={cn('rounded-full', dark_mode ? 'bg-gray-700 hover:bg-gray-600 border-gray-600' : 'bg-gray-100 hover:bg-gray-200 border-gray-300')}
@@ -1843,9 +1851,25 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
     {showLocationPicker && (
       <LocationPicker
         initialLocation={selectedLocation}
-        onLocationSelect={(lat, lng) => setSelectedLocation({ latitude: lat, longitude: lng })}
-        onClose={() => setShowLocationPicker(false)}
-        onConfirm={() => setShowLocationPicker(false)}
+        onLocationSelect={(lat, lng) => {
+          console.log('[Widget] Location selected:', lat, lng);
+          setSelectedLocation({ latitude: lat, longitude: lng });
+        }}
+        onClose={() => {
+          console.log('[Widget] Location picker closed');
+          setShowLocationPicker(false);
+          setSelectedLocation(null);
+        }}
+        onConfirm={(lat, lng) => {
+          console.log('[Widget] Location confirmed:', lat, lng);
+          // Set the location first, then send
+          setSelectedLocation({ latitude: lat, longitude: lng });
+          // Use setTimeout to ensure state is updated before sending
+          setTimeout(() => {
+            handleSendMessage('');
+            setShowLocationPicker(false);
+          }, 0);
+        }}
         darkMode={dark_mode}
       />
     )}

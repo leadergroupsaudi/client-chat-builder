@@ -11,7 +11,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Copy, PlusCircle, Trash2, WorkflowIcon, Sparkles, Upload, Download } from 'lucide-react';
+import { Edit, Copy, PlusCircle, Trash2, WorkflowIcon, Sparkles, Upload, Download, LayoutTemplate, Layers } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,19 +31,34 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/hooks/useI18n";
 import CreateWorkflowDialog from '@/components/CreateWorkflowDialog'; // Assuming this component exists
+import WorkflowTemplateModal from '@/components/WorkflowTemplateModal';
 
 const WorkflowManagementPage = () => {
   const { t, isRTL } = useI18n();
   const [workflows, setWorkflows] = useState([]);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isTemplateModalOpen, setTemplateModalOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importData, setImportData] = useState<any>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [agents, setAgents] = useState<any[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const [subworkflowUsage, setSubworkflowUsage] = useState<Record<number, {id: number, name: string}[]>>({});
   const { authFetch } = useAuth();
   const navigate = useNavigate();
+
+  const fetchSubworkflowUsage = useCallback(async () => {
+    try {
+      const response = await authFetch('/api/v1/workflows/subworkflow-usage/all');
+      if (response.ok) {
+        const data = await response.json();
+        setSubworkflowUsage(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subworkflow usage');
+    }
+  }, [authFetch]);
 
   const fetchWorkflows = useCallback(async () => {
     try {
@@ -58,7 +73,8 @@ const WorkflowManagementPage = () => {
 
   useEffect(() => {
     fetchWorkflows();
-  }, [fetchWorkflows]);
+    fetchSubworkflowUsage();
+  }, [fetchWorkflows, fetchSubworkflowUsage]);
 
   const handleCreateWorkflow = async ({ name, description }) => {
     const newWorkflowPayload = { name, description, agent_id: 1 };
@@ -228,6 +244,10 @@ const WorkflowManagementPage = () => {
         onClose={() => setCreateDialogOpen(false)}
         onSubmit={handleCreateWorkflow}
       />
+      <WorkflowTemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+      />
       <div className={`container mx-auto p-6 max-w-7xl text-left`}>
         {/* Enhanced Header */}
         <div className="mb-8">
@@ -250,6 +270,17 @@ const WorkflowManagementPage = () => {
                 >
                   <Upload className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                   {t("workflows.importWorkflow") || "Import"}
+                </Button>
+              </Permission>
+              <Permission permission="workflow:create">
+                <Button
+                  onClick={() => setTemplateModalOpen(true)}
+                  size="lg"
+                  variant="outline"
+                  className={`border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center ${isRTL ? 'flex-row-reverse' : ''}`}
+                >
+                  <LayoutTemplate className={`h-5 w-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                  {t("workflowTemplates.newFromTemplate") || "From Template"}
                 </Button>
               </Permission>
               <Permission permission="workflow:create">
@@ -355,6 +386,16 @@ const WorkflowManagementPage = () => {
                           </div>
                         </div>
                         <div className={`flex items-center gap-2`}>
+                          {subworkflowUsage[workflow.id] && subworkflowUsage[workflow.id].length > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className={`${isRTL ? 'ml-2' : 'mr-2'} bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-700`}
+                              title={`${t("workflows.usedAsSubworkflowBy") || "Used as subworkflow by"}: ${subworkflowUsage[workflow.id].map(w => w.name).join(', ')}`}
+                            >
+                              <Layers className="h-3 w-3 mr-1" />
+                              {subworkflowUsage[workflow.id].length}
+                            </Badge>
+                          )}
                           <Badge variant="outline" className={`${isRTL ? 'ml-2' : 'mr-2'} dark:border-slate-600 dark:text-gray-300`}>
                             {workflow.versions.length} {workflow.versions.length === 1 ? t("workflows.version") : t("workflows.versionsPlural")}
                           </Badge>

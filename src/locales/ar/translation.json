@@ -492,6 +492,7 @@
     },
     "searchPlaceholder": "البحث عن المستخدمين بالبريد الإلكتروني...",
     "addUser": "إضافة مستخدم",
+    "inviteUser": "دعوة مستخدم",
     "createTeam": "إنشاء فريق",
     "createRole": "إنشاء دور",
     "addMember": "إضافة عضو",
@@ -587,6 +588,70 @@
         "saving": "جاري الحفظ..."
       }
     }
+  },
+  "invitations": {
+    "title": "دعوة مستخدم",
+    "sendInvitation": "إرسال دعوة جديدة",
+    "emailLabel": "عنوان البريد الإلكتروني",
+    "emailPlaceholder": "user@example.com",
+    "roleLabel": "الدور (اختياري)",
+    "rolePlaceholder": "اختر دورًا...",
+    "sendButton": "إرسال الدعوة",
+    "sending": "جاري الإرسال...",
+    "invitationCreated": "تم إنشاء الدعوة! شارك هذا الرابط:",
+    "copyLink": "نسخ الرابط",
+    "copied": "تم النسخ!",
+    "pendingInvitations": "الدعوات المعلقة",
+    "noPendingInvitations": "لا توجد دعوات معلقة",
+    "loading": "جاري تحميل الدعوات...",
+    "expired": "منتهية الصلاحية",
+    "expiresIn": "تنتهي {{time}}",
+    "resend": "إعادة الإرسال",
+    "revoke": "إلغاء",
+    "toasts": {
+      "invitationSent": "تم إرسال الدعوة بنجاح!",
+      "invitationResent": "تم إعادة إرسال الدعوة بنجاح!",
+      "invitationRevoked": "تم إلغاء الدعوة بنجاح!",
+      "linkCopied": "تم نسخ رابط الدعوة إلى الحافظة!"
+    }
+  },
+  "acceptInvitation": {
+    "title": "انضم إلى الفريق",
+    "subtitle": "أكمل إعداد حسابك للبدء",
+    "validating": "جاري التحقق من الدعوة...",
+    "invalid": {
+      "title": "دعوة غير صالحة",
+      "description": "رابط الدعوة هذا غير صالح أو منتهي الصلاحية.",
+      "contactAdmin": "يرجى الاتصال بالمسؤول للحصول على دعوة جديدة."
+    },
+    "success": {
+      "title": "تم إنشاء الحساب!",
+      "description": "تم إنشاء حسابك بنجاح.",
+      "redirecting": "جاري التوجيه إلى تسجيل الدخول..."
+    },
+    "errors": {
+      "title": "خطأ",
+      "noToken": "لم يتم توفير رمز الدعوة.",
+      "validationFailed": "فشل التحقق من الدعوة.",
+      "acceptFailed": "فشل إنشاء الحساب.",
+      "passwordMismatch": "كلمات المرور غير متطابقة.",
+      "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل."
+    },
+    "form": {
+      "email": "البريد الإلكتروني",
+      "firstName": "الاسم الأول",
+      "firstNamePlaceholder": "أحمد",
+      "lastName": "اسم العائلة",
+      "lastNamePlaceholder": "محمد",
+      "password": "كلمة المرور",
+      "passwordHint": "يجب أن تكون 8 أحرف على الأقل",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "createAccount": "إنشاء حساب",
+      "creating": "جاري إنشاء الحساب..."
+    },
+    "alreadyHaveAccount": "هل لديك حساب بالفعل؟",
+    "signIn": "تسجيل الدخول",
+    "goToLogin": "الذهاب إلى تسجيل الدخول"
   },
   "settings": {
     "title": "الإعدادات",
@@ -1019,6 +1084,8 @@
     "small": "صغير",
     "medium": "متوسط",
     "large": "كبير",
+    "width": "العرض",
+    "height": "الارتفاع",
     "fontFamily": "نوع الخط",
     "borderRadius": "نصف قطر الحدود",
     "zIndex": "Z-Index",
@@ -1127,6 +1194,7 @@
     "versions": "الإصدارات",
     "version": "إصدار",
     "versionsPlural": "إصدارات",
+    "usedAsSubworkflowBy": "مستخدم كسير عمل فرعي بواسطة",
     "versionLabel": "الإصدار {{number}}",
     "createNewVersion": "إنشاء إصدار جديد",
     "active": "نشط",
@@ -1297,6 +1365,8 @@
       "saveButton": "حفظ سير العمل",
       "activebadge": "نشط",
       "versionBadge": "إصدار {{version}}",
+      "usedAsSubworkflow": "يُستخدم سير العمل هذا كسير عمل فرعي بواسطة",
+      "subworkflowWarning": "ستؤثر التغييرات على سير العمل هذا على جميع سير العمل الرئيسية",
       "validation": {
         "cannotSave": "لا يمكن حفظ سير العمل. يرجى إصلاح المشكلات التالية:",
         "missingStartNode": "عقدة البداية أو عقدة التشغيل مفقودة (WebSocket، WhatsApp، Telegram، Instagram)",
@@ -1344,7 +1414,8 @@
           "updateContext": "تحديث السياق",
           "tagConversation": "وسم المحادثة",
           "assignToAgent": "تعيين لوكيل",
-          "setStatus": "تعيين الحالة"
+          "setStatus": "تعيين الحالة",
+          "subworkflow": "سير عمل فرعي"
         }
       },
       "properties": {
@@ -1376,6 +1447,8 @@
         "codeLanguage": "اللغة:",
         "codeEditor": "الكود:",
         "deleteNode": "حذف العقدة",
+        "expand": "توسيع لوحة الخصائص",
+        "collapse": "طي لوحة الخصائص",
         "intentPlaceholder": "مثال: greeting, order_status",
         "entityPlaceholder": "مثال: order_number, email",
         "contextVariable": "متغير السياق:",
@@ -1421,6 +1494,16 @@
         "codeArgumentsHint": "حدد معاملات الإدخال التي ستكون متاحة في الكود الخاص بك",
         "codeArgumentName": "اسم المعامل",
         "codeArgumentValue": "القيمة أو المتغير",
+        "subworkflowConfiguration": "تكوين سير العمل الفرعي",
+        "subworkflowDescription": "تنفيذ سير عمل آخر كجزء من سير العمل هذا. يرث سير العمل الفرعي السياق الحالي.",
+        "selectWorkflow": "اختر سير العمل",
+        "selectWorkflowPlaceholder": "اختر سير عمل...",
+        "noSubworkflowsAvailable": "لا توجد سير عمل أخرى متاحة. أنشئ سير عمل آخر أولاً.",
+        "outputVariable": "متغير الإخراج",
+        "outputVariableHint": "الوصول إلى نتائج سير العمل الفرعي عبر {{context.subworkflow_result.output}}",
+        "note": "ملاحظة",
+        "subworkflowPauseNote": "إذا توقف سير العمل الفرعي لانتظار مدخلات المستخدم، فسيتوقف سير العمل الرئيسي أيضاً. الحد الأقصى لعمق التداخل: 5 مستويات.",
+        "subworkflowHasTriggersWarning": "لدى سير العمل هذا مشغلاته الخاصة ويمكن تشغيله بشكل مستقل. قد تؤثر التغييرات على كلا السياقين.",
         "addArgument": "إضافة معامل",
         "returnVariables": "متغيرات الإرجاع",
         "returnVariablesHint": "المتغيرات التي سيتم إرجاعها وتخزينها في السياق بعد التنفيذ",
@@ -1428,6 +1511,8 @@
         "addReturnVariable": "إضافة متغير إرجاع",
         "pythonCode": "كود Python:",
         "pythonCodePlaceholder": "# المعاملات متاحة مباشرة\n# مثال: إذا أضفت 'data' كمعامل:\nresult = data['field'] * 2",
+        "expandCodeEditor": "توسيع المحرر",
+        "codeEditorModalTitle": "محرر كود Python",
         "codePlaceholder": "مثال: print('Hello, World!') result = context.user_input * 2",
         "listenForInput": "الاستماع للمدخلات",
         "saveUserInput": "حفظ مدخلات المستخدم في متغير:",
@@ -1812,6 +1897,44 @@
       "qnaSuccess": "تم إنشاء الأسئلة والأجوبة بنجاح!",
       "qnaSuccessDesc": "راجع المحتوى الذي تم إنشاؤه واحفظ التغييرات.",
       "qnaError": "فشل إنشاء الأسئلة والأجوبة"
+    }
+  },
+  "workflowTemplates": {
+    "title": "قوالب سير العمل",
+    "newFromTemplate": "من قالب",
+    "saveAsTemplate": "حفظ كقالب",
+    "selectTemplate": "اختر قالبًا",
+    "searchPlaceholder": "البحث في القوالب...",
+    "categories": {
+      "all": "جميع القوالب",
+      "custom": "قوالبي"
+    },
+    "systemTemplates": "قوالب النظام",
+    "workflowName": "اسم سير العمل",
+    "workflowNamePlaceholder": "أدخل اسمًا لسير العمل",
+    "useTemplate": "استخدام القالب",
+    "startFromScratch": "البدء من الصفر",
+    "noTemplatesFound": "لم يتم العثور على قوالب",
+    "usedTimes": "استُخدم {{count}} مرة",
+    "systemTemplate": "قالب النظام",
+    "companyTemplate": "قالبي",
+    "toasts": {
+      "templateSaved": "تم حفظ سير العمل كقالب بنجاح!",
+      "workflowCreated": "تم إنشاء سير العمل من القالب بنجاح!"
+    },
+    "saveModal": {
+      "title": "حفظ كقالب",
+      "nameLabel": "اسم القالب",
+      "namePlaceholder": "أدخل اسم القالب",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "صف ما يفعله هذا القالب...",
+      "categoryLabel": "الفئة",
+      "categoryPlaceholder": "اختر فئة",
+      "customCategory": "فئة مخصصة",
+      "customCategoryLabel": "اسم الفئة المخصصة",
+      "customCategoryPlaceholder": "أدخل اسم الفئة المخصصة",
+      "info": "سيتم حفظ هذا القالب وسيكون متاحًا لإنشاء سير عمل جديدة في شركتك.",
+      "saveButton": "حفظ القالب"
     }
   },
   "reports": {

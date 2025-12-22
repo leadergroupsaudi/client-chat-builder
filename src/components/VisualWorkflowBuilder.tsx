@@ -12,19 +12,22 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
-import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings } from 'lucide-react';
+import { Edit, ArrowLeft, Workflow as WorkflowIcon, Sparkles, Settings, LayoutTemplate, Layers, AlertTriangle, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { ImperativePanelHandle } from 'react-resizable-panels';
 
 import Sidebar from './Sidebar';
 import PropertiesPanel from './PropertiesPanel';
 import { WorkflowDetailsDialog } from './WorkflowDetailsDialog';
 import { WorkflowSettings } from './WorkflowSettings';
+import SaveAsTemplateModal from './SaveAsTemplateModal';
 import {
   LlmNode, ToolNode, ConditionNode, OutputNode, StartNode, ListenNode, PromptNode,
   KnowledgeNode, CodeNode, DataManipulationNode, HttpRequestNode, FormNode,
   IntentRouterNode, EntityCollectorNode, CheckEntityNode, UpdateContextNode,
   TagConversationNode, AssignToAgentNode, SetStatusNode, QuestionClassifierNode,
-  ExtractEntitiesNode,
+  ExtractEntitiesNode, SubworkflowNode,
   TriggerWebSocketNode, TriggerWhatsAppNode, TriggerTelegramNode, TriggerInstagramNode
 } from './CustomNodes';
 import { useAuth } from "@/hooks/useAuth";
@@ -44,11 +47,53 @@ const VisualWorkflowBuilder = () => {
   const [workflow, setWorkflow] = useState(null);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isSaveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
+  const [usedByWorkflows, setUsedByWorkflows] = useState<{id: number, name: string}[]>([]);
 
   const { workflowId } = useParams();
   const navigate = useNavigate();
   const reactFlowWrapper = useRef(null);
   const { authFetch } = useAuth();
+
+  // Properties Panel resize state
+  const propertiesPanelRef = useRef<ImperativePanelHandle>(null);
+  const [isPropertiesPanelCollapsed, setIsPropertiesPanelCollapsed] = useState(() => {
+    const saved = localStorage.getItem('workflowBuilder.propertiesPanel.collapsed');
+    return saved === 'true';
+  });
+
+  // Properties Panel constants
+  const PROPERTIES_PANEL_STORAGE_KEY = 'workflowBuilder.propertiesPanel.size';
+  const DEFAULT_PANEL_SIZE = 25;
+  const MIN_PANEL_SIZE = 15;
+  const MAX_PANEL_SIZE = 40;
+
+  // Get saved panel size
+  const getSavedPanelSize = useCallback(() => {
+    const saved = localStorage.getItem(PROPERTIES_PANEL_STORAGE_KEY);
+    return saved ? parseFloat(saved) : DEFAULT_PANEL_SIZE;
+  }, []);
+
+  // Handle panel resize
+  const handlePanelResize = useCallback((size: number) => {
+    localStorage.setItem(PROPERTIES_PANEL_STORAGE_KEY, String(size));
+  }, []);
+
+  // Toggle properties panel collapse/expand
+  const togglePropertiesPanel = useCallback(() => {
+    const panel = propertiesPanelRef.current;
+    if (panel) {
+      if (panel.isCollapsed()) {
+        panel.expand();
+        setIsPropertiesPanelCollapsed(false);
+        localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'false');
+      } else {
+        panel.collapse();
+        setIsPropertiesPanelCollapsed(true);
+        localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'true');
+      }
+    }
+  }, []);
 
   const nodeTypes = useMemo(() => ({
     llm: LlmNode, tool: ToolNode, condition: ConditionNode, response: OutputNode,
@@ -59,6 +104,8 @@ const VisualWorkflowBuilder = () => {
     update_context: UpdateContextNode, tag_conversation: TagConversationNode,
     assign_to_agent: AssignToAgentNode, set_status: SetStatusNode, question_classifier: QuestionClassifierNode,
     extract_entities: ExtractEntitiesNode,
+    // Subworkflow node
+    subworkflow: SubworkflowNode,
     // Trigger nodes
     trigger_websocket: TriggerWebSocketNode, trigger_whatsapp: TriggerWhatsAppNode,
     trigger_telegram: TriggerTelegramNode, trigger_instagram: TriggerInstagramNode
@@ -75,6 +122,13 @@ const VisualWorkflowBuilder = () => {
         if (data.visual_steps) {
           setNodes(data.visual_steps.nodes || initialNodes);
           setEdges(data.visual_steps.edges || []);
+        }
+
+        // Fetch workflows that use this as a subworkflow
+        const usedByResponse = await authFetch(`/api/v1/workflows/${workflowId}/used-by`);
+        if (usedByResponse.ok) {
+          const usedByData = await usedByResponse.json();
+          setUsedByWorkflows(usedByData);
         }
       } catch (error) {
         toast.error(t("workflows.editor.toasts.loadFailed"));
@@ -293,6 +347,14 @@ const VisualWorkflowBuilder = () => {
         onOpenChange={setShowSettings}
         workflowId={workflow?.id}
       />
+      {workflow?.id && (
+        <SaveAsTemplateModal
+          isOpen={isSaveAsTemplateOpen}
+          onClose={() => setSaveAsTemplateOpen(false)}
+          workflowId={workflow.id}
+          workflowName={workflow.name || ''}
+        />
+      )}
       <div className="dndflow h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950">
         {/* Enhanced Toolbar */}
         <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -329,6 +391,17 @@ const VisualWorkflowBuilder = () => {
                 <Settings className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
                 {t("workflows.editor.settingsButton")}
               </Button>
+              {workflow?.id && (
+                <Button
+                  onClick={() => setSaveAsTemplateOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 btn-hover-lift"
+                >
+                  <LayoutTemplate className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                  {t("workflowTemplates.saveAsTemplate")}
+                </Button>
+              )}
               <Button
                 onClick={() => saveWorkflow()}
                 size="sm"
@@ -340,55 +413,116 @@ const VisualWorkflowBuilder = () => {
           </div>
         </div>
 
+        {/* Subworkflow Usage Banner */}
+        {usedByWorkflows.length > 0 && (
+          <div className="mx-4 mb-2 p-3 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700 rounded-lg flex items-center gap-3">
+            <Layers className="h-5 w-5 text-violet-600 dark:text-violet-400 flex-shrink-0" />
+            <div className="flex-1">
+              <span className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                {t("workflows.editor.usedAsSubworkflow") || "This workflow is used as a subworkflow by"}:
+              </span>
+              <span className="text-sm text-violet-600 dark:text-violet-300 ml-1">
+                {usedByWorkflows.map(w => w.name).join(', ')}
+              </span>
+            </div>
+            <AlertTriangle className="h-4 w-4 text-amber-500 dark:text-amber-400 flex-shrink-0" title={t("workflows.editor.subworkflowWarning") || "Changes to this workflow will affect all parent workflows"} />
+          </div>
+        )}
+
         {/* Main Workflow Canvas */}
-        <div className="flex-grow flex overflow-hidden">
+        <div className="flex-grow flex overflow-hidden relative">
           <ReactFlowProvider>
             <Sidebar />
-            <div className="flex-grow h-full workflow-canvas" ref={reactFlowWrapper}>
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onInit={setReactFlowInstance}
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-                onNodeClick={onNodeClick}
-                onPaneClick={onPaneClick}
-                fitView
-                nodeTypes={nodeTypes}
-                deleteKeyCode={['Backspace', 'Delete']}
-                defaultEdgeOptions={{
-                  type: 'smoothstep',
-                  animated: true,
-                  style: { stroke: '#8b5cf6', strokeWidth: 2.5 },
+            <ResizablePanelGroup direction="horizontal" className="flex-grow">
+
+              {/* ReactFlow Canvas Panel */}
+              <ResizablePanel defaultSize={100 - getSavedPanelSize()} minSize={50}>
+                <div className="h-full workflow-canvas" ref={reactFlowWrapper}>
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onInit={setReactFlowInstance}
+                    onDrop={onDrop}
+                    onDragOver={onDragOver}
+                    onNodeClick={onNodeClick}
+                    onPaneClick={onPaneClick}
+                    fitView
+                    nodeTypes={nodeTypes}
+                    deleteKeyCode={['Backspace', 'Delete']}
+                    defaultEdgeOptions={{
+                      type: 'smoothstep',
+                      animated: true,
+                      style: { stroke: '#8b5cf6', strokeWidth: 2.5 },
+                    }}
+                    className="dark:bg-slate-900"
+                  >
+                    <Controls className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 [&_button]:dark:text-white [&_button]:dark:hover:bg-slate-700" />
+                    <MiniMap
+                      className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700"
+                      nodeColor={(node) => {
+                        if (node.type === 'start') return '#10b981';
+                        if (node.type === 'response') return '#ef4444';
+                        if (node.type === 'llm') return '#6366f1';
+                        if (node.type === 'tool') return '#10b981';
+                        if (node.type === 'condition') return '#f59e0b';
+                        return '#8b5cf6';
+                      }}
+                      maskColor="rgb(15, 23, 42, 0.7)"
+                    />
+                    <Background variant="dots" gap={20} size={1} color="#94a3b8" className="dark:opacity-30" />
+                  </ReactFlow>
+                </div>
+              </ResizablePanel>
+
+              {/* Resize Handle */}
+              <ResizableHandle withHandle className="bg-slate-200 dark:bg-slate-700 hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors" />
+
+              {/* Properties Panel */}
+              <ResizablePanel
+                ref={propertiesPanelRef}
+                defaultSize={getSavedPanelSize()}
+                minSize={MIN_PANEL_SIZE}
+                maxSize={MAX_PANEL_SIZE}
+                collapsible
+                collapsedSize={0}
+                onResize={handlePanelResize}
+                onCollapse={() => {
+                  setIsPropertiesPanelCollapsed(true);
+                  localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'true');
                 }}
-                className="dark:bg-slate-900"
+                onExpand={() => {
+                  setIsPropertiesPanelCollapsed(false);
+                  localStorage.setItem('workflowBuilder.propertiesPanel.collapsed', 'false');
+                }}
               >
-                <Controls className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 [&_button]:dark:text-white [&_button]:dark:hover:bg-slate-700" />
-                <MiniMap
-                  className="bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700"
-                  nodeColor={(node) => {
-                    if (node.type === 'start') return '#10b981';
-                    if (node.type === 'response') return '#ef4444';
-                    if (node.type === 'llm') return '#6366f1';
-                    if (node.type === 'tool') return '#10b981';
-                    if (node.type === 'condition') return '#f59e0b';
-                    return '#8b5cf6';
-                  }}
-                  maskColor="rgb(15, 23, 42, 0.7)"
-                />
-                <Background variant="dots" gap={20} size={1} color="#94a3b8" className="dark:opacity-30" />
-              </ReactFlow>
-            </div>
-            {/* Enhanced Properties Panel */}
-            <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-y-auto">
-              <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} />
-              {workflow && workflow.id && (
-                <Comments workflowId={workflow.id} />
-              )}
-            </div>
+                <div className="h-full border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg overflow-hidden flex flex-col">
+                  {/* Panel Content */}
+                  <div className="flex-1 overflow-y-auto">
+                    <PropertiesPanel selectedNode={selectedNode} nodes={nodes} setNodes={setNodes} deleteNode={deleteNode} workflowId={workflowId} />
+                    {workflow && workflow.id && (
+                      <Comments workflowId={workflow.id} />
+                    )}
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+
+            {/* Collapse Toggle Button - Always visible on the edge */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={togglePropertiesPanel}
+              className={`absolute top-4 z-20 h-8 w-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md hover:bg-slate-100 dark:hover:bg-slate-700 ${isRTL ? 'left-0 rounded-r-md rounded-l-none' : 'right-0 rounded-l-md rounded-r-none'}`}
+              title={isPropertiesPanelCollapsed ? t("workflows.editor.properties.expand") : t("workflows.editor.properties.collapse")}
+            >
+              {isRTL
+                ? (isPropertiesPanelCollapsed ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />)
+                : (isPropertiesPanelCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />)
+              }
+            </Button>
           </ReactFlowProvider>
         </div>
       </div>

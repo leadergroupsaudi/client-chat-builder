@@ -71,6 +71,7 @@ import SegmentsPage from "./pages/CRM/SegmentsPage";
 import TemplatesPage from "./pages/CRM/TemplatesPage";
 import TemplateEditorPage from "./pages/CRM/TemplateEditorPage";
 import MessageTemplatesPage from "./pages/MessageTemplatesPage";
+import { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,6 +100,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/accept-invite" element={<AcceptInvitationPage />} />
       <Route path="/preview/:publishId" element={<PublishedPreviewPage />} />
       <Route path="/dashboard" element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
