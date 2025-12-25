@@ -32,6 +32,7 @@ interface ConversationDetailProps {
   agentId: number;
   readOnly?: boolean;
   onBack?: () => void;
+  onSummaryClick?: () => void;
 }
 
 // Utility function to format date for separator
@@ -219,7 +220,7 @@ const AttachmentDisplay: React.FC<{ attachments: MessageAttachment[], sender: st
 // localStorage keys for draft auto-save
 const getDraftKey = (sessionId: string, type: 'message' | 'note') => `draft_${type}_${sessionId}`;
 
-export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionId, agentId, readOnly = false, onBack }) => {
+export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionId, agentId, readOnly = false, onBack, onSummaryClick }) => {
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const queryClient = useQueryClient();
@@ -894,6 +895,22 @@ export const ConversationDetail: React.FC<ConversationDetailProps> = ({ sessionI
               }`}>
                 {conversationStatus.charAt(0).toUpperCase() + conversationStatus.slice(1)}
               </div>
+
+              {/* Summary Button with Glow Effect */}
+              {onSummaryClick && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onSummaryClick}
+                  className="relative btn-hover-lift border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 group overflow-hidden"
+                >
+                  {/* Glow effect */}
+                  <span className="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-purple-400/20 animate-pulse" />
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  <Sparkles className={`h-4 w-4 ${isRTL ? 'ml-2' : 'mr-2'} relative z-10 text-purple-600 dark:text-purple-400`} />
+                  <span className="relative z-10">{t('conversations.detail.summary', { defaultValue: 'Summary' })}</span>
+                </Button>
+              )}
 
               {/* Action buttons - hidden in read-only mode */}
               {!readOnly && (

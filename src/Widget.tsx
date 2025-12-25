@@ -11,6 +11,8 @@ import CallingModal from '@/components/CallingModal';
 import LocationPicker from '@/components/LocationPicker';
 
 // Type definitions
+type DisplayMode = 'widget' | 'iframe' | 'fullpage';
+
 interface WidgetProps {
   agentId: string;
   companyId: string;
@@ -18,6 +20,7 @@ interface WidgetProps {
   rtlOverride?: boolean | null;
   languageOverride?: string | null;
   positionOverride?: string | null;
+  displayMode?: DisplayMode;
 }
 
 interface WidgetSettings {
@@ -174,9 +177,10 @@ const isSessionExpired = (timestamp: number, expirationDays: number = 30): boole
 };
 
 // Main Widget Component
-const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride, positionOverride }: WidgetProps) => {
+const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride, positionOverride, displayMode = 'widget' }: WidgetProps) => {
   const [settings, setSettings] = useState<WidgetSettings | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  // For iframe/fullpage modes, start with widget open
+  const [isOpen, setIsOpen] = useState(displayMode !== 'widget');
   const [isMinimized, setIsMinimized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -373,16 +377,19 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
           setMessages(historyMessages);
           isResumingSession.current = true;  // Skip welcome message since we have history
 
-          // Check if last message is a prompt (workflow paused) - show "Start Over" option
+          // Show "Start Over" option for any resumed session with history
+          setShowStartOver(true);
+          console.log('[Widget] Resumed session - showing Start Over option');
+
+          // Check if last message is a prompt/form (workflow paused) - disable inputs
           const lastMsg = data.messages[data.messages.length - 1];
           if (lastMsg?.message_type === 'prompt' || lastMsg?.message_type === 'form') {
-            setShowStartOver(true);
             setIsWorkflowPaused(true);
             // Default to disabled text input for resumed prompts (allow_text_input defaults to false)
             if (lastMsg?.message_type === 'prompt') {
               setIsTextInputDisabled(true);
             }
-            console.log('[Widget] Resumed with paused workflow - showing Start Over option');
+            console.log('[Widget] Resumed with paused workflow at prompt/form');
           }
         }
         return;
@@ -1275,9 +1282,81 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   // Use != null to check for both null and undefined
   const isRTL = rtlOverride != null ? rtlOverride : (RTL_LANGUAGES.includes(currentLanguage) || settings.meta?.rtl_enabled || false);
 
+  // Get container styles based on display mode
+  const getContainerStyle = (): React.CSSProperties => {
+    const zIndex = settings.meta?.z_index || 9999;
+
+    if (displayMode === 'fullpage') {
+      return {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex,
+        display: 'flex',
+        flexDirection: 'column',
+      };
+    }
+
+    if (displayMode === 'iframe') {
+      return {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        zIndex,
+      };
+    }
+
+    // Default widget mode
+    return {
+      position: 'fixed',
+      zIndex,
+      [vertical]: '20px',
+      [horizontal]: '20px',
+    };
+  };
+
+  // Get chat window styles based on display mode
+  const getChatWindowStyle = (): React.CSSProperties => {
+    const baseStyle: React.CSSProperties = {
+      borderRadius: `${border_radius}px`,
+      boxShadow: displayMode === 'fullpage'
+        ? '0 25px 50px rgba(0,0,0,0.25)'
+        : '0 10px 30px rgba(0,0,0,0.15)',
+    };
+
+    if (displayMode === 'fullpage') {
+      return {
+        width: '100%',
+        height: '100%',
+        borderRadius: 0,  // No border radius for fullpage
+      };
+    }
+
+    if (displayMode === 'iframe') {
+      return {
+        ...baseStyle,
+        width: '100%',
+        height: '100%',
+      };
+    }
+
+    // Default widget mode
+    return {
+      ...baseStyle,
+      width: `${size.width}px`,
+      height: `${size.height}px`,
+      position: 'absolute',
+      [vertical === 'bottom' ? 'bottom' : 'top']: '80px',
+      [horizontal === 'right' ? 'right' : 'left']: '0',
+    };
+  };
+
   return (
-  <div style={{ position: 'fixed', zIndex: settings.meta?.z_index || 9999, [vertical]: '20px', [horizontal]: '20px' }}>
-    {!isOpen && (
+  <div style={getContainerStyle()}>
+    {/* Floating button - only in widget mode */}
+    {displayMode === 'widget' && !isOpen && (
       <div className="relative group">
         {/* Pulsing ring animation */}
         <div
@@ -1530,8 +1609,8 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
     )}
 
 
-    {/* Minimized Widget View */}
-    {isOpen && isMinimized && settings?.communication_mode !== 'voice' && (
+    {/* Minimized Widget View - only in widget mode */}
+    {displayMode === 'widget' && isOpen && isMinimized && settings?.communication_mode !== 'voice' && (
       <div
         dir={isRTL ? 'rtl' : 'ltr'}
         style={{
@@ -1592,15 +1671,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
     {isOpen && !isMinimized && settings?.communication_mode !== 'voice' && (
       <div
         dir={isRTL ? 'rtl' : 'ltr'}
-        style={{
-          width: `${size.width}px`,
-          height: `${size.height}px`,
-          borderRadius: `${border_radius}px`,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
-          position: 'absolute',
-          [vertical === 'bottom' ? 'bottom' : 'top']: '80px',
-          [horizontal === 'right' ? 'right' : 'left']: '0',
-        }}
+        style={getChatWindowStyle()}
         className={cn(
           'flex flex-col overflow-hidden',
           dark_mode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-800'
@@ -1610,8 +1681,8 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
           <div
             style={{
               background: primary_color,
-              borderTopLeftRadius: `${border_radius}px`,
-              borderTopRightRadius: `${border_radius}px`,
+              borderTopLeftRadius: displayMode === 'fullpage' ? 0 : `${border_radius}px`,
+              borderTopRightRadius: displayMode === 'fullpage' ? 0 : `${border_radius}px`,
             }}
             className="p-4 text-white flex justify-between items-center flex-shrink-0"
           >
@@ -1640,51 +1711,69 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
               <span className="font-bold text-lg">{header_title}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setIsMinimized(true);
-                  setUnreadCount(0);
-                }}
-                className="text-white hover:bg-white/20"
-                title="Minimize"
-              >
-                <Minus className="h-5 w-5" />
-              </Button>
-              <div className="relative">
+              {/* Minimize button - only in widget mode */}
+              {displayMode === 'widget' && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleCloseClick}
+                  onClick={() => {
+                    setIsMinimized(true);
+                    setUnreadCount(0);
+                  }}
                   className="text-white hover:bg-white/20"
-                  title={isWorkflowPaused ? "Options" : "Close"}
+                  title="Minimize"
                 >
-                  <X className="h-6 w-6" />
+                  <Minus className="h-5 w-5" />
                 </Button>
-                {/* Dropdown menu for workflow reset */}
-                {showResetMenu && (
-                  <div
-                    className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50 min-w-[140px]"
-                    style={{ borderRadius: `${border_radius}px` }}
+              )}
+              {/* Close/Options button - only in widget mode */}
+              {displayMode === 'widget' && (
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCloseClick}
+                    className="text-white hover:bg-white/20"
+                    title={isWorkflowPaused ? "Options" : "Close"}
                   >
-                    <button
-                      onClick={() => { setShowResetMenu(false); setIsTextInputDisabled(false); setIsOpen(false); }}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    <X className="h-6 w-6" />
+                  </Button>
+                  {/* Dropdown menu for workflow reset */}
+                  {showResetMenu && (
+                    <div
+                      className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-50 min-w-[140px]"
+                      style={{ borderRadius: `${border_radius}px` }}
                     >
-                      <X className="h-4 w-4" />
-                      {localizedTexts?.close_widget || 'Close Widget'}
-                    </button>
-                    <button
-                      onClick={handleResetWorkflow}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                      {localizedTexts?.start_over || 'Start Over'}
-                    </button>
-                  </div>
-                )}
-              </div>
+                      <button
+                        onClick={() => { setShowResetMenu(false); setIsTextInputDisabled(false); setIsOpen(false); }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                      >
+                        <X className="h-4 w-4" />
+                        {localizedTexts?.close_widget || 'Close Widget'}
+                      </button>
+                      <button
+                        onClick={handleResetWorkflow}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        {localizedTexts?.start_over || 'Start Over'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Reset button - for iframe/fullpage modes */}
+              {displayMode !== 'widget' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleResetWorkflow}
+                  className="text-white hover:bg-white/20"
+                  title="Start Over"
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -1757,20 +1846,21 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
                         );
                       })}
                     </div>
-                    {/* Show "Start Over" only for resumed prompts (last message) */}
-                    {showStartOver && msg.id === messages[messages.length - 1]?.id && (
-                      <button
-                        onClick={handleResetWorkflow}
-                        className="mt-2 text-xs opacity-60 hover:opacity-100 underline flex items-center gap-1"
-                        style={{ color: dark_mode ? '#9CA3AF' : '#6B7280' }}
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                        {localizedTexts?.start_over || 'Start Over'}
-                      </button>
-                    )}
                   </div>
                 )}
                 {msg.type === 'video_call_invitation' && (<Button onClick={() => window.open(msg.videoCallUrl, '_blank', 'width=800,height=600')} className="mt-2 w-full" style={{background: primary_color, color: 'white'}}>Join Video Call</Button>)}
+
+                {/* Show "Start Over" for last message of any resumed session */}
+                {showStartOver && msg.id === messages[messages.length - 1]?.id && (
+                  <button
+                    onClick={handleResetWorkflow}
+                    className="mt-2 text-xs opacity-60 hover:opacity-100 underline flex items-center gap-1"
+                    style={{ color: dark_mode ? '#9CA3AF' : '#6B7280' }}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    {localizedTexts?.start_over || 'Start Over'}
+                  </button>
+                )}
 
                 {/* Attachments Display */}
                 {msg.attachments && msg.attachments.length > 0 && (

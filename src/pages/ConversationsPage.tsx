@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConversationDetail } from '@/components/ConversationDetail';
 import { ContactProfile } from '@/components/ContactProfile';
+import { ConversationSummary } from '@/components/ConversationSummary';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { toast } from '@/hooks/use-toast';
 import { Session, User, PRIORITY_CONFIG } from '@/types';
@@ -28,6 +29,7 @@ const ConversationsPage: React.FC = () => {
   const [unreadAssignments, setUnreadAssignments] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [reopenedSessions, setReopenedSessions] = useState<Set<string>>(new Set());
+  const [sidebarView, setSidebarView] = useState<'contact' | 'summary'>('contact');
 
   const companyId = useMemo(() => user?.company_id, [user]);
 
@@ -46,6 +48,11 @@ const ConversationsPage: React.FC = () => {
       setUnreadAssignments(0);
     }
   }, [activeTab]);
+
+  // Reset sidebar view to contact when session changes
+  React.useEffect(() => {
+    setSidebarView('contact');
+  }, [selectedSessionId]);
 
   const { data: users } = useQuery<User[]>({
     queryKey: ['users', companyId],
@@ -849,7 +856,11 @@ const ConversationsPage: React.FC = () => {
         {/* Center - Conversation Detail */}
         <div className={`h-full overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'md:col-span-8' : 'md:col-span-6'}`}>
           {selectedSessionId ? (
-            <ConversationDetail sessionId={selectedSessionId} agentId={1} />
+            <ConversationDetail
+              sessionId={selectedSessionId}
+              agentId={1}
+              onSummaryClick={() => setSidebarView(sidebarView === 'summary' ? 'contact' : 'summary')}
+            />
           ) : (
             <Card className="h-full flex items-center justify-center card-shadow-lg bg-white dark:bg-slate-800">
               <div className="text-center p-8">
@@ -865,10 +876,17 @@ const ConversationsPage: React.FC = () => {
           )}
         </div>
 
-        {/* Right Sidebar - Contact Profile */}
+        {/* Right Sidebar - Contact Profile or Summary */}
         <div className="md:col-span-3 h-full overflow-hidden">
           {selectedSessionId ? (
-            <ContactProfile sessionId={selectedSessionId} />
+            sidebarView === 'summary' ? (
+              <ConversationSummary
+                sessionId={selectedSessionId}
+                onBack={() => setSidebarView('contact')}
+              />
+            ) : (
+              <ContactProfile sessionId={selectedSessionId} />
+            )
           ) : (
             <Card className="h-full flex items-center justify-center card-shadow-lg bg-white dark:bg-slate-800">
               <div className="text-center p-8">
