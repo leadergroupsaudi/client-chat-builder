@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import '@livekit/components-styles';
+import { LiveKitPopupForm } from '../components/LiveKitPopupForm';
 
 const UserVideoCallPage: React.FC = () => {
   const location = useLocation();
@@ -37,6 +38,7 @@ const UserVideoCallPage: React.FC = () => {
         data-lk-theme="default"
         style={{ height: '100%', width: '100%' }}
       >
+        <LiveKitPopupForm />
         <VideoConference />
       </LiveKitRoom>
     </div>

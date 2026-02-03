@@ -12,6 +12,7 @@ import { MediaDeviceFailure } from 'livekit-client';
 import { Button } from '../ui/button';
 import { MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LiveKitPopupForm } from '../LiveKitPopupForm';
 
 interface VoiceAgentPreviewProps {
   liveKitToken: string | null;
@@ -83,6 +84,7 @@ export const VoiceAgentPreview: React.FC<VoiceAgentPreviewProps> = ({
         onMediaDeviceFailure={onDeviceFailure}
         onDisconnected={() => setShouldConnect(false)}
       >
+        <LiveKitPopupForm />
         {/* Floating button */}
         <AnimatePresence>
           {!shouldConnect && (

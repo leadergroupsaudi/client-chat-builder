@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MessageSquare, PhoneOff } from 'lucide-react';
+import { LiveKitPopupForm } from '@/components/LiveKitPopupForm';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
@@ -270,6 +271,7 @@ const InternalVideoCallPage: React.FC = () => {
             console.log('[Video Call] LiveKitRoom connected successfully!');
           }}
         >
+          <LiveKitPopupForm />
           <VideoConference />
           <Button
             onClick={() => {
@@ -323,8 +325,8 @@ const InternalVideoCallPage: React.FC = () => {
           </div>
         </div>
       )}
-      <Button 
-        onClick={() => setChatOpen(!isChatOpen)} 
+      <Button
+        onClick={() => setChatOpen(!isChatOpen)}
         className="absolute top-4 right-4"
         style={{ right: isChatOpen ? '370px' : '1rem' }}
       >

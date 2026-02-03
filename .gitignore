@@ -23,3 +23,5 @@ dist-widget
 *.njsproj
 *.sln
 *.sw?
+
+vite.config.ts.timestamp-*.mjs
