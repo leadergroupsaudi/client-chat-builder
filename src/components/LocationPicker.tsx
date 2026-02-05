@@ -217,7 +217,6 @@ const LocationPicker: React.FC<LocationPickerProps> = ({
             touchZoom={true}
             boxZoom={false}
             keyboard={false}
-            tap={false}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

@@ -449,7 +449,8 @@ const AppLayout = () => {
                   <MessageSquare className="h-6 w-6 text-white" />
                 </div>
               )}
-              <h1 className="text-xl font-bold text-gray-800 dark:text-white">{branding.companyName}</h1>
+              {/* <h1 className="text-xl font-bold text-gray-800 dark:text-white">{branding.companyName}</h1> */}
+              <h1 className="text-xl font-bold text-gray-800 dark:text-white">Cintrix</h1>
             </div>
             <div className="flex items-center gap-3">
               {/* Notification Bell */}
@@ -482,7 +483,7 @@ const AppLayout = () => {
                         {user?.email}
                       </p>
                       <p className="text-xs text-slate-600 dark:text-slate-400 leading-tight">
-                        {user?.company_name || 'AgentConnect'}
+                        {user?.company_name || 'Cintrix'}
                       </p>
                     </div>
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md ring-2 ring-white dark:ring-slate-700">
@@ -495,7 +496,7 @@ const AppLayout = () => {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user?.email}</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {user?.company_name || 'AgentConnect'}
+                        {user?.company_name || 'Cintrix'}
                       </p>
                     </div>
                   </DropdownMenuLabel>
@@ -525,7 +526,7 @@ const AppLayout = () => {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user?.email}</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {user?.company_name || 'AgentConnect'}
+                        {user?.company_name || 'Cintrix'}
                       </p>
                     </div>
                   </DropdownMenuLabel>

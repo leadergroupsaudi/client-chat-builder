@@ -58,7 +58,7 @@ const Index = () => {
                 <Bot className="h-6 w-6 text-white" />
               </div>
               <div>
-                <span className="text-xl font-bold text-gray-900">AgentConnect</span>
+                <span className="text-xl font-bold text-gray-900">Cintrix</span>
                 <Badge variant="secondary" className="ml-2 text-xs">Platform</Badge>
               </div>
             </div>
@@ -403,7 +403,7 @@ const Index = () => {
               Built for Every Industry
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              From customer support to sales automation, AgentConnect powers AI agents across industries.
+              From customer support to sales automation, Cintrix powers AI agents across industries.
             </p>
           </div>
 
@@ -484,7 +484,7 @@ const Index = () => {
             Ready to Build Your First AI Agent?
           </h2>
           <p className="text-xl mb-8 text-blue-100">
-            Join hundreds of teams building the future of customer engagement with AgentConnect.
+            Join hundreds of teams building the future of customer engagement with Cintrix.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/signup">
@@ -566,7 +566,7 @@ const Index = () => {
                 <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-2 rounded-lg">
                   <Bot className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-2xl font-bold">AgentConnect</span>
+                <span className="text-2xl font-bold">Cintrix</span>
               </div>
               <p className="text-gray-400 mb-4 max-w-md">
                 The most powerful platform for building, deploying, and managing AI agents across every channel.
@@ -600,7 +600,7 @@ const Index = () => {
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-gray-400 text-sm">
-                © 2025 AgentConnect. Building the future of AI-powered customer engagement.
+                © 2025 Cintrix. Building the future of AI-powered customer engagement.
               </p>
               <div className="flex items-center gap-6 text-sm text-gray-400">
                 <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>

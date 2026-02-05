@@ -75,7 +75,7 @@ const CallingModal: React.FC<CallingModalProps> = ({
       />
 
       <Dialog open={isOpen} onOpenChange={onCancel}>
-        <DialogContent className="sm:max-w-md" hideClose>
+        <DialogContent className="sm:max-w-md">
           <VisuallyHidden>
             <DialogTitle>Outgoing Call</DialogTitle>
             <DialogDescription>

@@ -73,7 +73,7 @@ export const LoginPage = () => {
             Welcome Back
           </CardTitle>
           <CardDescription className="text-base dark:text-gray-400">
-            Sign in to access your AgentConnect dashboard
+            Sign in to access your Cintrix dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>

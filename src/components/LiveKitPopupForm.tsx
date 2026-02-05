@@ -4,11 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Upload, X, MapPin, CheckCircle2 } from 'lucide-react';
+import { Upload, X, MapPin, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRoomContext } from '@livekit/components-react';
 import { RoomEvent } from 'livekit-client';
 import LocationPicker from './LocationPicker';
+
+// Note: Automax uploads now go through backend proxy at /api/v1/automax/upload-attachment
+// This bypasses browser CSP restrictions
 
 export const LiveKitPopupForm = () => {
     const [isVisible, setIsVisible] = useState(false);
@@ -22,8 +25,10 @@ export const LiveKitPopupForm = () => {
         criticality?: string;
     } | null>(null);
 
-    // Multi-file state - just one file now
+    // File and Automax state
     const [selectedFile1, setSelectedFile1] = useState<File | null>(null);
+    const [attachmentId, setAttachmentId] = useState<string>("");
+    const [isUploadingToAutomax, setIsUploadingToAutomax] = useState(false);
 
     // Manual Location state
     const [manualLocation, setManualLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -33,11 +38,12 @@ export const LiveKitPopupForm = () => {
     const [transcript, setTranscript] = useState("");
     const [isUploading, setIsUploading] = useState(false);
     const [sessionId, setSessionId] = useState("");
+    const [dataSentToMcp, setDataSentToMcp] = useState(false);
 
     // Refs for listeners to avoid stale closures
     const isVisibleRef = useRef(isVisible);
     const transcriptRef = useRef(transcript);
-    const isSubmittedRef = useRef(false); // Track if already submitted to prevent disconnect fallback
+    const isSubmittedRef = useRef(false);
 
     // Sync refs with state
     useEffect(() => {
@@ -53,14 +59,16 @@ export const LiveKitPopupForm = () => {
     try {
         room = useRoomContext();
     } catch (e) {
-        return null; // Don't render anything if outside LiveKitRoom
+        return null;
     }
+
+    // Check if submit should be enabled
+    const isSubmitEnabled = attachmentId && manualLocation && !isUploading && !isUploadingToAutomax;
 
     // --- CAPTURE SESSION ID EARLY ---
     useEffect(() => {
         if (!room) return;
 
-        // Try room name first
         if (room.name && !sessionId) {
             const sid = room.name.startsWith("voice_workflow_")
                 ? room.name.replace("voice_workflow_", "")
@@ -72,7 +80,6 @@ export const LiveKitPopupForm = () => {
             }
         }
 
-        // Try metadata fallback
         if (room.metadata && !sessionId) {
             try {
                 const meta = JSON.parse(room.metadata);
@@ -86,6 +93,66 @@ export const LiveKitPopupForm = () => {
         }
     }, [room, sessionId, room?.metadata]);
 
+    // --- Upload Image via Backend Proxy (bypasses CSP) ---
+    const uploadToAutomax = async (file: File): Promise<string | null> => {
+        setIsUploadingToAutomax(true);
+        try {
+            console.log("[LiveKitPopupForm] Uploading via backend proxy:", file.name);
+
+            // Create form data for upload
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Call our backend proxy instead of Automax directly
+            const response = await fetch(getApiUrl("/api/v1/automax/upload-attachment"), {
+                method: 'POST',
+                body: formData
+            });
+
+            console.log("[LiveKitPopupForm] Proxy response status:", response.status);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log("[LiveKitPopupForm] Proxy response data:", data);
+
+                if (data.success && data.attachment_id) {
+                    console.log("[LiveKitPopupForm] Attachment uploaded, ID:", data.attachment_id);
+                    toast.success("Image uploaded successfully!");
+                    return data.attachment_id;
+                } else {
+                    console.error("[LiveKitPopupForm] No attachment_id in response:", data);
+                    toast.error("Upload succeeded but no attachment ID returned");
+                    return null;
+                }
+            } else {
+                const errorText = await response.text();
+                console.error("[LiveKitPopupForm] Upload failed:", response.status, errorText);
+                toast.error(`Failed to upload: ${response.status}`);
+                return null;
+            }
+        } catch (error) {
+            console.error("[LiveKitPopupForm] Upload error:", error);
+            toast.error("Error uploading: " + (error as Error).message);
+            return null;
+        } finally {
+            setIsUploadingToAutomax(false);
+        }
+    };
+
+    // --- Handle File Selection (triggers Automax upload) ---
+    const handleFileSelect = async (file: File | null) => {
+        setSelectedFile1(file);
+        setAttachmentId(""); // Reset attachment ID
+
+        if (file) {
+            console.log("[LiveKitPopupForm] File selected, uploading to Automax...");
+            const id = await uploadToAutomax(file);
+            if (id) {
+                setAttachmentId(id);
+            }
+        }
+    };
+
     // --- TRANSCRIPTION & SIGNAL & DISCONNECT LISTENER ---
     useEffect(() => {
         if (!room) {
@@ -95,16 +162,13 @@ export const LiveKitPopupForm = () => {
 
         console.log("[LiveKitPopupForm] Attaching listeners to room:", room.name);
 
-        // 1. Accumulate transcription history (ONLY FINAL SEGMENTS)
         const handleTranscription = (segments: any[]) => {
-            // Filter only for final segments to avoid messy repeating logs
             const finalSegments = segments.filter(s => s.final);
             const newText = finalSegments.map(s => s.text).join(" ");
 
             if (newText.trim()) {
                 setTranscript(prev => prev + (prev ? "\n" : "") + newText.trim());
 
-                // TRIGGER CHECK: If agent says the magic words, open form immediately
                 if (newText.toLowerCase().includes("opened the report form for you")) {
                     console.warn("[LiveKitPopupForm] MAGIC PHRASE DETECTED IN TRANSCRIPT!");
                     if (!isVisibleRef.current && !isSubmittedRef.current) {
@@ -115,7 +179,6 @@ export const LiveKitPopupForm = () => {
             }
         };
 
-        // 2. Handle programmatic trigger (opening the form)
         const handleDataReceived = (payload: Uint8Array, participant?: any, kind?: any, topic?: string) => {
             const decoder = new TextDecoder();
             const rawMessage = decoder.decode(payload).trim();
@@ -124,12 +187,9 @@ export const LiveKitPopupForm = () => {
             console.log(`[LiveKitPopupForm] Incoming: "${rawMessage}" | Topic: "${topic}" | From: ${senderId}`);
 
             try {
-                // Try to parse as JSON first (contains AI data)
                 const data = JSON.parse(rawMessage);
                 if (data.type === "OPEN_FORM" || data.type === "FORM_TRIGGER") {
                     console.warn("[LiveKitPopupForm] JSON SIGNAL RECEIVED!", data);
-
-                    // Merge new data into existing aiData state
                     setAiData(prev => ({ ...prev, ...data }));
 
                     if (!isVisibleRef.current && !isSubmittedRef.current) {
@@ -156,14 +216,12 @@ export const LiveKitPopupForm = () => {
             }
         };
 
-        // 3. Fallback: Trigger on disconnect if info was gathered
         const handleDisconnected = (reason?: any) => {
             console.warn("[LiveKitPopupForm] DISCONNECT EVENT. Reason:", reason,
                 "Visible:", isVisibleRef.current,
                 "Submitted:", isSubmittedRef.current,
                 "Transcript Length:", transcriptRef.current.length);
 
-            // If the agent hasn't already triggered the form, and we haven't submitted successfully, do it now fallback
             if (!isVisibleRef.current && !isSubmittedRef.current && transcriptRef.current.length > 5) {
                 console.info("[LiveKitPopupForm] Triggering form via DISCONNECT FALLBACK");
                 setIsVisible(true);
@@ -175,7 +233,6 @@ export const LiveKitPopupForm = () => {
         room.on(RoomEvent.DataReceived, handleDataReceived);
         room.on(RoomEvent.Disconnected, handleDisconnected);
 
-        // Debug: Log all room occupants
         console.log("[LiveKitPopupForm] Participants in room:", Array.from(room.remoteParticipants.values()).map((p: any) => p.identity));
 
         return () => {
@@ -186,82 +243,94 @@ export const LiveKitPopupForm = () => {
         };
     }, [room]);
 
+    // --- SEND DATA TO MCP VIA LIVEKIT ---
+    const sendDataToMcp = async () => {
+        if (!room || !attachmentId || !manualLocation) {
+            toast.error("Please upload an image and set location first");
+            return false;
+        }
+
+        try {
+            const frontendData = {
+                type: "FRONTEND_DATA",
+                attachment_id: attachmentId,
+                latitude: manualLocation.lat,
+                longitude: manualLocation.lng,
+                session_id: sessionId,
+                timestamp: new Date().toISOString()
+            };
+
+            console.log("[LiveKitPopupForm] Sending FRONTEND_DATA to MCP:", frontendData);
+
+            await room.localParticipant.publishData(
+                new TextEncoder().encode(JSON.stringify(frontendData)),
+                { reliable: true }
+            );
+
+            toast.success("Data sent to agent!");
+            setDataSentToMcp(true);
+            return true;
+        } catch (error) {
+            console.error("[LiveKitPopupForm] Failed to send data to MCP:", error);
+            toast.error("Failed to send data to agent");
+            return false;
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!attachmentId || !manualLocation) {
+            toast.error("Please upload an image and set location first");
+            return;
+        }
+
         setIsUploading(true);
-        isSubmittedRef.current = true; // Mark as submitted to prevent duplicate popup
+        isSubmittedRef.current = true;
 
-        console.log("[LiveKitPopupForm] SUBMITTING AI DATA:", aiData);
+        console.log("[LiveKitPopupForm] SUBMITTING - Sending data to MCP");
 
-        const formData = new FormData();
+        // Send data directly to MCP via LiveKit
+        const success = await sendDataToMcp();
 
-        // Pass conversation transcript
-        formData.append("conversation", transcript);
+        if (success) {
+            toast.success("Data sent to agent! Incident will be created.");
 
-        // Map AI-extracted data (from agent signal)
-        if (aiData) {
-            if (aiData.caller_name) formData.append("caller_name", aiData.caller_name);
-            if (aiData.classification) formData.append("classification", aiData.classification);
-            if (aiData.location) formData.append("location_ai", aiData.location);
-            if (aiData.description) formData.append("description", aiData.description);
-            if (aiData.criticality) formData.append("criticality", aiData.criticality);
-        }
-
-        // Pass manual location if picked via LocationPicker
-        if (manualLocation) {
-            formData.append("latitude", manualLocation.lat.toString());
-            formData.append("longitude", manualLocation.lng.toString());
-        }
-
-        // Use captured session_id
-        if (sessionId) {
-            formData.append("session_id", sessionId);
-        }
-
-        // Add file 1 if selected
-        if (selectedFile1) formData.append("file1", selectedFile1);
-
-        try {
-            const response = await fetch(getApiUrl("/api/v1/voice-workflow/upload-data"), {
-                method: "POST",
-                body: formData,
-            });
-
-            if (response.ok) {
-                toast.success("Report submitted successfully!");
-
-                // Notify agent via signal
-                if (room) {
-                    try {
-                        const signal = JSON.stringify({
-                            type: "FORM_DONE",
-                            timestamp: new Date().toISOString()
-                        });
-                        await room.localParticipant.publishData(
-                            new TextEncoder().encode(signal),
-                            { reliable: true }
-                        );
-                    } catch (publishErr) {
-                        console.error("Failed to notify agent:", publishErr);
-                    }
-                }
-
-                // Reset and close
-                setTimeout(() => {
-                    setIsVisible(false);
-                    setIsUploading(false);
-                    // Clear files only, maybe keep other info for debug if needed
-                    setSelectedFile1(null);
-                    setSelectedFile2(null);
-                }, 1500);
-            } else {
-                toast.error("Server Error: " + response.statusText);
-                setIsUploading(false);
+            // Also save to backend for logging
+            const formData = new FormData();
+            formData.append("conversation", transcript);
+            if (aiData) {
+                if (aiData.caller_name) formData.append("caller_name", aiData.caller_name);
+                if (aiData.classification) formData.append("classification", aiData.classification);
+                if (aiData.location) formData.append("location_ai", aiData.location);
+                if (aiData.description) formData.append("description", aiData.description);
+                if (aiData.criticality) formData.append("criticality", aiData.criticality);
             }
-        } catch (error) {
-            console.error("Upload network error", error);
-            toast.error("Network Error: Could not connect to server");
+            if (manualLocation) {
+                formData.append("latitude", manualLocation.lat.toString());
+                formData.append("longitude", manualLocation.lng.toString());
+            }
+            if (sessionId) formData.append("session_id", sessionId);
+            if (selectedFile1) formData.append("file1", selectedFile1);
+
+            try {
+                await fetch(getApiUrl("/api/v1/voice-workflow/upload-data"), {
+                    method: "POST",
+                    body: formData,
+                });
+            } catch (error) {
+                console.warn("Backend logging failed (non-critical):", error);
+            }
+
+            setTimeout(() => {
+                setIsVisible(false);
+                setIsUploading(false);
+                setSelectedFile1(null);
+                setAttachmentId("");
+                setManualLocation(null);
+                setDataSentToMcp(false);
+            }, 1500);
+        } else {
             setIsUploading(false);
         }
     };
@@ -305,25 +374,42 @@ export const LiveKitPopupForm = () => {
                                 <div className="space-y-2">
                                     <Label className="text-sm font-medium text-zinc-300">Upload Attachments</Label>
                                     <div className="grid grid-cols-2 gap-4">
-                                        {/* File 1 */}
+                                        {/* File 1 - with Automax upload status */}
                                         <div className="relative h-32 border-2 border-dashed border-zinc-700 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 hover:border-blue-500/50 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group">
-                                            <input type="file" id="f1" className="hidden" onChange={(e) => setSelectedFile1(e.target.files?.[0] || null)} />
+                                            <input
+                                                type="file"
+                                                id="f1"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+                                            />
                                             <label htmlFor="f1" className="w-full h-full flex flex-col items-center justify-center p-4 cursor-pointer">
-                                                {selectedFile1 ? (
+                                                {isUploadingToAutomax ? (
+                                                    <>
+                                                        <Loader2 className="h-8 w-8 text-blue-500 mb-2 animate-spin" />
+                                                        <span className="text-xs font-medium text-zinc-300">Uploading...</span>
+                                                    </>
+                                                ) : attachmentId ? (
                                                     <>
                                                         <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
-                                                        <span className="text-xs font-medium truncate w-full px-2 text-center text-zinc-300">{selectedFile1.name}</span>
+                                                        <span className="text-xs font-medium truncate w-full px-2 text-center text-zinc-300">{selectedFile1?.name}</span>
+                                                        <span className="text-[10px] text-green-400">Uploaded ✓</span>
+                                                    </>
+                                                ) : selectedFile1 ? (
+                                                    <>
+                                                        <Loader2 className="h-8 w-8 text-yellow-500 mb-2 animate-spin" />
+                                                        <span className="text-xs font-medium text-zinc-300">Processing...</span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <Upload className="h-8 w-8 text-zinc-500 mb-2 group-hover:text-blue-400 transition-colors" />
-                                                        <span className="text-xs font-semibold text-zinc-400">Add File</span>
+                                                        <span className="text-xs font-semibold text-zinc-400">Add Photo</span>
                                                     </>
                                                 )}
                                             </label>
                                         </div>
 
-                                        {/* Location Picker instead of File 2 */}
+                                        {/* Location Picker */}
                                         <div
                                             onClick={() => setShowMap(true)}
                                             className="relative h-32 border-2 border-dashed border-zinc-700 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 hover:border-blue-500/50 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group"
@@ -335,7 +421,7 @@ export const LiveKitPopupForm = () => {
                                                         <span className="text-[10px] font-medium text-zinc-300">
                                                             {manualLocation.lat.toFixed(4)}, {manualLocation.lng.toFixed(4)}
                                                         </span>
-                                                        <span className="text-[10px] text-zinc-500">Location Set</span>
+                                                        <span className="text-[10px] text-green-400">Location Set ✓</span>
                                                     </>
                                                 ) : (
                                                     <>
@@ -346,8 +432,16 @@ export const LiveKitPopupForm = () => {
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Status message */}
                                     <p className="text-[10px] text-zinc-500 text-center italic">
-                                        Your conversation and agent findings are being automatically saved.
+                                        {!attachmentId && !manualLocation
+                                            ? "Upload a photo and set location to enable submit"
+                                            : !attachmentId
+                                                ? "Upload a photo to enable submit"
+                                                : !manualLocation
+                                                    ? "Set location to enable submit"
+                                                    : "Ready to submit!"}
                                     </p>
                                 </div>
                             </CardContent>
@@ -355,10 +449,21 @@ export const LiveKitPopupForm = () => {
                             <CardFooter className="flex gap-2 pt-4">
                                 <Button
                                     type="submit"
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                                    disabled={isUploading}
+                                    className={`flex-1 text-white text-sm ${isSubmitEnabled
+                                        ? 'bg-blue-600 hover:bg-blue-700'
+                                        : 'bg-zinc-600 cursor-not-allowed'}`}
+                                    disabled={!isSubmitEnabled}
                                 >
-                                    {isUploading ? "Uploading..." : "Submit to Server"}
+                                    {isUploading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Sending to Agent...
+                                        </>
+                                    ) : isSubmitEnabled ? (
+                                        "Send to Agent"
+                                    ) : (
+                                        "Complete Required Fields"
+                                    )}
                                 </Button>
                                 <Button
                                     type="button"
@@ -391,4 +496,3 @@ export const LiveKitPopupForm = () => {
         </>
     );
 };
-

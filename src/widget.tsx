@@ -13,7 +13,7 @@ import LocationPicker from '@/components/LocationPicker';
 // Type definitions
 type DisplayMode = 'widget' | 'iframe' | 'fullpage';
 
-interface WidgetProps {
+export interface WidgetProps {
   agentId: string;
   companyId: string;
   backendUrl: string;
@@ -1180,8 +1180,9 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         console.log('Created new session:', newSessionId);
       }
 
-      setSessionId(newSessionId);
-      currentSessionId.current = newSessionId;
+      const sessionIdString = String(newSessionId);
+      setSessionId(sessionIdString);
+      currentSessionId.current = sessionIdString;
       shouldReconnect.current = true;
       reconnectAttempts.current = 0;
 

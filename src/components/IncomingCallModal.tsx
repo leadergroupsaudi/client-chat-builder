@@ -81,7 +81,7 @@ const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
       />
 
       <Dialog open={isOpen} onOpenChange={handleReject}>
-        <DialogContent className="sm:max-w-md" hideClose>
+        <DialogContent className="sm:max-w-md">
           <div className="flex flex-col items-center justify-center py-8">
             {/* Pulsing Avatar */}
             <div className="relative mb-6">
