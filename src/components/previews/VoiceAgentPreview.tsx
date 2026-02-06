@@ -42,19 +42,19 @@ function HeartbeatWaveform({ isActive }: { isActive: boolean }) {
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Draw background glow
+      // Draw subtle background glow
       const gradient = ctx.createLinearGradient(0, 0, width, 0);
-      gradient.addColorStop(0, 'rgba(0, 212, 255, 0)');
-      gradient.addColorStop(0.5, 'rgba(0, 212, 255, 0.1)');
-      gradient.addColorStop(1, 'rgba(0, 212, 255, 0)');
+      gradient.addColorStop(0, 'rgba(0, 150, 180, 0)');
+      gradient.addColorStop(0.5, 'rgba(0, 150, 180, 0.05)');
+      gradient.addColorStop(1, 'rgba(0, 150, 180, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, width, height);
 
       // Draw the heartbeat line
       ctx.beginPath();
-      ctx.strokeStyle = '#00D4FF';
+      ctx.strokeStyle = '#0099AA';
       ctx.lineWidth = 2;
-      ctx.shadowColor = '#00D4FF';
+      ctx.shadowColor = '#0099AA';
       ctx.shadowBlur = isActive ? 15 : 5;
 
       const segmentWidth = 80;
@@ -137,7 +137,7 @@ function CallTimer({ startTime }: { startTime: number }) {
   const formatTime = (num: number) => num.toString().padStart(2, '0');
 
   return (
-    <div className="px-4 py-2 bg-zinc-700/80 rounded-full text-white font-mono text-sm">
+    <div className="px-4 py-2 bg-zinc-900/90 rounded-full text-zinc-300 font-mono text-sm border border-zinc-700/50">
       {formatTime(hours)}:{formatTime(minutes)}:{formatTime(seconds)}
     </div>
   );
@@ -169,7 +169,7 @@ function CircularAvatar({
       <motion.div
         animate={isActive ? { scale: [1, 1.02, 1] } : {}}
         transition={{ repeat: Infinity, duration: 1.5 }}
-        className={`relative w-32 h-32 rounded-full overflow-hidden border-2 ${isActive ? 'border-cyan-400 shadow-lg shadow-cyan-400/30' : 'border-cyan-500/50'
+        className={`relative w-32 h-32 rounded-full overflow-hidden border-2 ${isActive ? 'border-cyan-600 shadow-lg shadow-cyan-900/50' : 'border-zinc-600/50'
           }`}
       >
         {imageUrl ? (
@@ -179,16 +179,16 @@ function CircularAvatar({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
             {isAI ? (
-              <div className="w-full h-full bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center">
-                <svg viewBox="0 0 100 100" className="w-16 h-16 text-cyan-400">
-                  <circle cx="50" cy="35" r="20" fill="currentColor" opacity="0.8" />
+              <div className="w-full h-full bg-gradient-to-br from-slate-900 to-zinc-900 flex items-center justify-center">
+                <svg viewBox="0 0 100 100" className="w-16 h-16 text-cyan-700">
+                  <circle cx="50" cy="35" r="20" fill="currentColor" opacity="0.7" />
                   <path d="M25 80 Q50 60 75 80" stroke="currentColor" strokeWidth="8" fill="none" />
                 </svg>
               </div>
             ) : (
-              <User className="w-12 h-12 text-zinc-400" />
+              <User className="w-12 h-12 text-zinc-500" />
             )}
           </div>
         )}
@@ -196,13 +196,13 @@ function CircularAvatar({
         {/* Glow ring for AI when speaking */}
         {isAI && isActive && (
           <motion.div
-            className="absolute inset-0 rounded-full border-2 border-cyan-400"
-            animate={{ scale: [1, 1.1, 1], opacity: [0.8, 0.3, 0.8] }}
+            className="absolute inset-0 rounded-full border-2 border-cyan-700"
+            animate={{ scale: [1, 1.1, 1], opacity: [0.6, 0.2, 0.6] }}
             transition={{ repeat: Infinity, duration: 1.5 }}
           />
         )}
       </motion.div>
-      <span className="text-white text-sm font-medium tracking-wider">{label}</span>
+      <span className="text-zinc-400 text-sm font-medium tracking-wider">{label}</span>
     </div>
   );
 }
@@ -230,11 +230,11 @@ function HeartbeatVoiceAssistant({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm"
     >
       <div
-        className="relative w-full max-w-2xl mx-4 rounded-3xl p-8 flex flex-col items-center gap-8"
-        style={{ background: '#2D2D2D' }}
+        className="relative w-full max-w-2xl mx-4 rounded-3xl p-8 flex flex-col items-center gap-8 border border-zinc-800/50"
+        style={{ background: '#1a1a1a' }}
       >
         {/* Timer */}
         <div className="absolute top-6 left-1/2 transform -translate-x-1/2">
@@ -247,7 +247,7 @@ function HeartbeatVoiceAssistant({
           <CircularAvatar label="YOU" isAI={false} isActive={state === 'listening'} />
 
           {/* Center Divider with Heartbeat */}
-          <div className="relative h-40 w-1 bg-zinc-600/50 mx-4">
+          <div className="relative h-40 w-1 bg-zinc-800/50 mx-4">
             <HeartbeatWaveform isActive={isAISpeaking} />
           </div>
 
@@ -262,7 +262,7 @@ function HeartbeatVoiceAssistant({
         </div>
 
         {/* Status Text */}
-        <div className="text-zinc-400 text-sm capitalize">
+        <div className="text-zinc-500 text-sm capitalize">
           {state === 'listening' ? 'Listening...' :
             state === 'speaking' ? 'Speaking...' :
               state === 'thinking' ? 'Thinking...' :
@@ -277,8 +277,8 @@ function HeartbeatVoiceAssistant({
             size="icon"
             onClick={() => setIsMuted(!isMuted)}
             className={`w-12 h-12 rounded-full ${isMuted
-                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'bg-zinc-700 text-cyan-400 hover:bg-zinc-600'
+              ? 'bg-red-900/40 text-red-500 hover:bg-red-900/60'
+              : 'bg-zinc-800 text-cyan-600 hover:bg-zinc-700'
               }`}
           >
             {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -289,7 +289,7 @@ function HeartbeatVoiceAssistant({
             variant="ghost"
             size="icon"
             onClick={onDisconnect}
-            className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 text-white"
+            className="w-14 h-14 rounded-full bg-red-700 hover:bg-red-600 text-white"
           >
             <PhoneOff className="w-6 h-6" />
           </Button>
@@ -298,7 +298,7 @@ function HeartbeatVoiceAssistant({
           <Button
             variant="ghost"
             size="icon"
-            className="w-12 h-12 rounded-full bg-zinc-700 text-cyan-400 hover:bg-zinc-600"
+            className="w-12 h-12 rounded-full bg-zinc-800 text-cyan-600 hover:bg-zinc-700"
           >
             <MessageSquare className="w-5 h-5" />
           </Button>
@@ -311,14 +311,14 @@ function HeartbeatVoiceAssistant({
         <RoomAudioRenderer />
 
         {/* Decorative Star */}
-        <div className="absolute bottom-4 right-4 text-zinc-500">
+        <div className="absolute bottom-4 right-4 text-zinc-700">
           <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
             <path d="M12 2L12 6M12 18L12 22M2 12L6 12M18 12L22 12M5.64 5.64L8.17 8.17M15.83 15.83L18.36 18.36M5.64 18.36L8.17 15.83M15.83 8.17L18.36 5.64"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
           </svg>
         </div>
       </div>
-    </motion.div>
+    </motion.div >
   );
 }
 

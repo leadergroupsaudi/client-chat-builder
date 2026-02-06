@@ -54,6 +54,21 @@ export const LiveKitPopupForm = () => {
         transcriptRef.current = transcript;
     }, [transcript]);
 
+    // Allow external UI to open the form without touching form logic
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const handleOpenForm = () => {
+            if (!isVisibleRef.current && !isSubmittedRef.current) {
+                setIsVisible(true);
+                toast.info("Opening report form");
+            }
+        };
+
+        window.addEventListener('livekit:open-form', handleOpenForm as EventListener);
+        return () => window.removeEventListener('livekit:open-form', handleOpenForm as EventListener);
+    }, []);
+
     // Safer context access
     let room: any;
     try {
