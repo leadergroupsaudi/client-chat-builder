@@ -438,9 +438,10 @@ const AppLayout = () => {
                 }
               }}
             >
-              {branding.logoUrl ? (
+              {/* {branding.logoUrl ? (
                 <img
-                  src={branding.logoUrl}
+                  // src={branding.logoUrl}
+                  src="client-chat-builder/public/Cintrix_logo-01__1__4-removebg-preview.png"
                   alt={branding.companyName}
                   className="h-10 w-10 object-contain rounded-lg"
                 />
@@ -448,9 +449,15 @@ const AppLayout = () => {
                 <div className="p-2 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-lg shadow-md">
                   <MessageSquare className="h-6 w-6 text-white" />
                 </div>
-              )}
+              )} */}
+              <img
+                  // src={branding.logoUrl}
+                  src="/Cintrix_logo-01__1__4-removebg-preview.png"
+                  alt={branding.companyName}
+                  className="h-20 w-21 object-contain rounded-lg"
+                />
               {/* <h1 className="text-xl font-bold text-gray-800 dark:text-white">{branding.companyName}</h1> */}
-              <h1 className="text-xl font-bold text-gray-800 dark:text-white">Cintrix</h1>
+              {/* <h1 className="text-xl font-bold text-gray-800 dark:text-white">Cintrix</h1> */}
             </div>
             <div className="flex items-center gap-3">
               {/* Notification Bell */}
