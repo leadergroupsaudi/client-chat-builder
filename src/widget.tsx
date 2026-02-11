@@ -468,7 +468,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         setIsTyping(false);
 
         // Open LiveKit call in new window
-        const callUrl = `${settings?.frontend_url || window.location.origin}/video-call?token=${encodeURIComponent(data.user_token)}&livekitUrl=${encodeURIComponent(data.livekit_url)}&sessionId=${currentSessionId.current}`;
+        const callUrl = `${settings?.frontend_url || window.location.origin}/livekit-call?token=${encodeURIComponent(data.user_token)}&livekitUrl=${encodeURIComponent(data.livekit_url)}&sessionId=${currentSessionId.current}`;
         console.log('[Widget] Opening call window:', callUrl);
 
         const callWindow = window.open(

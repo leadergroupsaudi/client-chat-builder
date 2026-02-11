@@ -31,6 +31,7 @@ import ClientBillingPage from "./pages/ClientBillingPage";
 import ClientPortalPage from "./pages/ClientPortalPage";
 import NotFound from "./pages/NotFound";
 import UserVideoCallPage from "./pages/UserVideoCallPage";
+import UserLiveKitCallPage from "./pages/UserLiveKitCallPage";
 import InternalVideoCallPage from "./pages/InternalVideoCallPage";
 import InternalChatPage from "./pages/InternalChatPage";
 import VoicesPage from "./pages/VoicesPage";
@@ -168,6 +169,7 @@ const AppRoutes = () => {
       </Route>
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="/video-call" element={<UserVideoCallPage />} />
+      <Route path="/livekit-call" element={<UserLiveKitCallPage />} />
       <Route path="/internal-video-call" element={<InternalVideoCallPage />} />
       <Route path="/linkedin-callback" element={<LinkedInCallback />} />
       <Route path="/google/callback" element={<GoogleCallback />} />
