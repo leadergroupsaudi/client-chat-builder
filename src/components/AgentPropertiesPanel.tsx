@@ -99,6 +99,7 @@ export const AgentPropertiesPanel = ({ agent, selectedNode, onNodeDelete, isColl
     model_name: "llama-3.3-70b-versatile",
     handoff_team_id: null as number | null,
     vision_enabled: false,
+    instructions: "",
     // Agent-to-agent handoff fields
     specialization_topics: [] as SpecializationTopic[],
     handoff_config: {
@@ -126,6 +127,7 @@ export const AgentPropertiesPanel = ({ agent, selectedNode, onNodeDelete, isColl
         model_name: agent.model_name || "llama-3.3-70b-versatile",
         handoff_team_id: agent.handoff_team_id || null,
         vision_enabled: agent.vision_enabled || false,
+        instructions: agent.instructions || "",
         // Agent-to-agent handoff fields
         specialization_topics: agent.specialization_topics || [],
         handoff_config: {
@@ -332,6 +334,25 @@ export const AgentPropertiesPanel = ({ agent, selectedNode, onNodeDelete, isColl
                   <option value="America/Los_Angeles">{t('agents.settingsPage.timezones.pacific', { defaultValue: 'Pacific (US)' })}</option>
                   <option value="Asia/Kolkata">{t('agents.settingsPage.timezones.ist', { defaultValue: 'IST (India)' })}</option>
                 </select>
+              </div>
+            </CollapsibleSection>
+
+            {/* Agent Instructions */}
+            <CollapsibleSection title={t('agents.settingsPage.instructions', { defaultValue: 'Agent Instructions' })} defaultOpen={false}>
+              <div>
+                <Label className="text-xs font-medium dark:text-gray-300">
+                  {t('agents.settingsPage.instructionsLabel', { defaultValue: 'Instructions' })}
+                </Label>
+                <Textarea
+                  value={agentConfig.instructions}
+                  onChange={(e) => handleConfigChange('instructions', e.target.value)}
+                  placeholder={t('agents.settingsPage.instructionsPlaceholder', { defaultValue: 'Enter custom instructions for this agent. These will be included in the system prompt when the agent processes messages.' })}
+                  className="mt-1 text-sm dark:bg-slate-800 dark:border-slate-600 dark:text-white resize-none"
+                  rows={6}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {t('agents.settingsPage.instructionsHelp', { defaultValue: 'Custom instructions appended to the AI system prompt during conversations.' })}
+                </p>
               </div>
             </CollapsibleSection>
 

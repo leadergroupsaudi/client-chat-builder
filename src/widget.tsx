@@ -1117,7 +1117,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
       });
 
       // Step 3: Open LiveKit call in new window
-      const callUrl = `${settings?.frontend_url || window.location.origin}/video-call?token=${encodeURIComponent(sessionData.user_token)}&livekitUrl=${encodeURIComponent(sessionData.livekit_url)}&sessionId=${sessionData.session_id}`;
+      const callUrl = `${settings?.frontend_url || window.location.origin}/livekit-call?token=${encodeURIComponent(sessionData.user_token)}&livekitUrl=${encodeURIComponent(sessionData.livekit_url)}&sessionId=${sessionData.session_id}`;
       console.log('[VoiceWorkflow] Opening call window:', callUrl);
 
       const callWindow = window.open(

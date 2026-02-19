@@ -184,8 +184,17 @@ export const LiveKitPopupForm = () => {
             if (newText.trim()) {
                 setTranscript(prev => prev + (prev ? "\n" : "") + newText.trim());
 
-                if (newText.toLowerCase().includes("opened the report form for you")) {
-                    console.warn("[LiveKitPopupForm] MAGIC PHRASE DETECTED IN TRANSCRIPT!");
+                const lower = newText.toLowerCase();
+                const formTriggers = [
+                    "opened the report form for you",
+                    "fill the form",
+                    "fill out the form",
+                    "fill in the form",
+                    "complete the form",
+                ];
+                const shouldTrigger = formTriggers.some(phrase => lower.includes(phrase));
+                if (shouldTrigger) {
+                    console.warn("[LiveKitPopupForm] FORM TRIGGER PHRASE DETECTED IN TRANSCRIPT!");
                     if (!isVisibleRef.current && !isSubmittedRef.current) {
                         setIsVisible(true);
                         toast.info("Agent opened report form", { duration: 5000 });
@@ -357,7 +366,7 @@ export const LiveKitPopupForm = () => {
                 <div className="fixed top-20 right-4 z-50">
                     <Button
                         onClick={() => setIsVisible(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex items-center gap-2 px-4 py-2 rounded-full"
+                        className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg flex items-center gap-2 px-4 py-2 rounded-full"
                     >
                         <MapPin className="h-4 w-4" />
                         Report Incident
@@ -367,17 +376,17 @@ export const LiveKitPopupForm = () => {
 
             {/* THE POPUP MODAL */}
             {isVisible && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <Card className="w-full max-w-md bg-zinc-900 text-white border-zinc-800 shadow-2xl animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm animate-in fade-in duration-300">
+                    <Card className="w-full max-w-md bg-white text-gray-800 border-gray-200 shadow-2xl animate-in zoom-in-95 duration-300">
                         <CardHeader className="relative">
                             <CardTitle className="flex items-center gap-2">
-                                <MapPin className="h-5 w-5 text-blue-500" />
+                                <MapPin className="h-5 w-5 text-violet-600" />
                                 Submit Report & Files
                             </CardTitle>
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-4 top-4 text-zinc-400 hover:text-white"
+                                className="absolute right-4 top-4 text-gray-400 hover:text-gray-800"
                                 onClick={() => setIsVisible(false)}
                             >
                                 <X className="h-4 w-4" />
@@ -387,10 +396,10 @@ export const LiveKitPopupForm = () => {
                         <form onSubmit={handleSubmit}>
                             <CardContent className="space-y-6 pt-4">
                                 <div className="space-y-2">
-                                    <Label className="text-sm font-medium text-zinc-300">Upload Attachments</Label>
+                                    <Label className="text-sm font-medium text-gray-600">Upload Attachments</Label>
                                     <div className="grid grid-cols-2 gap-4">
                                         {/* File 1 - with Automax upload status */}
-                                        <div className="relative h-32 border-2 border-dashed border-zinc-700 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 hover:border-blue-500/50 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group">
+                                        <div className="relative h-32 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-violet-400 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group">
                                             <input
                                                 type="file"
                                                 id="f1"
@@ -401,24 +410,24 @@ export const LiveKitPopupForm = () => {
                                             <label htmlFor="f1" className="w-full h-full flex flex-col items-center justify-center p-4 cursor-pointer">
                                                 {isUploadingToAutomax ? (
                                                     <>
-                                                        <Loader2 className="h-8 w-8 text-blue-500 mb-2 animate-spin" />
-                                                        <span className="text-xs font-medium text-zinc-300">Uploading...</span>
+                                                        <Loader2 className="h-8 w-8 text-violet-500 mb-2 animate-spin" />
+                                                        <span className="text-xs font-medium text-gray-500">Uploading...</span>
                                                     </>
                                                 ) : attachmentId ? (
                                                     <>
                                                         <CheckCircle2 className="h-8 w-8 text-green-500 mb-2" />
-                                                        <span className="text-xs font-medium truncate w-full px-2 text-center text-zinc-300">{selectedFile1?.name}</span>
+                                                        <span className="text-xs font-medium truncate w-full px-2 text-center text-gray-600">{selectedFile1?.name}</span>
                                                         <span className="text-[10px] text-green-400">Uploaded ✓</span>
                                                     </>
                                                 ) : selectedFile1 ? (
                                                     <>
                                                         <Loader2 className="h-8 w-8 text-yellow-500 mb-2 animate-spin" />
-                                                        <span className="text-xs font-medium text-zinc-300">Processing...</span>
+                                                        <span className="text-xs font-medium text-gray-500">Processing...</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Upload className="h-8 w-8 text-zinc-500 mb-2 group-hover:text-blue-400 transition-colors" />
-                                                        <span className="text-xs font-semibold text-zinc-400">Add Photo</span>
+                                                        <Upload className="h-8 w-8 text-gray-400 mb-2 group-hover:text-violet-500 transition-colors" />
+                                                        <span className="text-xs font-semibold text-gray-500">Add Photo</span>
                                                     </>
                                                 )}
                                             </label>
@@ -427,21 +436,21 @@ export const LiveKitPopupForm = () => {
                                         {/* Location Picker */}
                                         <div
                                             onClick={() => setShowMap(true)}
-                                            className="relative h-32 border-2 border-dashed border-zinc-700 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 hover:border-blue-500/50 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group"
+                                            className="relative h-32 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-violet-400 flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden group"
                                         >
                                             <div className="w-full h-full flex flex-col items-center justify-center p-4">
                                                 {manualLocation ? (
                                                     <>
-                                                        <CheckCircle2 className="h-8 w-8 text-blue-500 mb-2" />
-                                                        <span className="text-[10px] font-medium text-zinc-300">
+                                                        <CheckCircle2 className="h-8 w-8 text-violet-500 mb-2" />
+                                                        <span className="text-[10px] font-medium text-gray-600">
                                                             {manualLocation.lat.toFixed(4)}, {manualLocation.lng.toFixed(4)}
                                                         </span>
                                                         <span className="text-[10px] text-green-400">Location Set ✓</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <MapPin className="h-8 w-8 text-zinc-500 mb-2 group-hover:text-blue-400 transition-colors" />
-                                                        <span className="text-xs font-semibold text-zinc-400">Set Location</span>
+                                                        <MapPin className="h-8 w-8 text-gray-400 mb-2 group-hover:text-violet-500 transition-colors" />
+                                                        <span className="text-xs font-semibold text-gray-500">Set Location</span>
                                                     </>
                                                 )}
                                             </div>
@@ -449,7 +458,7 @@ export const LiveKitPopupForm = () => {
                                     </div>
 
                                     {/* Status message */}
-                                    <p className="text-[10px] text-zinc-500 text-center italic">
+                                    <p className="text-[10px] text-gray-400 text-center italic">
                                         {!attachmentId && !manualLocation
                                             ? "Upload a photo and set location to enable submit"
                                             : !attachmentId
@@ -465,8 +474,8 @@ export const LiveKitPopupForm = () => {
                                 <Button
                                     type="submit"
                                     className={`flex-1 text-white text-sm ${isSubmitEnabled
-                                        ? 'bg-blue-600 hover:bg-blue-700'
-                                        : 'bg-zinc-600 cursor-not-allowed'}`}
+                                        ? 'bg-violet-600 hover:bg-violet-700'
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                     disabled={!isSubmitEnabled}
                                 >
                                     {isUploading ? (
@@ -483,7 +492,7 @@ export const LiveKitPopupForm = () => {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="flex-1 border-zinc-700 text-zinc-300 text-sm"
+                                    className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 text-sm"
                                     onClick={() => setIsVisible(false)}
                                     disabled={isUploading}
                                 >
@@ -505,7 +514,7 @@ export const LiveKitPopupForm = () => {
                         setShowMap(false);
                         toast.success("Location pinpointed!");
                     }}
-                    darkMode={true}
+                    darkMode={false}
                 />
             )}
         </>

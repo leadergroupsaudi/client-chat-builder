@@ -21,10 +21,10 @@ const GoogleAuth: React.FC = () => {
     if (googleClientId && token) {
       // This is the callback URL you must have registered in your Google Cloud Console
       const redirectUri = 'http://localhost:8080/api/v1/google/callback';
-      
+
       // Include all scopes for the services you want to access
-      const scope = 'https://www.googleapis.com/auth/gmail.modify'; // Add calendar, drive, etc. scopes here separated by spaces
-      
+      const scope = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email';
+
       const responseType = 'code';
       const accessType = 'offline'; // Required to get a refresh token
       const prompt = 'consent'; // Ensures the user is prompted for consent every time

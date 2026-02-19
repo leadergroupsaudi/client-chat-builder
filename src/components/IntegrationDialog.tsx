@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/config/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
@@ -153,7 +154,7 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
           <>
             <div className={webhookInfoBoxClasses}>
               <h4 className="font-medium text-sm dark:text-white">Webhook Configuration</h4>
-               <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Use these values in your Meta for Developers App configuration.
               </p>
               <div className="space-y-1">
@@ -193,7 +194,7 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
           <>
             <div className={webhookInfoBoxClasses}>
               <h4 className="font-medium text-sm dark:text-white">Webhook Configuration</h4>
-               <p className="text-xs text-gray-600 dark:text-gray-400">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Use these values in your Meta for Developers App configuration.
               </p>
               <div className="space-y-1">
@@ -294,16 +295,16 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
                       throw new Error('Failed to fetch LinkedIn Client ID');
                     }
                     const { client_id } = await response.json();
-                    
+
                     const redirectUri = `${window.location.origin}/linkedin-callback`;
                     const scope = "openid profile email"; // Updated to OIDC scopes
                     const state = "DCEeFWf45A53sdfKef424"; // Should be a random, unique string
                     const linkedInAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${client_id}&redirect_uri=${redirectUri}&state=${state}&scope=${scope}`;
-                    
+
                     const width = 600, height = 600;
                     const left = (window.innerWidth / 2) - (width / 2);
                     const top = (window.innerHeight / 2) - (height / 2);
-                    
+
                     window.open(linkedInAuthUrl, 'LinkedIn', `width=${width},height=${height},top=${top},left=${left}`);
                   } catch (error) {
                     toast({ title: 'Error', description: 'Could not initiate LinkedIn connection.', variant: 'destructive' });
@@ -323,21 +324,21 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
               className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white"
               onClick={async () => {
                 try {
-                  const response = await authFetch('/api/v1/config/google-client-id');
+                  const response = await authFetch('/api/v1/google/client-id');
                   if (!response.ok) {
                     throw new Error('Failed to fetch Google Client ID');
                   }
                   const { client_id } = await response.json();
-                  
-                  const redirectUri = `${window.location.origin}/api/v1/calendar/google/callback`;
-                  const scope = "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email";
-                  const state = "some_random_state_string"; // Should be a random, unique string
+
+                  const redirectUri = `${API_BASE_URL}/api/v1/google/callback`;
+                  const scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email";
+                  const state = localStorage.getItem('token') || '';
                   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${client_id}&redirect_uri=${redirectUri}&scope=${scope}&state=${state}&access_type=offline&prompt=consent`;
-                  
+
                   const width = 600, height = 600;
                   const left = (window.innerWidth / 2) - (width / 2);
                   const top = (window.innerHeight / 2) - (height / 2);
-                  
+
                   window.open(googleAuthUrl, 'Google', `width=${width},height=${height},top=${top},left=${left}`);
                 } catch (error) {
                   toast({ title: 'Error', description: 'Could not initiate Google connection.', variant: 'destructive' });
@@ -466,7 +467,7 @@ export const IntegrationDialog: React.FC<IntegrationDialogProps> = ({ isOpen, on
             </Select>
           </div>
           {renderCredentialFields()}
-           {integration && (
+          {integration && (
             <p className="text-xs text-yellow-600 dark:text-yellow-400 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
               For security, credentials are not displayed. Please re-enter them to make changes.
             </p>
