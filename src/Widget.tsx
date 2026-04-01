@@ -265,6 +265,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   const isSpeaking = useRef(false);
   const silenceStart = useRef<number | null>(null);
   const isMicEnabledRef = useRef(false); // Ref to track mic state in closures
+  const isVADMuted = useRef(false); // Mute flag while AI is speaking (keeps WebM stream continuous)
 
   // Reconnection state
   const reconnectAttempts = useRef(0);
@@ -796,27 +797,25 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         console.log('[VAD] Audio analysis context created');
       }
 
-      // Setup media recorder
+      // Setup media recorder - use 500ms timeslice for continuous streaming
       mediaRecorder.current = new MediaRecorder(stream);
       audioChunks.current = [];
 
       mediaRecorder.current.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunks.current.push(e.data);
+        // Stream each chunk directly to the backend in real-time (continuous WebM stream)
+        // Skip sending while AI is speaking (mute flag) but keep recorder running to avoid WebM header issues
+        if (e.data.size > 0 && voiceWs.current?.readyState === WebSocket.OPEN && !isVADMuted.current) {
+          voiceWs.current.send(e.data);
+          console.log('[VAD] Streamed audio chunk:', e.data.size, 'bytes');
         }
       };
 
       mediaRecorder.current.onstop = () => {
-        if (audioChunks.current.length > 0 && voiceWs.current?.readyState === WebSocket.OPEN) {
-          const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-          voiceWs.current.send(audioBlob);
-          console.log('[VAD] Sent audio chunk:', audioBlob.size, 'bytes');
-        }
         audioChunks.current = [];
       };
 
-      // Start continuous recording
-      mediaRecorder.current.start();
+      // Start continuous recording with 500ms timeslice so audio streams in real-time
+      mediaRecorder.current.start(500);
 
       // Start monitoring audio levels
       monitorAudioLevel();
@@ -855,15 +854,9 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
       if (average > SPEECH_THRESHOLD) {
         // User is speaking
         if (!isSpeaking.current) {
-          console.log('[VAD] Speech detected, starting recording');
+          console.log('[VAD] Speech detected');
           isSpeaking.current = true;
           setIsVoiceActive(true);
-
-          // Start a new recording session
-          if (mediaRecorder.current?.state === 'inactive') {
-            audioChunks.current = [];
-            mediaRecorder.current.start();
-          }
         }
         silenceStart.current = null;
       } else {
@@ -875,23 +868,11 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
             const silenceDuration = Date.now() - silenceStart.current;
 
             if (silenceDuration > SILENCE_DURATION) {
-              console.log('[VAD] Silence detected, stopping recording');
+              console.log('[VAD] Silence detected - utterance ended');
               isSpeaking.current = false;
               setIsVoiceActive(false);
               silenceStart.current = null;
-
-              // Stop recording and send
-              if (mediaRecorder.current?.state === 'recording') {
-                mediaRecorder.current.stop();
-
-                // Start a new recording immediately for next speech
-                setTimeout(() => {
-                  if (mediaRecorder.current?.state === 'inactive' && isMicEnabledRef.current) {
-                    audioChunks.current = [];
-                    mediaRecorder.current?.start();
-                  }
-                }, 100);
-              }
+              // DO NOT stop/restart MediaRecorder - keep the continuous stream alive
             }
           }
         }
@@ -904,27 +885,25 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
     checkAudioLevel();
   };
 
-  // Pause VAD while AI is speaking
+  // Pause VAD while AI is speaking - set mute flag but keep recorder running
   const pauseVAD = () => {
-    console.log('[VAD] Pausing voice detection');
+    console.log('[VAD] Muting mic (AI speaking)');
+    isVADMuted.current = true;
     if (vadTimer.current) {
       clearTimeout(vadTimer.current);
       vadTimer.current = null;
     }
-    if (mediaRecorder.current?.state === 'recording') {
-      mediaRecorder.current.pause();
-    }
+    // Reset speaking state so next utterance is detected fresh
+    isSpeaking.current = false;
+    silenceStart.current = null;
   };
 
   // Resume VAD after AI finishes speaking
   const resumeVAD = () => {
-    console.log('[VAD] Resuming voice detection');
+    console.log('[VAD] Unmuting mic (AI done speaking)');
     // Only resume if mic is still enabled
     if (!isMicEnabledRef.current) return;
-
-    if (mediaRecorder.current?.state === 'paused') {
-      mediaRecorder.current.resume();
-    }
+    isVADMuted.current = false;
     monitorAudioLevel();
   };
 
