@@ -94,7 +94,11 @@
     "tags": "العلامات",
     "segments": "الشرائح",
     "templates": "القوالب",
-    "messageTemplates": "قوالب الرسائل"
+    "messageTemplates": "قوالب الرسائل",
+    "voiceAgents": "وكيل الصوت بالذكاء الاصطناعي",
+    "workflowBuilder": "منشئ سير العمل",
+    "mcpServer": "خادم MCP",
+    "mcpClient": "عميل MCP"
   },
   "agents": {
     "title": "وكلاء الذكاء الاصطناعي الخاصة بك",

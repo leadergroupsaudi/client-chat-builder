@@ -9,6 +9,9 @@ import remarkGfm from 'remark-gfm';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import CallingModal from '@/components/CallingModal';
 import LocationPicker from '@/components/LocationPicker';
+import { OpenAIRealtimeVoicePreview } from '@/components/previews/OpenAIRealtimeVoicePreview';
+import { VoiceAgentPreview } from '@/components/previews/VoiceAgentPreview';
+import { createCompatibleMediaRecorder, getRecorderOutputMimeType } from '@/lib/audio-recording';
 
 // Type definitions
 type DisplayMode = 'widget' | 'iframe' | 'fullpage';
@@ -51,6 +54,7 @@ interface WidgetSettings {
   voice_id?: string;
   stt_provider?: string;
   communication_mode: 'chat' | 'voice' | 'chat_and_voice';
+  communication_provider?: 'livekit' | 'openai_realtime';
   meta?: {
     z_index?: number;
     [key: string]: any; // Allow any additional customizations
@@ -279,6 +283,15 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
   const [showStartOver, setShowStartOver] = useState(false);  // Show "Start Over" button for resumed prompts
   const [isWorkflowPaused, setIsWorkflowPaused] = useState(false);  // Workflow is waiting for user input
   const [showResetMenu, setShowResetMenu] = useState(false);  // Show dropdown on X button click
+
+  // OpenAI Realtime in-widget call state
+  const [showRealtimeVoice, setShowRealtimeVoice] = useState(false);
+
+  // LiveKit in-widget overlay state
+  const [showLiveKitVoice, setShowLiveKitVoice] = useState(false);
+
+  // Provider picker dropdown state
+  const [showProviderPicker, setShowProviderPicker] = useState(false);
 
   // Voice Workflow Call state
   const [isVoiceWorkflowLoading, setIsVoiceWorkflowLoading] = useState(false);
@@ -642,6 +655,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
     if (settings?.communication_mode !== 'chat_and_voice' && settings?.communication_mode !== 'voice') return;
 
     const voiceUrl = `${backendUrl.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${agentId}/${currentSessionId.current}?user_type=user&voice_id=${settings?.voice_id || 'default'}&stt_provider=${settings?.stt_provider || 'openai'}`;
+    console.log(`[VoiceWS] Connecting → ${voiceUrl}`);
     voiceWs.current = new WebSocket(voiceUrl);
 
     voiceWs.current.onopen = async () => {
@@ -825,7 +839,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
       }
 
       // Setup media recorder
-      mediaRecorder.current = new MediaRecorder(stream);
+      mediaRecorder.current = createCompatibleMediaRecorder(stream);
       console.log('[VAD] MediaRecorder created', {
         state: mediaRecorder.current.state,
         mimeType: mediaRecorder.current.mimeType
@@ -841,7 +855,9 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
 
       mediaRecorder.current.onstop = () => {
         if (audioChunks.current.length > 0 && voiceWs.current?.readyState === WebSocket.OPEN) {
-          const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+          const audioBlob = new Blob(audioChunks.current, {
+            type: getRecorderOutputMimeType(mediaRecorder.current!),
+          });
           voiceWs.current.send(audioBlob);
           console.log(`[VAD] ✅ Sent audio chunk to backend: ${audioBlob.size} bytes (Session: ${currentSessionId.current})`);
         } else {
@@ -1116,35 +1132,8 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         userToken: sessionData.user_token
       });
 
-      // Step 3: Open LiveKit call in new window
-      const callUrl = `${settings?.frontend_url || window.location.origin}/livekit-call?token=${encodeURIComponent(sessionData.user_token)}&livekitUrl=${encodeURIComponent(sessionData.livekit_url)}&sessionId=${sessionData.session_id}`;
-      console.log('[VoiceWorkflow] Opening call window:', callUrl);
-
-      const callWindow = window.open(
-        callUrl,
-        'Voice Workflow Call',
-        'width=800,height=600,resizable=yes,scrollbars=yes'
-      );
-
-      if (!callWindow) {
-        // Popup blocked - show message with link
-        setMessages(prev => [...prev, {
-          id: `system-${Date.now()}`,
-          sender: 'system',
-          text: `Voice call ready! Please allow popups or [click here](${callUrl}) to join.`,
-          type: 'message',
-          timestamp: new Date().toISOString()
-        }]);
-      } else {
-        // Show success message
-        setMessages(prev => [...prev, {
-          id: `system-${Date.now()}`,
-          sender: 'system',
-          text: 'Voice call started! Opening call window...',
-          type: 'message',
-          timestamp: new Date().toISOString()
-        }]);
-      }
+      // Step 3: Show in-widget LiveKit overlay
+      setShowLiveKitVoice(true);
 
     } catch (error) {
       console.error('[VoiceWorkflow] Error starting voice call:', error);
@@ -1191,9 +1180,17 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         connectWebSocket();
       }
 
-      // Connect voice WebSocket for voice and chat_and_voice modes
-      if (settings?.communication_mode === 'voice' || settings?.communication_mode === 'chat_and_voice') {
+      // Connect voice WebSocket for voice and chat_and_voice modes (skip for openai_realtime — uses WebRTC)
+      if (
+        (settings?.communication_mode === 'voice' || settings?.communication_mode === 'chat_and_voice') &&
+        settings?.communication_provider !== 'openai_realtime'
+      ) {
         connectVoiceWebSocket();
+      }
+
+      // Auto-start OpenAI Realtime WebRTC for voice-only mode
+      if (settings?.communication_mode === 'voice' && settings?.communication_provider === 'openai_realtime') {
+        setShowRealtimeVoice(true);
       }
 
     } else {
@@ -1203,6 +1200,9 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
       voiceWs.current?.close();
       cleanupVoiceResources(); // Cleanup all voice resources when widget closes
       setLiveKitToken(null);
+      setShowRealtimeVoice(false);
+      setShowLiveKitVoice(false);
+      setShowProviderPicker(false);
       setIsConnected(false);
       setIsMicEnabled(false);
       isMicEnabledRef.current = false;
@@ -1506,7 +1506,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         console.log('[Mic] Starting manual recording...');
 
         // Use a new MediaRecorder instance for this session
-        const recorder = new MediaRecorder(stream);
+        const recorder = createCompatibleMediaRecorder(stream);
         mediaRecorder.current = recorder;
         audioChunks.current = [];
 
@@ -1520,7 +1520,9 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         recorder.onstop = () => {
           console.log('[Mic] Manual recording stopped. Finalizing...');
           if (audioChunks.current.length > 0 && voiceWs.current?.readyState === WebSocket.OPEN) {
-            const finalBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+            const finalBlob = new Blob(audioChunks.current, {
+              type: getRecorderOutputMimeType(recorder),
+            });
             voiceWs.current.send(finalBlob);
             console.log(`[Mic] ✅ Sent final audio: ${finalBlob.size} bytes`);
           } else {
@@ -1707,7 +1709,7 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
         </div>
       )}
 
-      {isOpen && settings?.communication_mode === 'voice' && (
+      {isOpen && settings?.communication_mode === 'voice' && settings?.communication_provider !== 'openai_realtime' && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
           style={{
@@ -1987,21 +1989,46 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
                 <span className="font-bold text-lg">{header_title}</span>
               </div>
               <div className="flex items-center gap-2">
-                {/* Voice Workflow Call Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={startVoiceWorkflowCall}
-                  disabled={isVoiceWorkflowLoading}
-                  className="text-white hover:bg-white/20"
-                  title="Start Voice Call"
-                >
-                  {isVoiceWorkflowLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Phone className="h-5 w-5" />
+                {/* Provider picker backdrop */}
+                {showProviderPicker && (
+                  <div className="fixed inset-0 z-40" onClick={() => setShowProviderPicker(false)} />
+                )}
+                {/* Voice Call Button with provider picker */}
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowProviderPicker(prev => !prev)}
+                    disabled={isVoiceWorkflowLoading}
+                    className="text-white hover:bg-white/20"
+                    title="Start Voice Call"
+                  >
+                    {isVoiceWorkflowLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Phone className="h-5 w-5" />
+                    )}
+                  </Button>
+                  {showProviderPicker && (
+                    <div className="absolute right-0 top-full mt-1 rounded-xl shadow-2xl border border-zinc-700 overflow-hidden z-50 min-w-[190px]" style={{ background: '#1e1e1e' }}>
+                      <div className="px-3 py-2 text-xs text-zinc-500 border-b border-zinc-700 font-medium uppercase tracking-wider">Select Voice Provider</div>
+                      <button
+                        onClick={() => { setShowProviderPicker(false); startVoiceWorkflowCall(); }}
+                        className="w-full px-4 py-3 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2 transition-colors"
+                      >
+                        <Phone className="h-4 w-4 text-cyan-400" />
+                        LiveKit
+                      </button>
+                      <button
+                        onClick={() => { setShowProviderPicker(false); setShowRealtimeVoice(true); }}
+                        className="w-full px-4 py-3 text-left text-sm text-zinc-200 hover:bg-zinc-800 flex items-center gap-2 transition-colors"
+                      >
+                        <Mic className="h-4 w-4 text-purple-400" />
+                        OpenAI Realtime
+                      </button>
+                    </div>
                   )}
-                </Button>
+                </div>
                 {/* Minimize button - only in widget mode */}
                 {displayMode === 'widget' && (
                   <Button
@@ -2399,6 +2426,35 @@ const Widget = ({ agentId, companyId, backendUrl, rtlOverride, languageOverride,
             setCallData(null);
             // TODO: Send cancel call request to backend
           }}
+        />
+      )}
+
+
+      {/* OpenAI Realtime in-widget voice call */}
+      {showRealtimeVoice && sessionId && (
+        <OpenAIRealtimeVoicePreview
+          shouldConnect={showRealtimeVoice}
+          setShouldConnect={(v) => setShowRealtimeVoice(v)}
+          customization={settings || {}}
+          backendUrl={backendUrl}
+          companyId={companyId}
+          agentId={agentId}
+          sessionId={sessionId}
+        />
+      )}
+
+      {/* LiveKit in-widget voice call */}
+      {showLiveKitVoice && voiceWorkflowSession && (
+        <VoiceAgentPreview
+          liveKitToken={voiceWorkflowSession.userToken}
+          shouldConnect={showLiveKitVoice}
+          setShouldConnect={(v) => {
+            setShowLiveKitVoice(v);
+            if (!v) setVoiceWorkflowSession(null);
+          }}
+          livekitUrl={voiceWorkflowSession.livekitUrl}
+          customization={{ ...(settings || {}), livekit_url: voiceWorkflowSession.livekitUrl }}
+          backendUrl={backendUrl}
         />
       )}
 

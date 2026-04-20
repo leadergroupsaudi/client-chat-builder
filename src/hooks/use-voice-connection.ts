@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { getWebSocketUrl } from '@/config/api';
+import { createCompatibleMediaRecorder } from '@/lib/audio-recording';
 
 export const useVoiceConnection = (agentId: number, sessionId: string, voiceId: string = "21m00Tcm4TlvDq8ikWAM") => {
     const { token } = useAuth();
@@ -69,7 +70,7 @@ export const useVoiceConnection = (agentId: number, sessionId: string, voiceId: 
         }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = createCompatibleMediaRecorder(stream);
             
             initVoiceWebSocket();
 

@@ -74,6 +74,9 @@ import TemplatesPage from "./pages/CRM/TemplatesPage";
 import TemplateEditorPage from "./pages/CRM/TemplateEditorPage";
 import MessageTemplatesPage from "./pages/MessageTemplatesPage";
 import { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
+import VoiceAgentsPage from "./pages/VoiceAgentsPage";
+import MCPServerPage from "./pages/MCPServerPage";
+import MCPClientPage from "./pages/MCPClientPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -147,6 +150,9 @@ const AppRoutes = () => {
           <Route path="ai-tools/:id" element={<AIToolDetailPage />} />
           <Route path="ai-tools/:id/edit" element={<AIToolEditPage />} />
           <Route path="object-detection" element={<ObjectDetectionPage />} />
+          <Route path="voice-agents" element={<VoiceAgentsPage />} />
+          <Route path="mcp-server" element={<MCPServerPage />} />
+          <Route path="mcp-client" element={<MCPClientPage />} />
           {/* CRM Routes */}
           <Route path="crm" element={<CRMDashboard />} />
           <Route path="crm/leads" element={<LeadsPage />} />

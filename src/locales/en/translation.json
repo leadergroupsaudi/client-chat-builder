@@ -94,7 +94,11 @@
     "tags": "Tags",
     "segments": "Segments",
     "templates": "Templates",
-    "messageTemplates": "Message Templates"
+    "messageTemplates": "Message Templates",
+    "voiceAgents": "Voice AI Agent",
+    "workflowBuilder": "Workflow Builder",
+    "mcpServer": "MCP Server",
+    "mcpClient": "MCP Client"
   },
   "agents": {
     "title": "Your AI Agents",

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,34 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
   const { t } = useTranslation();
   const { isRTL } = useI18n();
   const [showGradientEditor, setShowGradientEditor] = useState(false);
+  const [fontSearchQuery, setFontSearchQuery] = useState('');
+
+  const fontOptions = [
+    { name: 'Inter', category: 'Sans-serif', preview: 'The quick brown fox' },
+    { name: 'Roboto', category: 'Sans-serif', preview: 'The quick brown fox' },
+    { name: 'Open Sans', category: 'Sans-serif', preview: 'The quick brown fox' },
+    { name: 'Lato', category: 'Humanist', preview: 'The quick brown fox' },
+    { name: 'Poppins', category: 'Geometric', preview: 'The quick brown fox' },
+    { name: 'Nunito', category: 'Rounded', preview: 'The quick brown fox' },
+    { name: 'Montserrat', category: 'Geometric', preview: 'The quick brown fox' },
+    { name: 'DM Sans', category: 'Modern', preview: 'The quick brown fox' },
+    { name: 'Raleway', category: 'Elegant', preview: 'The quick brown fox' },
+    { name: 'Playfair Display', category: 'Serif', preview: 'The quick brown fox' },
+    { name: 'Merriweather', category: 'Serif', preview: 'The quick brown fox' },
+    { name: 'Source Code Pro', category: 'Monospace', preview: 'The quick brown fox' },
+  ];
+
+  useEffect(() => {
+    const loadedFonts = fontOptions.map(f => f.name.replace(/ /g, '+')).join('|');
+    const linkId = 'webchat-google-fonts';
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${loadedFonts.split('|').map(f => `${f}:wght@400;600`).join('&family=')}&display=swap`;
+      document.head.appendChild(link);
+    }
+  }, []);
   const [gradientAngle, setGradientAngle] = useState(135);
   const [gradientColor1, setGradientColor1] = useState("#3B82F6");
   const [gradientColor2, setGradientColor2] = useState("#8B5CF6");
@@ -502,13 +530,62 @@ export const WebChatCustomizer: React.FC<WebChatCustomizerPropsExtended> = ({
                   </div>
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="font_family" className="text-xs dark:text-gray-300 mb-1.5 block text-left">{t('designer.fontFamily')}</Label>
-                  <select id="font_family" value={customization.font_family} onChange={(e) => updateCustomization("font_family", e.target.value)} className={`w-full p-2 text-sm border rounded-md bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-pink-500 text-left`}>
-                    <option value="Inter">Inter</option>
-                    <option value="Roboto">Roboto</option>
-                    <option value="Open Sans">Open Sans</option>
-                    <option value="Lato">Lato</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs dark:text-gray-300 text-left">{t('designer.fontFamily')}</Label>
+                    <span className="text-xs font-medium text-pink-500 dark:text-pink-400" style={{ fontFamily: customization.font_family }}>
+                      {customization.font_family}
+                    </span>
+                  </div>
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      value={fontSearchQuery}
+                      onChange={(e) => setFontSearchQuery(e.target.value)}
+                      placeholder="Search fonts..."
+                      className="w-full px-3 py-1.5 text-xs border rounded-md bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500 pl-7"
+                    />
+                    <svg className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-0.5 scrollbar-thin">
+                    {fontOptions
+                      .filter(f => f.name.toLowerCase().includes(fontSearchQuery.toLowerCase()) || f.category.toLowerCase().includes(fontSearchQuery.toLowerCase()))
+                      .map((font) => {
+                        const isSelected = customization.font_family === font.name;
+                        return (
+                          <button
+                            key={font.name}
+                            type="button"
+                            onClick={() => updateCustomization("font_family", font.name)}
+                            className={`relative flex flex-col items-start text-left px-2.5 py-2 rounded-lg border transition-all duration-150 ${
+                              isSelected
+                                ? 'border-pink-500 bg-pink-50 dark:bg-pink-950/30 dark:border-pink-400 shadow-sm'
+                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-pink-300 dark:hover:border-pink-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {isSelected && (
+                              <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-pink-500">
+                                <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                              </span>
+                            )}
+                            <span
+                              className={`text-sm leading-tight truncate w-full ${isSelected ? 'text-pink-700 dark:text-pink-300' : 'text-gray-800 dark:text-gray-100'}`}
+                              style={{ fontFamily: font.name }}
+                            >
+                              {font.name}
+                            </span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{font.category}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                  {customization.font_family && (
+                    <div className="mt-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-0.5 uppercase tracking-wider">Preview</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-200 leading-snug" style={{ fontFamily: customization.font_family }}>
+                        Hello! How can I help you today?
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <Label htmlFor="border_radius" className="text-xs dark:text-gray-300 mb-1.5 block text-left">{t('designer.borderRadius')}: {customization.border_radius}px</Label>

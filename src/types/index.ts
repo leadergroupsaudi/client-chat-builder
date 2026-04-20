@@ -14,6 +14,7 @@ export interface Session {
   first_message_content?: string;
   contact_identifier?: string;
   priority?: number; // 0=None, 1=Low, 2=Medium, 3=High, 4=Urgent
+  workflow_id?: number;
 }
 
 // Priority level constants

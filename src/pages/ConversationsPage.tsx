@@ -12,7 +12,20 @@ import { useWebSocket } from '@/hooks/use-websocket';
 import { toast } from '@/hooks/use-toast';
 import { Session, User, PRIORITY_CONFIG } from '@/types';
 import { useAuth } from "@/hooks/useAuth";
-import { MessageSquare, Phone, Globe, Instagram, Mail, Send, Search, Filter, Archive, PanelLeftClose, PanelRightOpen, AlertTriangle, ArrowUp, Minus, ArrowDown } from 'lucide-react'; // Icons for channels
+import { MessageSquare, Phone, Globe, Instagram, Mail, Send, Search, Filter, Archive, PanelLeftClose, PanelRightOpen, AlertTriangle, ArrowUp, Minus, ArrowDown, X, ChevronDown } from 'lucide-react'; // Icons for channels
+
+const CHANNELS: { value: string; label: string }[] = [
+  { value: 'all',          label: 'All' },
+  { value: 'whatsapp',     label: 'WhatsApp' },
+  { value: 'instagram',    label: 'Instagram' },
+  { value: 'twilio_voice', label: 'Twilio' },
+  { value: 'gmail',        label: 'Email' },
+  { value: 'freeswitch',   label: 'Freeswitch' },
+  { value: 'messenger',    label: 'Facebook' },
+  { value: 'web',          label: 'Web' },
+  { value: 'api',          label: 'API' },
+  { value: 'telegram',     label: 'Telegram' },
+];
 import { getWebSocketUrl } from '@/config/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +44,8 @@ const ConversationsPage: React.FC = () => {
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   const [reopenedSessions, setReopenedSessions] = useState<Set<string>>(new Set());
   const [sidebarView, setSidebarView] = useState<'contact' | 'summary'>('contact');
+  const [filterWorkflow, setFilterWorkflow] = useState<string>('all');
+  const [filterChannel, setFilterChannel] = useState<string>('all');
 
   const companyId = useMemo(() => user?.company_id, [user]);
 
@@ -88,31 +103,48 @@ const ConversationsPage: React.FC = () => {
     // Removed refetchInterval - WebSocket events will trigger updates via invalidateQueries
   });
 
-  // Fetch sessions based on active tab (server-side filtering)
+  // Fetch workflows for the workflow filter dropdown
+  const { data: workflows } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ['workflows', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const response = await authFetch('/api/v1/workflows/');
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!companyId,
+    staleTime: 60_000,
+  });
+
+  // Fetch sessions based on active tab + workflow filter (server-side filtering)
   const { data: sessions, isLoading: isLoadingSessions } = useQuery<Session[]>({
-    queryKey: ['sessions', companyId, activeTab, user?.id],
+    queryKey: ['sessions', companyId, activeTab, user?.id, filterWorkflow],
     queryFn: async () => {
       if (!companyId) return [];
 
-      // For 'mine' tab, fetch all open and filter to sessions assigned to current user
+      const buildUrl = (statusFilter: string) => {
+        const params = new URLSearchParams();
+        if (statusFilter) params.set('status_filter', statusFilter);
+        if (filterWorkflow !== 'all') params.set('workflow_id', filterWorkflow);
+        const qs = params.toString();
+        return `/api/v1/conversations/sessions${qs ? `?${qs}` : ''}`;
+      };
+
+      // For 'mine' tab, fetch all open and filter client-side to current user
       if (activeTab === 'mine') {
-        const response = await authFetch(`/api/v1/conversations/sessions?status_filter=open`);
+        const response = await authFetch(buildUrl('open'));
         if (!response.ok) throw new Error('Failed to fetch sessions');
-        const allSessions = await response.json();
-        // Filter to only show sessions assigned to current user (assignee_id is source of truth)
+        const allSessions: Session[] = await response.json();
         return allSessions.filter(s => s.assignee_id === user?.id);
       }
 
-      const statusFilter = activeTab === 'all' ? '' : activeTab; // 'open', 'resolved', or ''
-      const url = statusFilter
-        ? `/api/v1/conversations/sessions?status_filter=${statusFilter}`
-        : `/api/v1/conversations/sessions`;
-      const response = await authFetch(url);
+      const statusFilter = activeTab === 'all' ? '' : activeTab;
+      const response = await authFetch(buildUrl(statusFilter));
       if (!response.ok) throw new Error('Failed to fetch sessions');
       return response.json();
     },
     enabled: !!companyId,
-    refetchOnWindowFocus: false, // Rely on WebSocket for real-time updates
+    refetchOnWindowFocus: false,
   });
 
   const wsUrl = companyId ? `${getWebSocketUrl()}/ws/${companyId}?token=${token}` : null;
@@ -488,20 +520,33 @@ const ConversationsPage: React.FC = () => {
     );
   }
 
-  // Filter sessions by search query and sort by priority (tab filtering is done server-side)
+  // Combined filter count for the badge indicator
+  const activeFilterCount = [filterWorkflow !== 'all', filterChannel !== 'all'].filter(Boolean).length;
+
+  // Filter sessions by search, workflow, channel (client-side on top of server-side status fetch)
   const filteredSessions = useMemo(() => {
     if (!sessions) return [];
 
     let result = sessions;
 
-    // Filter by search query (client-side for instant feedback)
+    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = sessions.filter(session =>
+      result = result.filter(session =>
         session.contact_name?.toLowerCase().includes(query) ||
         session.contact_phone?.toLowerCase().includes(query) ||
         session.first_message_content?.toLowerCase().includes(query)
       );
+    }
+
+    // Workflow filter — server already filtered by workflow_id; this is a safety net for cached data
+    if (filterWorkflow !== 'all') {
+      result = result.filter(session => session.workflow_id?.toString() === filterWorkflow);
+    }
+
+    // Channel filter
+    if (filterChannel !== 'all') {
+      result = result.filter(session => session.channel === filterChannel);
     }
 
     // Sort by priority (high to low), then by timestamp (recent first)
@@ -510,7 +555,7 @@ const ConversationsPage: React.FC = () => {
       if (priorityDiff !== 0) return priorityDiff;
       return new Date(b.last_message_timestamp).getTime() - new Date(a.last_message_timestamp).getTime();
     });
-  }, [sessions, searchQuery]);
+  }, [sessions, searchQuery, filterWorkflow, filterChannel]);
 
   // Check if conversation is assigned to current user
   // Note: assignee_id indicates assignment regardless of status field
@@ -700,7 +745,76 @@ const ConversationsPage: React.FC = () => {
                 />
               </div>
 
-                  {/* Tabs */}
+                  {/* ── Filter Bar ─────────────────────────────── */}
+                  <div className="space-y-2 pt-1 pb-0.5">
+                    {/* Workflow */}
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                        Workflow
+                      </label>
+                      <select
+                        value={filterWorkflow}
+                        onChange={e => {
+                          setFilterWorkflow(e.target.value);
+                          if (e.target.value === 'all') setFilterChannel('all');
+                        }}
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">All Workflows</option>
+                        {workflows?.map(w => (
+                          <option key={w.id} value={w.id.toString()}>{w.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Channel — enabled only once a workflow is selected */}
+                    <div>
+                      <label className={`block text-[10px] font-semibold uppercase tracking-widest mb-1 transition-colors ${
+                        filterWorkflow === 'all'
+                          ? 'text-slate-300 dark:text-slate-600'
+                          : 'text-slate-400 dark:text-slate-500'
+                      }`}>
+                        Channel
+                      </label>
+                      <select
+                        value={filterChannel}
+                        onChange={e => setFilterChannel(e.target.value)}
+                        disabled={filterWorkflow === 'all'}
+                        className={`w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-opacity ${
+                          filterWorkflow === 'all' ? 'opacity-40 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {CHANNELS.map(c => (
+                          <option key={c.value} value={c.value}>{c.label}</option>
+                        ))}
+                      </select>
+                      {filterWorkflow === 'all' && (
+                        <p className="text-[10px] text-slate-400 dark:text-slate-600 mt-0.5">
+                          Select a workflow to filter by channel
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Clear filters button */}
+                    {activeFilterCount > 0 && (
+                      <button
+                        onClick={() => { setFilterWorkflow('all'); setFilterChannel('all'); }}
+                        className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                        Clear filters
+                        <span className="ml-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full px-1.5 py-0.5 font-semibold">
+                          {activeFilterCount}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Status — Tabs */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
+                      Status
+                    </label>
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'mine' | 'open' | 'resolved' | 'all')} className="w-full">
                     <TabsList className="w-full grid grid-cols-4 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 p-1 rounded-lg shadow-inner">
                   <TabsTrigger
@@ -746,6 +860,7 @@ const ConversationsPage: React.FC = () => {
                   </TabsTrigger>
                     </TabsList>
                   </Tabs>
+                  </div>
                 </>
               )}
 

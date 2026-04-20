@@ -7,12 +7,13 @@ declare global {
       VITE_BACKEND_URL: string;
       VITE_LIVEKIT_URL: string;
       VITE_VOICE_ENGINE_URL?: string;
+      VITE_VOICE_AGENT_URL?: string;
     };
   }
 }
 
 // Helper function to get environment variables from runtime config or fallback to build-time env
-export const getEnv = (key: 'VITE_BACKEND_URL' | 'VITE_LIVEKIT_URL' | 'VITE_VOICE_ENGINE_URL'): string => {
+export const getEnv = (key: 'VITE_BACKEND_URL' | 'VITE_LIVEKIT_URL' | 'VITE_VOICE_ENGINE_URL' | 'VITE_VOICE_AGENT_URL'): string => {
   // Try runtime config first (set by env-config.js)
   if (window._env_ && window._env_[key]) {
     return window._env_[key];
@@ -26,3 +27,4 @@ export const getEnv = (key: 'VITE_BACKEND_URL' | 'VITE_LIVEKIT_URL' | 'VITE_VOIC
 export const BACKEND_URL = getEnv('VITE_BACKEND_URL');
 export const LIVEKIT_URL = getEnv('VITE_LIVEKIT_URL');
 export const VOICE_ENGINE_URL = getEnv('VITE_VOICE_ENGINE_URL') || BACKEND_URL;
+export const VOICE_AGENT_URL = getEnv('VITE_VOICE_AGENT_URL') || 'http://localhost:3033';

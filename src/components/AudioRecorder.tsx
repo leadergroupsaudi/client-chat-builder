@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mic, StopCircle, Play, Trash2, Loader2 } from 'lucide-react';
+import { createCompatibleMediaRecorder, getRecorderOutputMimeType } from '@/lib/audio-recording';
 import { Badge } from './ui/badge';
 
 interface AudioRecorderProps {
@@ -18,14 +19,16 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingChange }) => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = createCompatibleMediaRecorder(stream);
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
         }
       };
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(chunksRef.current, {
+          type: getRecorderOutputMimeType(mediaRecorderRef.current!),
+        });
         setAudioBlob(blob);
         onRecordingChange(blob);
         chunksRef.current = [];

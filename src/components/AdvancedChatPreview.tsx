@@ -6,6 +6,7 @@ import { InstagramPreview } from './previews/InstagramPreview';
 import { GmailPreview } from './previews/GmailPreview';
 import { TelegramPreview } from './previews/TelegramPreview';
 import { VoiceAgentPreview } from './previews/VoiceAgentPreview';
+import { OpenAIRealtimeVoicePreview } from './previews/OpenAIRealtimeVoicePreview';
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Label } from "./ui/label";
@@ -19,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BACKEND_URL } from "@/config/env";
 import { useTranslation } from 'react-i18next';
 import { useI18n } from '@/hooks/useI18n';
+import { createCompatibleMediaRecorder, getRecorderOutputMimeType } from "@/lib/audio-recording";
 
 const initialCustomizationState = {
   primary_color: "linear-gradient(135deg, #3B82F6 0%, #8B5CF6 50%, #EC4899 100%)", // AgentConnect gradient
@@ -35,6 +37,8 @@ const initialCustomizationState = {
   bot_message_text_color: "#1E293B", // Darker text for better contrast
   time_color: "#9CA3AF", // Time/timestamp color
   widget_size: "medium",
+  widget_width: undefined as number | undefined,
+  widget_height: undefined as number | undefined,
   show_header: true,
   proactive_message_enabled: false,
   proactive_message: "Hello! Do you have any questions?",
@@ -50,6 +54,7 @@ const initialCustomizationState = {
     z_index: 9999,
     position: 'bottom-right',
     default_language: 'en',
+    rtl_enabled: false,
     languages: {
       en: {
         welcome_message: "Hi! How can I help you today?",
@@ -58,7 +63,7 @@ const initialCustomizationState = {
         proactive_message: "Hello! Do you have any questions?",
       }
     }
-  }, // Flexible meta field for additional customizations
+  } as Record<string, unknown>, // Flexible meta field for additional customizations
 };
 
 const widgetSizes = {
@@ -85,6 +90,7 @@ export const AdvancedChatPreview = () => {
   const { isRTL: isUserRTL } = useI18n();
   const { toast } = useToast();
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
+  const [voicePreviewProvider, setVoicePreviewProvider] = useState<'livekit' | 'openai_realtime'>('livekit');
   const [isTyping, setIsTyping] = useState(false);
   const [activeForm, setActiveForm] = useState<any[] | null>(null);
   const [previewType, setPreviewType] = useState('web');
@@ -105,7 +111,7 @@ export const AdvancedChatPreview = () => {
   const voiceWs = useRef<WebSocket | null>(null);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
-  const audioPlaybackTimer = useRef<NodeJS.Timeout | null>(null);
+  const audioPlaybackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const incomingAudioChunks = useRef<Blob[]>([]);
   const [liveKitToken, setLiveKitToken] = useState<string | null>(null);
   const [shouldConnect, setShouldConnect] = useState(false);
@@ -118,7 +124,7 @@ export const AdvancedChatPreview = () => {
   } | null>(null);
 
   useEffect(() => {
-    if (previewType === 'voice' && selectedAgentId) {
+    if (previewType === 'voice' && selectedAgentId && voicePreviewProvider === 'livekit') {
       const fetchToken = async () => {
         try {
           const response = await authFetch(`/api/v1/video-calls/token`, {
@@ -172,7 +178,7 @@ export const AdvancedChatPreview = () => {
         console.log(`Opening chat WebSocket for session: ${sessionId}`);
         setMessages([]);
 
-        const wsUrl = `${BACKEND_URL.replace('http', 'ws')}/api/v1/ws/public/${companyId}/${selectedAgentId}/${sessionId}?user_type=user`;
+        const wsUrl = `${BACKEND_URL.replace('http', 'ws')}/api/v1/ws/public/${companyId}/${selectedAgentId}/${sessionId}?user_type=user&channel=${previewType}`;
         ws.current = new WebSocket(wsUrl);
 
         ws.current.onopen = () => {
@@ -224,7 +230,7 @@ export const AdvancedChatPreview = () => {
         ws.current.onerror = (error) => console.error("Chat preview WebSocket error:", error);
       }
 
-      if (!voiceWs.current) {
+      if (!voiceWs.current && voicePreviewProvider === 'livekit') {
         console.log(`Opening voice WebSocket for session: ${sessionId}`);
         const voiceUrl = `${BACKEND_URL.replace('http', 'ws')}/api/v1/ws/public/voice/${companyId}/${selectedAgentId}/${sessionId}?user_type=user&voice_id=${(customization as any).voice_id || 'default'}&stt_provider=${(customization as any).stt_provider || 'groq'}`;
         voiceWs.current = new WebSocket(voiceUrl);
@@ -335,7 +341,7 @@ export const AdvancedChatPreview = () => {
     } else {
       navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
         setIsRecording(true);
-        mediaRecorder.current = new MediaRecorder(stream);
+        mediaRecorder.current = createCompatibleMediaRecorder(stream);
         audioChunks.current = [];
         
         mediaRecorder.current.ondataavailable = e => {
@@ -345,7 +351,9 @@ export const AdvancedChatPreview = () => {
         };
 
         mediaRecorder.current.onstop = () => {
-            const finalBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+            const finalBlob = new Blob(audioChunks.current, {
+              type: getRecorderOutputMimeType(mediaRecorder.current!),
+            });
             if (voiceWs.current?.readyState === WebSocket.OPEN) {
                 voiceWs.current.send(finalBlob);
             }
@@ -421,7 +429,7 @@ export const AdvancedChatPreview = () => {
     fetchPublishStatus();
   }, [selectedAgentId]);
 
-  const updateCustomization = (key: string, value: string | number | boolean) => {
+  const updateCustomization = (key: string, value: string | number | boolean | Record<string, unknown>) => {
     setCustomization(prev => ({ ...prev, [key]: value }));
   };
 
@@ -796,7 +804,42 @@ export const AdvancedChatPreview = () => {
               {previewType === 'instagram' && <InstagramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
               {previewType === 'gmail' && <GmailPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
               {previewType === 'telegram' && <TelegramPreview messages={messages} customization={customization} handleSendMessage={handleSendMessage} message={message} setMessage={setMessage} isRecording={isRecording} handleToggleRecording={handleToggleRecording} />}
-              {previewType === 'voice' && customization.livekit_url && <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={BACKEND_URL}/>}
+              {previewType === 'voice' && (
+                <div className="flex flex-col h-full w-full">
+                  {/* Provider toggle */}
+                  <div className="flex items-center gap-2 p-2 border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                    <button
+                      onClick={() => setVoicePreviewProvider('livekit')}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${voicePreviewProvider === 'livekit' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                    >
+                      LiveKit
+                    </button>
+                    <button
+                      onClick={() => setVoicePreviewProvider('openai_realtime')}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${voicePreviewProvider === 'openai_realtime' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                    >
+                      OpenAI Realtime
+                    </button>
+                  </div>
+                  {/* Preview */}
+                  <div className="flex-1">
+                    {voicePreviewProvider === 'livekit' && customization.livekit_url && (
+                      <VoiceAgentPreview liveKitToken={liveKitToken} shouldConnect={shouldConnect} setShouldConnect={setShouldConnect} livekitUrl={customization.livekit_url} customization={customization} backendUrl={BACKEND_URL} />
+                    )}
+                    {voicePreviewProvider === 'openai_realtime' && sessionId && companyId && selectedAgentId && (
+                      <OpenAIRealtimeVoicePreview
+                        shouldConnect={shouldConnect}
+                        setShouldConnect={setShouldConnect}
+                        customization={customization}
+                        backendUrl={BACKEND_URL}
+                        companyId={companyId}
+                        agentId={selectedAgentId}
+                        sessionId={sessionId}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
                 </div>
               </div>
             </div>

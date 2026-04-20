@@ -39,7 +39,11 @@ import {
   TrendingUp,
   Tag,
   Layers,
-  LayoutTemplate
+  LayoutTemplate,
+  Headphones,
+  Server,
+  Cable,
+  Crown,
 } from "lucide-react";
 import { CreateAgentDialog } from "@/components/CreateAgentDialog";
 import { Permission } from "./Permission";
@@ -378,49 +382,57 @@ const AppLayout = () => {
     }
   }, [soundEnabled]);
 
-  const sidebarItems = [
-    // Core Operations
-    { titleKey: "navigation.activeClients", url: "/dashboard/conversations", icon: Inbox, permission: "page:conversations" },
-    { titleKey: "navigation.agents", url: "/dashboard/agents", icon: Bot, permission: "page:agents" },
-    { titleKey: "navigation.agentBuilder", url: "/dashboard/builder", icon: Settings, permission: "page:agent_builder" },
-    { titleKey: "navigation.widgetDesigner", url: "/dashboard/designer", icon: Palette, permission: "page:widget_designer" },
-
-    // Analytics & Monitoring
-    { titleKey: "navigation.reports", url: "/dashboard/reports", icon: BarChart3, permission: "page:reports" },
-
-    // CRM - Individual permissions for each section
-    { titleKey: "navigation.crm", url: "/dashboard/crm", icon: TrendingUp, permission: "page:crm_dashboard" },
-    { titleKey: "navigation.contacts", url: "/dashboard/crm/contacts", icon: Users, permission: "page:contacts" },
-    { titleKey: "navigation.leads", url: "/dashboard/crm/leads", icon: Target, permission: "page:leads" },
-    { titleKey: "navigation.campaigns", url: "/dashboard/crm/campaigns", icon: Send, permission: "page:campaigns" },
-    { titleKey: "navigation.tags", url: "/dashboard/crm/tags", icon: Tag, permission: "page:tags" },
-    { titleKey: "navigation.segments", url: "/dashboard/crm/segments", icon: Layers, permission: "page:segments" },
-    { titleKey: "navigation.templates", url: "/dashboard/crm/templates", icon: LayoutTemplate, permission: "page:crm_templates" },
-
-    // Configuration & Resources
-    { titleKey: "navigation.knowledgeBases", url: "/dashboard/knowledge-base/manage", icon: BookOpen, permission: "page:knowledge_base" },
-    { titleKey: "navigation.customTools", url: "/dashboard/tools", icon: Zap, permission: "page:tools" },
-    { titleKey: "navigation.customWorkflows", url: "/dashboard/workflows", icon: WorkflowIcon, permission: "page:workflows" },
-    { titleKey: "navigation.voiceLab", url: "/dashboard/voice-lab", icon: Mic, permission: "page:voice_lab" },
-
-    // Team & Communication
-    { titleKey: "navigation.teamManagement", url: "/dashboard/team", icon: Users, permission: "page:team_management" },
-    { titleKey: "navigation.teamChat", url: "/dashboard/team-chat", icon: MessageSquare, permission: "page:team_chat" },
-    { titleKey: "navigation.messageTemplates", url: "/dashboard/message-templates", icon: Sparkles, permission: "page:message_templates" },
-
-    // AI Features - Individual permissions
-    { titleKey: "navigation.aiChat", url: "/dashboard/ai-chat", icon: MessageSquare, permission: "page:ai_chat" },
-    { titleKey: "navigation.aiTools", url: "/dashboard/ai-tools", icon: Sparkles, permission: "page:ai_tools" },
-    { titleKey: "navigation.aiImageGenerator", url: "/dashboard/ai-image-generator", icon: Sparkles, permission: "page:ai_image_generator" },
-    { titleKey: "navigation.aiImageGallery", url: "/dashboard/ai-image-gallery", icon: FileText, permission: "page:ai_image_gallery" },
-    { titleKey: "navigation.visionAI", url: "/dashboard/object-detection", icon: Sparkles, permission: "page:vision_ai" },
-
-    // System & Administration
-    { titleKey: "navigation.settings", url: "/dashboard/settings", icon: FileText, permission: "page:settings" },
-    { titleKey: "navigation.apiVault", url: "/dashboard/vault", icon: Key, permission: "page:api_vault" },
-    { titleKey: "navigation.billing", url: "/dashboard/billing", icon: CreditCard, permission: "page:billing" },
-    { titleKey: "navigation.managePlans", url: "/dashboard/admin/subscriptions", icon: Sparkles, admin: true },
-    { titleKey: "navigation.companies", url: "/dashboard/companies", icon: Building, admin: true },
+  const sidebarGroups = [
+    {
+      label: "ENGAGE",
+      items: [
+        { titleKey: "navigation.activeClients", url: "/dashboard/conversations", icon: Inbox, permission: "page:conversations" },
+        { titleKey: "navigation.teamChat", url: "/dashboard/team-chat", icon: MessageSquare, permission: "page:team_chat" },
+        { titleKey: "navigation.contacts", url: "/dashboard/crm/contacts", icon: Users, permission: "page:contacts" },
+      ],
+    },
+    {
+      label: "AI STUDIO",
+      items: [
+        { titleKey: "navigation.agents", url: "/dashboard/agents", icon: Bot, permission: "page:agents" },
+        { titleKey: "navigation.workflowBuilder", url: "/dashboard/workflows", icon: WorkflowIcon, permission: "page:workflows" },
+        { titleKey: "navigation.knowledgeBases", url: "/dashboard/knowledge-base/manage", icon: BookOpen, permission: "page:knowledge_base" },
+        { titleKey: "navigation.customTools", url: "/dashboard/tools", icon: Zap, permission: "page:tools" },
+        { titleKey: "navigation.voiceAgents", url: "/dashboard/voice-agents", icon: Headphones, permission: "page:voice_agents", premium: true },
+      ],
+    },
+    {
+      label: "DESIGN & CONTENT",
+      items: [
+        { titleKey: "navigation.widgetDesigner", url: "/dashboard/designer", icon: Palette, permission: "page:widget_designer" },
+        { titleKey: "navigation.messageTemplates", url: "/dashboard/message-templates", icon: Sparkles, permission: "page:message_templates" },
+        { titleKey: "navigation.templates", url: "/dashboard/crm/templates", icon: LayoutTemplate, permission: "page:crm_templates" },
+      ],
+    },
+    {
+      label: "INSIGHTS",
+      items: [
+        { titleKey: "navigation.reports", url: "/dashboard/reports", icon: BarChart3, permission: "page:reports" },
+      ],
+    },
+    {
+      label: "INTEGRATIONS",
+      items: [
+        { titleKey: "navigation.mcpServer", url: "/dashboard/mcp-server", icon: Server, permission: "page:mcp_server" },
+        { titleKey: "navigation.mcpClient", url: "/dashboard/mcp-client", icon: Cable, permission: "page:mcp_client" },
+      ],
+    },
+    {
+      label: "ADMINISTRATION",
+      items: [
+        { titleKey: "navigation.teamManagement", url: "/dashboard/team", icon: Users, permission: "page:team_management" },
+        { titleKey: "navigation.settings", url: "/dashboard/settings", icon: Settings, permission: "page:settings" },
+        { titleKey: "navigation.apiVault", url: "/dashboard/vault", icon: Key, permission: "page:api_vault" },
+        { titleKey: "navigation.billing", url: "/dashboard/billing", icon: CreditCard, permission: "page:billing" },
+        { titleKey: "navigation.managePlans", url: "/dashboard/admin/subscriptions", icon: Crown, admin: true },
+        { titleKey: "navigation.companies", url: "/dashboard/companies", icon: Building, admin: true },
+      ],
+    },
   ];
 
   return (
@@ -583,40 +595,59 @@ const AppLayout = () => {
           </button>
 
           <nav className={`p-3 space-y-1 h-full flex flex-col overflow-y-auto ${sidebarCollapsed ? 'items-center' : ''}`}>
-            <div className="flex-1 space-y-1">
-              {sidebarItems.map((item) => {
-                // Only show admin items if user is super admin
-                if (item.admin && !user?.is_super_admin) return null;
+            <div className="flex-1 space-y-4">
+              {sidebarGroups.map((group) => (
+                <div key={group.label}>
+                  {!sidebarCollapsed && (
+                    <p className="px-3 mb-1 text-[10px] font-semibold tracking-widest text-slate-400 dark:text-slate-500 uppercase">
+                      {group.label}
+                    </p>
+                  )}
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      if ((item as any).admin && !user?.is_super_admin) return null;
 
-                return (
-                  <Permission key={item.url} permission={item.permission}>
-                    <NavLink
-                      to={item.url}
-                      className={({ isActive }) =>
-                        `flex items-center rounded-lg text-sm font-medium transition-all duration-200 group ${
-                          sidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
-                        } ${
-                          isActive
-                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
-                        }`
-                      }
-                      title={sidebarCollapsed ? t(item.titleKey) : undefined}
-                    >
-                      {({ isActive }) => (
-                        <>
-                          <item.icon
-                            className={`h-5 w-5 transition-transform duration-200 ${
-                              isActive ? '' : 'group-hover:scale-110'
-                            } ${sidebarCollapsed ? 'flex-shrink-0' : ''}`}
-                          />
-                          {!sidebarCollapsed && <span className="truncate">{t(item.titleKey)}</span>}
-                        </>
-                      )}
-                    </NavLink>
-                  </Permission>
-                );
-              })}
+                      return (
+                        <Permission key={item.url} permission={(item as any).permission}>
+                          <NavLink
+                            to={item.url}
+                            className={({ isActive }) =>
+                              `flex items-center rounded-lg text-sm font-medium transition-all duration-200 group ${
+                                sidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
+                              } ${
+                                isActive
+                                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
+                              }`
+                            }
+                            title={sidebarCollapsed ? t(item.titleKey) : undefined}
+                          >
+                            {({ isActive }) => (
+                              <>
+                                <item.icon
+                                  className={`h-5 w-5 flex-shrink-0 transition-transform duration-200 ${
+                                    isActive ? '' : 'group-hover:scale-110'
+                                  }`}
+                                />
+                                {!sidebarCollapsed && (
+                                  <>
+                                    <span className="truncate flex-1">{t(item.titleKey)}</span>
+                                    {(item as any).premium && (
+                                      <span className="ml-auto text-[10px] font-bold bg-gradient-to-r from-amber-400 to-orange-500 text-white px-1.5 py-0.5 rounded-full leading-none">
+                                        PRO
+                                      </span>
+                                    )}
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </NavLink>
+                        </Permission>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </nav>
         </aside>

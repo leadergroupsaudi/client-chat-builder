@@ -26,14 +26,14 @@ export default defineConfig(({ mode }) => {
     headers: {
     'Content-Security-Policy':
       "default-src 'self'; " +
-      "frame-src https:; " +
+      "frame-src 'self' http://localhost:* https:; " +
       "script-src 'self' 'sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk='; " +
       "object-src 'none'; " +
       "style-src 'self' 'unsafe-inline'; " +
       `img-src 'self' ${backendUrl} https://avatar.vercel.sh https: data: blob:; ` +
       "font-src 'self' data:; " +
       "media-src 'self' blob:; " +
-      `connect-src 'self' ${backendUrl} https://*.livekit.cloud wss://*.livekit.cloud ws: wss: https://ultralytics.com;`
+      `connect-src 'self' ${backendUrl} https://*.livekit.cloud wss://*.livekit.cloud https://api.openai.com wss://api.openai.com ws: wss: https://ultralytics.com;`
     }
   },
   plugins: [
